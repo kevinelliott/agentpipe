@@ -236,8 +236,10 @@ func (m Model) startConversation() tea.Cmd {
 		}()
 
 		go func() {
-			if err := orch.Start(m.ctx); err != nil {
-				// Error is already logged by orchestrator
+			err := orch.Start(m.ctx)
+			if err != nil {
+				// Error is already logged by orchestrator, nothing to do here
+				_ = err
 			}
 			close(writer.messageChan)
 		}()
