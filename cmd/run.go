@@ -164,7 +164,10 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 	if useTUI {
 		// Use enhanced TUI - agent initialization will happen inside TUI
-		skipHealthCheck, _ := cmd.Flags().GetBool("skip-health-check")
+		skipHealthCheck, err := cmd.Flags().GetBool("skip-health-check")
+		if err != nil {
+			skipHealthCheck = false
+		}
 		return tui.RunEnhanced(ctx, cfg, nil, skipHealthCheck, healthCheckTimeout, configPath)
 	}
 

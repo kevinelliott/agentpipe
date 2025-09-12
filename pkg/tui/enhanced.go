@@ -96,17 +96,6 @@ var (
 				Bold(true).
 				Foreground(lipgloss.Color("99"))
 
-	// Agent list styles
-	selectedAgentStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("255")).
-				Background(lipgloss.Color("63")).
-				Bold(true).
-				Padding(0, 1)
-
-	normalAgentStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("252")).
-				Padding(0, 1)
-
 	// Modal styles
 	modalStyle = lipgloss.NewStyle().
 			Border(lipgloss.DoubleBorder()).
@@ -847,7 +836,7 @@ func (m *EnhancedModel) renderConfig() string {
 		label string
 		value string
 	}{
-		{"Mode:", string(m.config.Orchestrator.Mode)},
+		{"Mode:", m.config.Orchestrator.Mode},
 		{"Max Turns:", fmt.Sprintf("%d", m.config.Orchestrator.MaxTurns)},
 		{"Timeout:", fmt.Sprintf("%ds", int(m.config.Orchestrator.TurnTimeout.Seconds()))},
 		{"Delay:", fmt.Sprintf("%ds", int(m.config.Orchestrator.ResponseDelay.Seconds()))},
@@ -1209,7 +1198,7 @@ func (w *messageWriter) Write(p []byte) (n int, err error) {
 			idx := strings.Index(line, "]")
 			if idx > 0 {
 				agentInfo := strings.TrimSpace(line[1:idx])
-				content := strings.TrimSpace(line[idx+1:])
+				messageContent := strings.TrimSpace(line[idx+1:])
 
 				// Parse agent name and metrics if present (format: "AgentName|XXXms|XXXt|X.XXXX")
 				var agentName string
@@ -1251,31 +1240,31 @@ func (w *messageWriter) Write(p []byte) (n int, err error) {
 					if agentName == "System" {
 						msg.AgentID = "system"
 						msg.AgentName = "System"
-						msg.Content = content
+						msg.Content = messageContent
 						msg.Role = "system"
 					} else if agentName == "Error" {
 						msg.AgentID = "error"
 						msg.AgentName = "Error"
 						// Parse error message to extract agent name if present
-						if strings.Contains(content, "Agent") && strings.Contains(content, "failed:") {
-							if strings.Contains(content, "context deadline exceeded") {
-								parts := strings.Split(content, " failed:")
+						if strings.Contains(messageContent, "Agent") && strings.Contains(messageContent, "failed:") {
+							if strings.Contains(messageContent, "context deadline exceeded") {
+								parts := strings.Split(messageContent, " failed:")
 								if len(parts) > 0 {
 									msg.Content = fmt.Sprintf("❌ %s timed out - response took too long", parts[0])
 								} else {
-									msg.Content = "❌ " + content
+									msg.Content = "❌ " + messageContent
 								}
 							} else {
-								msg.Content = "❌ " + content
+								msg.Content = "❌ " + messageContent
 							}
 						} else {
-							msg.Content = "❌ Error: " + content
+							msg.Content = "❌ Error: " + messageContent
 						}
 						msg.Role = "system"
 					} else if agentName == "Info" {
 						msg.AgentID = "info"
 						msg.AgentName = "Info"
-						msg.Content = "ℹ️ " + content
+						msg.Content = "ℹ️ " + messageContent
 						msg.Role = "system"
 					}
 
@@ -1291,8 +1280,8 @@ func (w *messageWriter) Write(p []byte) (n int, err error) {
 					w.currentAgent = agentName
 					w.currentMetrics = metrics
 					w.currentContent.Reset()
-					if content != "" {
-						w.currentContent.WriteString(content)
+					if messageContent != "" {
+						w.currentContent.WriteString(messageContent)
 					}
 				}
 			}
