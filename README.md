@@ -36,13 +36,13 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 ## Installation
 
 ```bash
-go install github.com/agentpipe/agentpipe@latest
+go install github.com/kevinelliott/agentpipe@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/agentpipe/agentpipe.git
+git clone https://github.com/kevinelliott/agentpipe.git
 cd agentpipe
 go build -o agentpipe .
 ```
