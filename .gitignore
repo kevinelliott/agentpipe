@@ -39,3 +39,6 @@ agentpipe.yaml
 # Temporary files
 tmp/
 temp/
+
+# Build artifacts
+dist/
