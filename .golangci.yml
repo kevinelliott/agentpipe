@@ -11,7 +11,6 @@ linters:
     - staticcheck
     - ineffassign
     - typecheck
-    - unused
     - gosimple
     - gosec
     - misspell
@@ -22,9 +21,6 @@ linters:
     - dupl
     - gocyclo
     - gocognit
-
-  disable:
-    - unused # False positives on some fields
 
 linters-settings:
   gofmt:
