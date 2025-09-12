@@ -311,8 +311,12 @@ func (l *ChatLogger) wrapText(text string, indent int) string {
 
 func (l *ChatLogger) writeToFile(content string) {
 	if l.logFile != nil {
-		_, _ = l.logFile.WriteString(content)
-		_ = l.logFile.Sync()
+		if _, err := l.logFile.WriteString(content); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to log file: %v\n", err)
+		}
+		if err := l.logFile.Sync(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error syncing log file: %v\n", err)
+		}
 	}
 }
 

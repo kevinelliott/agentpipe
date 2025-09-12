@@ -57,7 +57,10 @@ func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 		if err := testCmd.Start(); err != nil {
 			return fmt.Errorf("gemini CLI cannot be executed: %w", err)
 		}
-		_ = testCmd.Process.Kill()
+		if err := testCmd.Process.Kill(); err != nil {
+			// Process might have already exited, which is fine
+			return nil
+		}
 		// If we can start it, consider it healthy
 		return nil
 	}
@@ -196,23 +199,7 @@ func (g *GeminiAgent) formatConversation(messages []agent.Message) string {
 }
 
 func (g *GeminiAgent) buildPrompt(conversation string) string {
-	var prompt strings.Builder
-
-	prompt.WriteString("You are participating in a multi-agent conversation. ")
-	prompt.WriteString(fmt.Sprintf("Your name is '%s'. ", g.Name))
-
-	if g.Config.Prompt != "" {
-		prompt.WriteString(g.Config.Prompt)
-		prompt.WriteString("\n\n")
-	}
-
-	prompt.WriteString("Here is the conversation so far:\n\n")
-	prompt.WriteString(conversation)
-	prompt.WriteString("\n\nContinue the conversation naturally as ")
-	prompt.WriteString(g.Name)
-	prompt.WriteString(". Build on what was just said without repeating previous points. Don't announce that you're joining - just respond directly:")
-
-	return prompt.String()
+	return BuildAgentPrompt(g.Name, g.Config.Prompt, conversation)
 }
 
 func init() {

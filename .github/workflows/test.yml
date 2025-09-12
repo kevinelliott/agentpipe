@@ -41,8 +41,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: |
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Build
         run: go build -v ./...

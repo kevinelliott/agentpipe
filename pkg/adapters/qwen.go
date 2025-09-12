@@ -58,7 +58,10 @@ func (q *QwenAgent) HealthCheck(ctx context.Context) error {
 			if err := testCmd.Start(); err != nil {
 				return fmt.Errorf("qwen CLI cannot be executed: %w", err)
 			}
-			_ = testCmd.Process.Kill()
+			if err := testCmd.Process.Kill(); err != nil {
+				// Process might have already exited, which is fine
+				return nil
+			}
 			// If we can start it, consider it healthy
 			return nil
 		}

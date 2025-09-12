@@ -224,24 +224,24 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activePanel == agentsPanel {
 				m.agentList, _ = m.agentList.Update(msg)
 			} else if m.activePanel == conversationPanel {
-				m.conversation.LineUp(1)
+				m.conversation.ScrollUp(1)
 			}
 
 		case "down", "j":
 			if m.activePanel == agentsPanel {
 				m.agentList, _ = m.agentList.Update(msg)
 			} else if m.activePanel == conversationPanel {
-				m.conversation.LineDown(1)
+				m.conversation.ScrollDown(1)
 			}
 
 		case "pgup":
 			if m.activePanel == conversationPanel {
-				m.conversation.HalfViewUp()
+				m.conversation.HalfPageUp()
 			}
 
 		case "pgdown":
 			if m.activePanel == conversationPanel {
-				m.conversation.HalfViewDown()
+				m.conversation.HalfPageDown()
 			}
 		}
 

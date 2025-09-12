@@ -31,7 +31,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.agentpipe.yaml)")
 	rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
 
-	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		fmt.Fprintf(os.Stderr, "Error binding verbose flag: %v\n", err)
+	}
 }
 
 func initConfig() {

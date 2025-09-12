@@ -142,23 +142,7 @@ func (c *ClaudeAgent) formatConversation(messages []agent.Message) string {
 }
 
 func (c *ClaudeAgent) buildPrompt(conversation string) string {
-	var prompt strings.Builder
-
-	prompt.WriteString("You are participating in a multi-agent conversation. ")
-	prompt.WriteString(fmt.Sprintf("Your name is '%s'. ", c.Name))
-
-	if c.Config.Prompt != "" {
-		prompt.WriteString(c.Config.Prompt)
-		prompt.WriteString("\n\n")
-	}
-
-	prompt.WriteString("Here is the conversation so far:\n\n")
-	prompt.WriteString(conversation)
-	prompt.WriteString("\n\nContinue the conversation naturally as ")
-	prompt.WriteString(c.Name)
-	prompt.WriteString(". Build on what was just said without repeating previous points. Don't announce that you're joining - just respond directly:")
-
-	return prompt.String()
+	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
 }
 
 func init() {
