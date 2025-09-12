@@ -218,7 +218,7 @@ jobs:
           LINUX_AMD64_SHA=$(grep "agentpipe_linux_amd64.tar.gz" ../checksums.txt | cut -d' ' -f1)
           
           # Update formula
-          cat > Formulae/agentpipe.rb << EOF
+          cat > Formula/agentpipe.rb << EOF
           class Agentpipe < Formula
             desc "Orchestrate conversations between multiple AI CLI agents"
             homepage "https://github.com/kevinelliott/agentpipe"
@@ -267,6 +267,6 @@ jobs:
           cd homebrew-tap
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add Formulae/agentpipe.rb
+          git add Formula/agentpipe.rb
           git commit -m "Update agentpipe to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
           git push || echo "No changes to push"
