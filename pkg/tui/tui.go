@@ -41,18 +41,17 @@ var (
 )
 
 type Model struct {
-	ctx          context.Context
-	config       *config.Config
-	agents       []agent.Agent
-	orchestrator *orchestrator.Orchestrator
-	messages     []agent.Message
-	viewport     viewport.Model
-	textarea     textarea.Model
-	width        int
-	height       int
-	ready        bool
-	running      bool
-	err          error
+	ctx      context.Context
+	config   *config.Config
+	agents   []agent.Agent
+	messages []agent.Message
+	viewport viewport.Model
+	textarea textarea.Model
+	width    int
+	height   int
+	ready    bool
+	running  bool
+	err      error
 }
 
 type messageUpdate struct {

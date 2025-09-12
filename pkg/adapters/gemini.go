@@ -57,7 +57,7 @@ func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 		if err := testCmd.Start(); err != nil {
 			return fmt.Errorf("gemini CLI cannot be executed: %w", err)
 		}
-		testCmd.Process.Kill()
+		_ = testCmd.Process.Kill()
 		// If we can start it, consider it healthy
 		return nil
 	}
@@ -185,7 +185,7 @@ func (g *GeminiAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 }
 
 func (g *GeminiAgent) formatConversation(messages []agent.Message) string {
-	var parts []string
+	parts := make([]string, 0, len(messages))
 
 	for _, msg := range messages {
 		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
@@ -218,4 +218,3 @@ func (g *GeminiAgent) buildPrompt(conversation string) string {
 func init() {
 	agent.RegisterFactory("gemini", NewGeminiAgent)
 }
-

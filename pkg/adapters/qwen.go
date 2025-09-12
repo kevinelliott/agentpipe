@@ -58,7 +58,7 @@ func (q *QwenAgent) HealthCheck(ctx context.Context) error {
 			if err := testCmd.Start(); err != nil {
 				return fmt.Errorf("qwen CLI cannot be executed: %w", err)
 			}
-			testCmd.Process.Kill()
+			_ = testCmd.Process.Kill()
 			// If we can start it, consider it healthy
 			return nil
 		}
@@ -127,7 +127,7 @@ func (q *QwenAgent) StreamMessage(ctx context.Context, messages []agent.Message,
 }
 
 func (q *QwenAgent) formatConversation(messages []agent.Message) string {
-	var parts []string
+	parts := make([]string, 0, len(messages))
 
 	for _, msg := range messages {
 		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
@@ -157,4 +157,3 @@ func (q *QwenAgent) buildPrompt(conversation string) string {
 func init() {
 	agent.RegisterFactory("qwen", NewQwenAgent)
 }
-

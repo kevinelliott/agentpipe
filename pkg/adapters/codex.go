@@ -171,7 +171,7 @@ func (c *CodexAgent) StreamMessage(ctx context.Context, messages []agent.Message
 }
 
 func (c *CodexAgent) formatConversation(messages []agent.Message) string {
-	var parts []string
+	parts := make([]string, 0, len(messages))
 
 	for _, msg := range messages {
 		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
@@ -201,4 +201,3 @@ func (c *CodexAgent) buildPrompt(conversation string) string {
 func init() {
 	agent.RegisterFactory("codex", NewCodexAgent)
 }
-

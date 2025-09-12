@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
-	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
 )
 
 type panel int
@@ -25,10 +24,9 @@ const (
 )
 
 type EnhancedModel struct {
-	ctx          context.Context
-	config       *config.Config
-	agents       []agent.Agent
-	orchestrator *orchestrator.Orchestrator
+	ctx    context.Context
+	config *config.Config
+	agents []agent.Agent
 
 	// UI components
 	agentList    list.Model
@@ -50,7 +48,6 @@ type EnhancedModel struct {
 
 	// Styles
 	agentColors map[string]lipgloss.Color
-	colorIndex  int
 }
 
 // Styles

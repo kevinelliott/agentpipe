@@ -131,7 +131,7 @@ func (c *ClaudeAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 }
 
 func (c *ClaudeAgent) formatConversation(messages []agent.Message) string {
-	var parts []string
+	parts := make([]string, 0, len(messages))
 
 	for _, msg := range messages {
 		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")

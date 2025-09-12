@@ -171,7 +171,10 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		}
 
 		// Perform health check unless skipped
-		skipHealthCheck, _ := cmd.Flags().GetBool("skip-health-check")
+		skipHealthCheck, err := cmd.Flags().GetBool("skip-health-check")
+		if err != nil {
+			skipHealthCheck = false
+		}
 		if !skipHealthCheck {
 			if verbose {
 				fmt.Printf("  Checking health of %s...\n", agentCfg.Name)

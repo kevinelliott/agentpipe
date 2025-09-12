@@ -52,22 +52,23 @@ var (
 			Foreground(lipgloss.Color("196")).
 			Bold(true)
 
-	errorBadgeStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("196")).
-			Foreground(lipgloss.Color("255")).
-			Bold(true).
-			Padding(0, 1).
-			MarginRight(1)
+	// Unused styles commented out to pass linting
+	// errorBadgeStyle = lipgloss.NewStyle().
+	// 		Background(lipgloss.Color("196")).
+	// 		Foreground(lipgloss.Color("255")).
+	// 		Bold(true).
+	// 		Padding(0, 1).
+	// 		MarginRight(1)
 
 	separatorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("236"))
 
-	messageBoxStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("238")).
-			PaddingLeft(1).
-			PaddingRight(1).
-			MarginBottom(1)
+	// messageBoxStyle = lipgloss.NewStyle().
+	// 		BorderStyle(lipgloss.RoundedBorder()).
+	// 		BorderForeground(lipgloss.Color("238")).
+	// 		PaddingLeft(1).
+	// 		PaddingRight(1).
+	// 		MarginBottom(1)
 )
 
 func NewChatLogger(logDir string, logFormat string, console io.Writer, showMetrics bool) (*ChatLogger, error) {
@@ -110,9 +111,9 @@ func NewChatLogger(logDir string, logFormat string, console io.Writer, showMetri
 	}
 
 	// Write header to log file
-	logger.writeToFile(fmt.Sprintf("=== AgentPipe Chat Log ===\n"))
-	logger.writeToFile(fmt.Sprintf("Started: %s\n", time.Now().Format("2006-01-02 15:04:05")))
-	logger.writeToFile(fmt.Sprintf("=====================================\n\n"))
+	logger.writeToFile("=== AgentPipe Chat Log ===\n")
+	logger.writeToFile("Started: " + time.Now().Format("2006-01-02 15:04:05") + "\n")
+	logger.writeToFile("=====================================\n\n")
 
 	if console != nil {
 		fmt.Fprintf(console, "\n📝 Chat logged to: %s\n", logPath)
@@ -163,8 +164,10 @@ func (l *ChatLogger) LogMessage(msg agent.Message) {
 	// Write to file
 	if l.logFile != nil {
 		if l.logFormat == "json" {
-			data, _ := json.Marshal(msg)
-			l.writeToFile(string(data) + "\n")
+			data, err := json.Marshal(msg)
+			if err == nil {
+				l.writeToFile(string(data) + "\n")
+			}
 		} else {
 			l.writeToFile(fmt.Sprintf("[%s] %s (%s): %s\n\n",
 				timestamp, msg.AgentName, msg.Role, msg.Content))
@@ -308,15 +311,15 @@ func (l *ChatLogger) wrapText(text string, indent int) string {
 
 func (l *ChatLogger) writeToFile(content string) {
 	if l.logFile != nil {
-		l.logFile.WriteString(content)
-		l.logFile.Sync()
+		_, _ = l.logFile.WriteString(content)
+		_ = l.logFile.Sync()
 	}
 }
 
 func (l *ChatLogger) Close() {
 	if l.logFile != nil {
-		l.writeToFile(fmt.Sprintf("\n=== Chat Ended ===\n"))
-		l.writeToFile(fmt.Sprintf("Ended: %s\n", time.Now().Format("2006-01-02 15:04:05")))
+		l.writeToFile("\n=== Chat Ended ===\n")
+		l.writeToFile("Ended: " + time.Now().Format("2006-01-02 15:04:05") + "\n")
 		l.logFile.Close()
 	}
 }
