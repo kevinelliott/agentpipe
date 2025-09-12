@@ -35,11 +35,26 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 
 ## Installation
 
+### Using Homebrew (macOS/Linux)
+
+```bash
+brew tap kevinelliott/tap
+brew install agentpipe
+```
+
+### Using the install script
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kevinelliott/agentpipe/main/install.sh | bash
+```
+
+### Using Go
+
 ```bash
 go install github.com/kevinelliott/agentpipe@latest
 ```
 
-Or build from source:
+### Build from source
 
 ```bash
 git clone https://github.com/kevinelliott/agentpipe.git
@@ -53,7 +68,7 @@ AgentPipe requires at least one AI CLI tool to be installed:
 
 - [Claude Code CLI](https://github.com/anthropics/claude-code) - `claude`
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
-- [Qwen CLI](https://github.com/QwenLM/qwen-cli) - `qwen`
+- [Qwen Code CLI](https://github.com/QwenLM/qwen-code) - `qwen`
 - [Codex CLI](https://github.com/openai/codex-cli) - `codex` (OpenAI's agentic CLI)
 - [Ollama](https://github.com/ollama/ollama) - `ollama`
 
@@ -281,10 +296,11 @@ If you encounter health check failures:
 3. Try running the CLI manually to ensure it works
 4. Use `--skip-health-check` flag as a last resort (not recommended)
 
-### Qwen CLI Issues
-The Qwen CLI uses a different interface than other agents:
+### Qwen Code CLI Issues
+The Qwen Code CLI uses a different interface than other agents:
 - Use `qwen --prompt "your prompt"` for non-interactive mode
 - The CLI may open an interactive session if not properly configured
+- Full documentation: https://github.com/QwenLM/qwen-code
 
 ### Gemini Model Not Found
 If you get a 404 error with Gemini:
