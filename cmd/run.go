@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kevinelliott/agentpipe/pkg/agent"
 	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
+	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
@@ -44,7 +44,7 @@ directly via command line flags or use a YAML configuration file.`,
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	
+
 	runCmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to YAML configuration file")
 	runCmd.Flags().StringSliceVarP(&agents, "agents", "a", []string{}, "Agents to use (e.g., claude:Assistant1,gemini:Assistant2)")
 	runCmd.Flags().StringVarP(&mode, "mode", "m", "round-robin", "Conversation mode (round-robin, reactive, free-form)")
@@ -63,7 +63,7 @@ func init() {
 func runConversation(cobraCmd *cobra.Command, args []string) {
 	var cfg *config.Config
 	var err error
-	
+
 	if configPath != "" {
 		cfg, err = config.LoadConfig(configPath)
 		if err != nil {
@@ -84,7 +84,7 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error: Either --config or --agents must be specified\n")
 		os.Exit(1)
 	}
-	
+
 	if mode != "" {
 		cfg.Orchestrator.Mode = mode
 	}
@@ -100,7 +100,7 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 	if initialPrompt != "" {
 		cfg.Orchestrator.InitialPrompt = initialPrompt
 	}
-	
+
 	// Apply CLI overrides for logging
 	if disableLogging {
 		cfg.Logging.Enabled = false
@@ -112,7 +112,7 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 	if showMetrics {
 		cfg.Logging.ShowMetrics = true
 	}
-	
+
 	if err := startConversation(cobraCmd, cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -121,7 +121,7 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 
 func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 	var agentType, name string
-	
+
 	if n := len(spec); n > 0 {
 		for i := 0; i < n; i++ {
 			if spec[i] == ':' {
@@ -133,15 +133,15 @@ func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 			}
 		}
 	}
-	
+
 	if agentType == "" {
 		agentType = spec
 	}
-	
+
 	if name == "" {
 		name = fmt.Sprintf("%s-agent-%d", agentType, index+1)
 	}
-	
+
 	return agent.AgentConfig{
 		ID:   fmt.Sprintf("%s-%d", agentType, index),
 		Type: agentType,
@@ -151,41 +151,41 @@ func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 
 func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	agentsList := make([]agent.Agent, 0)
-	
+
 	verbose := viper.GetBool("verbose")
-	
+
 	fmt.Println("🔍 Initializing agents...")
-	
+
 	for _, agentCfg := range cfg.Agents {
 		if verbose {
 			fmt.Printf("  Creating agent %s (type: %s)...\n", agentCfg.Name, agentCfg.Type)
 		}
-		
+
 		a, err := agent.CreateAgent(agentCfg)
 		if err != nil {
 			return fmt.Errorf("failed to create agent %s: %w", agentCfg.Name, err)
 		}
-		
+
 		if !a.IsAvailable() {
 			return fmt.Errorf("agent %s (type: %s) is not available - please run 'agentpipe doctor'", agentCfg.Name, agentCfg.Type)
 		}
-		
+
 		// Perform health check unless skipped
 		skipHealthCheck, _ := cmd.Flags().GetBool("skip-health-check")
 		if !skipHealthCheck {
 			if verbose {
 				fmt.Printf("  Checking health of %s...\n", agentCfg.Name)
 			}
-			
+
 			timeout := time.Duration(healthCheckTimeout) * time.Second
 			if timeout == 0 {
 				timeout = 2 * time.Second
 			}
-			
+
 			healthCtx, cancel := context.WithTimeout(context.Background(), timeout)
 			err = a.HealthCheck(healthCtx)
 			cancel()
-			
+
 			if err != nil {
 				fmt.Printf("  ⚠️  Health check failed for %s: %v\n", agentCfg.Name, err)
 				fmt.Printf("  Troubleshooting tips:\n")
@@ -198,26 +198,26 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 				}
 				return fmt.Errorf("agent %s failed health check", agentCfg.Name)
 			}
-			
+
 			if verbose {
 				fmt.Printf("  ✅ Agent %s is ready\n", agentCfg.Name)
 			}
 		} else if verbose {
 			fmt.Printf("  ⚠️  Skipping health check for %s\n", agentCfg.Name)
 		}
-		
+
 		agentsList = append(agentsList, a)
 	}
-	
+
 	if len(agentsList) == 0 {
 		return fmt.Errorf("no agents configured")
 	}
-	
+
 	fmt.Printf("✅ All %d agents initialized successfully\n\n", len(agentsList))
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -225,12 +225,12 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		fmt.Println("\n\nInterrupted. Shutting down...")
 		cancel()
 	}()
-	
+
 	if useTUI {
 		// Use enhanced TUI
 		return tui.RunEnhanced(ctx, cfg, agentsList)
 	}
-	
+
 	orchConfig := orchestrator.OrchestratorConfig{
 		Mode:          orchestrator.ConversationMode(cfg.Orchestrator.Mode),
 		TurnTimeout:   cfg.Orchestrator.TurnTimeout,
@@ -238,7 +238,7 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		ResponseDelay: cfg.Orchestrator.ResponseDelay,
 		InitialPrompt: cfg.Orchestrator.InitialPrompt,
 	}
-	
+
 	// Create logger if enabled
 	var chatLogger *logger.ChatLogger
 	if cfg.Logging.Enabled {
@@ -251,35 +251,35 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 			defer chatLogger.Close()
 		}
 	}
-	
+
 	// Create orchestrator with appropriate writer
 	var writer io.Writer = os.Stdout
 	if chatLogger != nil {
 		writer = nil // Logger will handle console output
 	}
-	
+
 	orch := orchestrator.NewOrchestrator(orchConfig, writer)
 	if chatLogger != nil {
 		orch.SetLogger(chatLogger)
 	}
-	
+
 	fmt.Println("🚀 Starting AgentPipe conversation...")
 	fmt.Printf("Mode: %s | Max turns: %d | Agents: %d\n", cfg.Orchestrator.Mode, cfg.Orchestrator.MaxTurns, len(agentsList))
 	if !cfg.Logging.Enabled {
 		fmt.Println("📝 Chat logging disabled (use --log-dir to enable)")
 	}
 	fmt.Println(string(make([]byte, 60)) + "=")
-	
+
 	for _, a := range agentsList {
 		orch.AddAgent(a)
 	}
-	
+
 	if err := orch.Start(ctx); err != nil {
 		return fmt.Errorf("orchestrator error: %w", err)
 	}
-	
+
 	fmt.Println("\n" + string(make([]byte, 60)) + "=")
 	fmt.Println("Conversation ended.")
-	
+
 	return nil
 }

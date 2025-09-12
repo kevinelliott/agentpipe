@@ -29,7 +29,7 @@ func init() {
 func runDoctor(cmd *cobra.Command, args []string) {
 	fmt.Println("🔍 AgentPipe Doctor - Checking installed AI agents...")
 	fmt.Println("=" + string(make([]byte, 50)))
-	
+
 	agents := []struct {
 		name    string
 		command string
@@ -41,15 +41,15 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		{"Codex", "codex", "Codex CLI (https://github.com/openai/codex-cli)"},
 		{"Ollama", "ollama", "Ollama CLI (https://github.com/ollama/ollama)"},
 	}
-	
+
 	availableCount := 0
-	
+
 	for _, agent := range agents {
 		check := checkAgent(agent.command)
-		
+
 		statusIcon := "❌"
 		statusText := "Not installed"
-		
+
 		if check.Available {
 			statusIcon = "✅"
 			statusText = fmt.Sprintf("Available at %s", check.Path)
@@ -58,7 +58,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 			statusIcon = "⚠️"
 			statusText = fmt.Sprintf("Error: %v", check.Error)
 		}
-		
+
 		fmt.Printf("\n%s %s:\n", statusIcon, agent.name)
 		fmt.Printf("   Command: %s\n", agent.command)
 		fmt.Printf("   Status:  %s\n", statusText)
@@ -66,10 +66,10 @@ func runDoctor(cmd *cobra.Command, args []string) {
 			fmt.Printf("   Notes:   %s\n", agent.notes)
 		}
 	}
-	
+
 	fmt.Println("\n" + string(make([]byte, 50)) + "=")
 	fmt.Printf("\n📊 Summary: %d/%d agents available\n", availableCount, len(agents))
-	
+
 	if availableCount == 0 {
 		fmt.Println("\n⚠️  No AI agents found. Please install at least one agent CLI to use AgentPipe.")
 		fmt.Println("   Visit the respective documentation pages to install the agents.")
@@ -84,7 +84,7 @@ func checkAgent(command string) AgentCheck {
 		Name:    command,
 		Command: command,
 	}
-	
+
 	path, err := exec.LookPath(command)
 	if err != nil {
 		check.Error = err
@@ -93,10 +93,10 @@ func checkAgent(command string) AgentCheck {
 		}
 		return check
 	}
-	
+
 	check.Available = true
 	check.Path = path
-	
+
 	testCmd := exec.Command(command, "--version")
 	if err := testCmd.Run(); err != nil {
 		testCmd = exec.Command(command, "version")
@@ -104,6 +104,7 @@ func checkAgent(command string) AgentCheck {
 			check.Error = fmt.Errorf("installed but may not be properly configured")
 		}
 	}
-	
+
 	return check
 }
+

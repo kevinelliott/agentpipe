@@ -28,20 +28,20 @@ func CreateAgent(config AgentConfig) (Agent, error) {
 	defaultRegistry.mu.RLock()
 	factory, ok := defaultRegistry.factories[config.Type]
 	defaultRegistry.mu.RUnlock()
-	
+
 	if !ok {
 		return nil, fmt.Errorf("unknown agent type: %s", config.Type)
 	}
-	
+
 	agent := factory()
 	if err := agent.Initialize(config); err != nil {
 		return nil, fmt.Errorf("failed to initialize agent: %w", err)
 	}
-	
+
 	defaultRegistry.mu.Lock()
 	defaultRegistry.agents[config.ID] = agent
 	defaultRegistry.mu.Unlock()
-	
+
 	return agent, nil
 }
 
@@ -55,7 +55,7 @@ func GetAgent(id string) (Agent, bool) {
 func ListAgents() []Agent {
 	defaultRegistry.mu.RLock()
 	defer defaultRegistry.mu.RUnlock()
-	
+
 	agents := make([]Agent, 0, len(defaultRegistry.agents))
 	for _, agent := range defaultRegistry.agents {
 		agents = append(agents, agent)

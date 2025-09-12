@@ -27,10 +27,10 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.agentpipe.yaml)")
 	rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
-	
+
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }
 
@@ -43,15 +43,15 @@ func initConfig() {
 			fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigType("yaml")
 		viper.SetConfigName(".agentpipe")
 	}
-	
+
 	viper.AutomaticEnv()
-	
+
 	if err := viper.ReadInConfig(); err == nil {
 		if viper.GetBool("verbose") {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())

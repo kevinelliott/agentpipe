@@ -1,0 +1,84 @@
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+    - dist
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - typecheck
+    - unused
+    - gosimple
+    - gosec
+    - misspell
+    - nakedret
+    - prealloc
+    - unconvert
+    - bodyclose
+    - dupl
+    - gocyclo
+    - gocognit
+
+  disable:
+    - golint # deprecated
+    - interfacer # deprecated
+    - maligned # deprecated
+    - scopelint # deprecated
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/kevinelliott/agentpipe
+  govet:
+    check-shadowing: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  dupl:
+    threshold: 100
+  gocyclo:
+    min-complexity: 15
+  gocognit:
+    min-complexity: 20
+  misspell:
+    locale: US
+  unused:
+    check-exported: false
+  gosec:
+    excludes:
+      - G204 # Subprocess launched with variable
+      - G304 # File path provided as taint input
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on test files
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
+        - errcheck
+
+    # Exclude exec.Command usage in adapters
+    - path: pkg/adapters/
+      linters:
+        - gosec
+      text: "G204:"
+
+    # Allow larger functions in main and cmd
+    - path: (cmd/|main\.go)
+      linters:
+        - gocyclo
+        - gocognit
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false

@@ -74,3 +74,4 @@ class Agentpipe < Formula
     assert_match "orchestrates conversations", help_output
   end
 end
+
