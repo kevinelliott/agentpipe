@@ -24,7 +24,7 @@ Claude, Gemini, and Qwen, allowing them to communicate in a shared "room".`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if showVersion {
 			fmt.Println(version.GetVersionString())
-			
+
 			// Quick update check
 			if hasUpdate, latestVersion, err := version.CheckForUpdate(); err == nil && hasUpdate {
 				fmt.Printf("\n📦 Update available: %s (current: %s)\n", latestVersion, version.GetShortVersion())

@@ -31,3 +31,7 @@ orchestrator:
   turn_timeout: 45s
   response_delay: 3s
   initial_prompt: "Should humanity pursue artificial general intelligence (AGI) at all costs?"
+
+logging:
+  enabled: true
+  show_metrics: true  # Set to true to display response metrics

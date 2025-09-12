@@ -30,7 +30,7 @@ func runVersion(cmd *cobra.Command, args []string) {
 	if checkUpdate {
 		fmt.Println("\n🔍 Checking for updates...")
 		hasUpdate, latestVersion, err := version.CheckForUpdate()
-		
+
 		if err != nil {
 			// Only show error if it's not a silent failure
 			if err.Error() != "" {

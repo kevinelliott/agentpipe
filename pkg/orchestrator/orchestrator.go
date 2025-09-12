@@ -71,10 +71,12 @@ func (o *Orchestrator) AddAgent(a agent.Agent) {
 	}
 	o.messages = append(o.messages, announcement)
 
-	// Log using the logger if available, otherwise use writer
+	// Log using the logger if available
 	if o.logger != nil {
 		o.logger.LogMessage(announcement)
-	} else if o.writer != nil {
+	}
+	// Always write to writer if available (for TUI)
+	if o.writer != nil {
 		fmt.Fprintf(o.writer, "\n[System] %s\n", announcement.Content)
 	}
 }
@@ -99,7 +101,9 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		// Log using the logger if available
 		if o.logger != nil {
 			o.logger.LogMessage(initialMsg)
-		} else if o.writer != nil {
+		}
+		// Always write to writer if available (for TUI)
+		if o.writer != nil {
 			fmt.Fprintf(o.writer, "\n[System] %s\n", initialMsg.Content)
 		}
 	}
@@ -131,7 +135,8 @@ func (o *Orchestrator) runRoundRobin(ctx context.Context) error {
 			endMsg := "Maximum turns reached. Conversation ended."
 			if o.logger != nil {
 				o.logger.LogSystem(endMsg)
-			} else if o.writer != nil {
+			}
+			if o.writer != nil {
 				fmt.Fprintln(o.writer, "\n[System] "+endMsg)
 			}
 			break
@@ -143,7 +148,8 @@ func (o *Orchestrator) runRoundRobin(ctx context.Context) error {
 			if o.logger != nil {
 				o.logger.LogError(currentAgent.GetName(), err)
 				o.logger.LogSystem("Continuing conversation with remaining agents...")
-			} else if o.writer != nil {
+			}
+			if o.writer != nil {
 				fmt.Fprintf(o.writer, "\n[Error] Agent %s failed: %v\n", currentAgent.GetName(), err)
 				fmt.Fprintf(o.writer, "[Info] Continuing conversation with remaining agents...\n")
 			}
@@ -175,7 +181,8 @@ func (o *Orchestrator) runReactive(ctx context.Context) error {
 			endMsg := "Maximum turns reached. Conversation ended."
 			if o.logger != nil {
 				o.logger.LogSystem(endMsg)
-			} else if o.writer != nil {
+			}
+			if o.writer != nil {
 				fmt.Fprintln(o.writer, "\n[System] "+endMsg)
 			}
 			break
@@ -216,7 +223,8 @@ func (o *Orchestrator) runFreeForm(ctx context.Context) error {
 			endMsg := "Maximum turns reached. Conversation ended."
 			if o.logger != nil {
 				o.logger.LogSystem(endMsg)
-			} else if o.writer != nil {
+			}
+			if o.writer != nil {
 				fmt.Fprintln(o.writer, "\n[System] "+endMsg)
 			}
 			break
@@ -296,8 +304,20 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	// Display the response
 	if o.logger != nil {
 		o.logger.LogMessage(msg)
-	} else if o.writer != nil {
-		fmt.Fprintf(o.writer, "\n[%s] %s\n", a.GetName(), response)
+	}
+	// Always write to writer if available (for TUI)
+	if o.writer != nil {
+		// Include metrics in a special format if available
+		if msg.Metrics != nil {
+			fmt.Fprintf(o.writer, "\n[%s|%dms|%dt|%.4f] %s\n",
+				a.GetName(),
+				msg.Metrics.Duration.Milliseconds(),
+				msg.Metrics.TotalTokens,
+				msg.Metrics.Cost,
+				response)
+		} else {
+			fmt.Fprintf(o.writer, "\n[%s] %s\n", a.GetName(), response)
+		}
 	}
 
 	return nil

@@ -12,10 +12,10 @@ var (
 	// Version is the current version of agentpipe
 	// This will be set at build time using -ldflags
 	Version = "dev"
-	
+
 	// CommitHash is the git commit hash
 	CommitHash = "unknown"
-	
+
 	// BuildDate is the build date
 	BuildDate = "unknown"
 )
@@ -69,7 +69,7 @@ func CheckForUpdate() (bool, string, error) {
 	if len(parts) == 0 {
 		return false, "", fmt.Errorf("invalid redirect URL")
 	}
-	
+
 	latestTag := parts[len(parts)-1]
 	latestVersion := strings.TrimPrefix(latestTag, "v")
 	currentVersion := strings.TrimPrefix(Version, "v")

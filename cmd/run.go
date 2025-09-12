@@ -151,6 +151,24 @@ func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 }
 
 func startConversation(cmd *cobra.Command, cfg *config.Config) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Println("\n\nInterrupted. Shutting down...")
+		cancel()
+	}()
+
+	if useTUI {
+		// Use enhanced TUI - agent initialization will happen inside TUI
+		skipHealthCheck, _ := cmd.Flags().GetBool("skip-health-check")
+		return tui.RunEnhanced(ctx, cfg, nil, skipHealthCheck, healthCheckTimeout, configPath)
+	}
+
+	// Non-TUI mode: initialize agents here
 	agentsList := make([]agent.Agent, 0)
 
 	verbose := viper.GetBool("verbose")
@@ -218,22 +236,6 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	}
 
 	fmt.Printf("✅ All %d agents initialized successfully\n\n", len(agentsList))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		fmt.Println("\n\nInterrupted. Shutting down...")
-		cancel()
-	}()
-
-	if useTUI {
-		// Use enhanced TUI
-		return tui.RunEnhanced(ctx, cfg, agentsList)
-	}
 
 	orchConfig := orchestrator.OrchestratorConfig{
 		Mode:          orchestrator.ConversationMode(cfg.Orchestrator.Mode),

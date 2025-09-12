@@ -8,6 +8,12 @@
 
 AgentPipe is a CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Gemini, Qwen) to communicate with each other in a shared "room", creating dynamic multi-agent conversations.
 
+## Screenshots
+
+### Enhanced TUI Interface
+![AgentPipe TUI](screenshots/tui/tui1.png)
+*Enhanced TUI with multi-panel layout: agent list with status indicators, conversation view with metrics, statistics panel showing turns and total cost, configuration panel, and user input area*
+
 ## Features
 
 - **Multi-Agent Conversations**: Connect multiple AI agents in a single conversation
@@ -19,9 +25,13 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 - **Enhanced TUI Interface**: 
   - Beautiful panelized layout with agent list, conversation view, and user input
   - Color-coded agent messages with custom badges
+  - Real-time agent activity indicators (green/grey dots)
   - Real-time metrics display (duration, tokens, cost)
   - Modal system for agent details
   - User participation in conversations
+  - Topic panel showing initial prompt
+  - Statistics panel with turn/agent counters
+  - Configuration panel showing active settings
 - **Chat Logging**: Automatic conversation logging to `~/.agentpipe/chats/`
 - **Response Metrics**: Track response time, token usage, and estimated costs
 - **Health Checks**: Automatic agent health verification before conversations
@@ -30,14 +40,20 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 
 ## What's New 🎉
 
-### Latest Features
-- **Enhanced TUI Interface**: Beautiful panelized layout with agent list, conversation view, and user participation
-- **Response Metrics**: Real-time tracking of response duration, token usage, and estimated costs
-- **Chat Logging**: Automatic conversation logging with timestamped files in `~/.agentpipe/chats/`
-- **Codex Support**: Added support for OpenAI's Codex CLI tool
-- **Improved Health Checks**: More robust agent health verification with better timeout handling
-- **Colored Output**: Beautiful color-coded agent messages with custom badges
-- **User Participation**: Join conversations directly through the enhanced TUI
+### Latest Features (v0.0.7)
+- **Enhanced TUI Interface**: 
+  - Beautiful multi-panel layout with dedicated sections for agents, chat, stats, and config
+  - Real-time agent activity indicators showing when agents are thinking/responding
+  - Consolidated message headers (only shown when speaker changes)
+  - Proper multi-paragraph message handling
+  - Topic panel displaying the initial conversation prompt
+  - Statistics showing current/max turns, connected/configured agents, and total cost
+  - Configuration panel showing all active settings including config file path
+- **Response Metrics**: Real-time tracking with inline display in chat (X.Xs, XXX tokens, $X.XXXX)
+- **Improved Message Formatting**: Better handling of multi-line agent responses
+- **Chat Logging**: Dual output support - logs to file while displaying in TUI
+- **Configuration Honoring**: TUI mode now properly respects all config settings
+- **User Participation**: Seamless integration allowing users to join agent conversations
 
 ## Installation
 
@@ -149,8 +165,9 @@ orchestrator:
 
 logging:
   enabled: true          # Enable chat logging
-  path: ~/.agentpipe/chats  # Custom log path (optional)
-  show_metrics: true     # Display response metrics
+  chat_log_dir: ~/.agentpipe/chats  # Custom log path (optional)
+  show_metrics: true     # Display response metrics in TUI
+  log_format: text      # Log format (text or json)
 ```
 
 ### Conversation Modes
@@ -173,8 +190,7 @@ Start a conversation between agents.
 - `--timeout`: Response timeout in seconds (default: 30)
 - `--delay`: Delay between responses in seconds (default: 1)
 - `-p, --prompt`: Initial conversation prompt
-- `-t, --tui`: Use TUI interface
-- `--enhanced-tui`: Use enhanced TUI with panels and user input
+- `-t, --tui`: Use enhanced TUI interface with panels and user input
 - `--log-path`: Custom path for chat logs (default: ~/.agentpipe/chats)
 - `--no-log`: Disable chat logging
 - `--show-metrics`: Display response metrics (duration, tokens, cost)
@@ -229,24 +245,53 @@ agentpipe run \
   -p "How can we make education more engaging?"
 ```
 
-## TUI Controls
+## TUI Interface
 
-### Basic TUI (`--tui`)
-- `Ctrl+C` or `Esc`: Quit
-- `Ctrl+S`: Start conversation
-- `Ctrl+P`: Pause/Resume
-- `↑↓`: Scroll through messages
+The enhanced TUI provides a rich, interactive experience for managing multi-agent conversations:
 
-### Enhanced TUI (`--enhanced-tui`)
-- `Tab`: Switch between panels
+### Layout
+The TUI is divided into multiple panels:
+- **Agents Panel** (Left): Shows all connected agents with real-time status indicators
+- **Chat Panel** (Center): Displays the conversation with color-coded messages
+- **Topic Panel** (Top Right): Shows the initial conversation prompt
+- **Statistics Panel** (Right): Displays turn count, agent statistics, and total conversation cost
+- **Configuration Panel** (Right): Shows active settings and config file path
+- **User Input Panel** (Bottom): Allows you to participate in the conversation
+
+### Visual Features
+- **Agent Status Indicators**: Green dot (🟢) for active/responding, grey dot (⚫) for idle
+- **Color-Coded Messages**: Each agent gets a unique color for easy tracking
+- **Consolidated Headers**: Message headers only appear when the speaker changes
+- **Metrics Display**: Response time (seconds), token count, and cost shown inline when enabled
+- **Multi-Paragraph Support**: Properly formatted multi-line agent responses
+
+### Controls
+- `Tab`: Switch between panels (Agents, Chat, User Input)
 - `↑↓`: Navigate in active panel
-- `Enter`: Select agent or send message
-- `i`: Show agent info modal
-- `u`: Toggle user input panel
+- `Enter`: Send message when in User Input panel
+- `i`: Show agent info modal (when in Agents panel)
 - `Ctrl+C` or `q`: Quit
 - `PageUp/PageDown`: Scroll conversation
+- Active agent indicators: 🟢 (responding) / ⚫ (idle)
 
 ## Development
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/kevinelliott/agentpipe.git
+cd agentpipe
+
+# Build the binary
+go build -o agentpipe .
+
+# Or build with version information
+VERSION=v0.0.7 make build
+
+# Run tests
+go test ./...
+```
 
 ### Project Structure
 
