@@ -69,7 +69,11 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -s -w" \
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u '+%Y-%m-%d_%H:%M:%S')
+          go build -ldflags "-X github.com/kevinelliott/agentpipe/internal/version.Version=${{ steps.get_version.outputs.VERSION }} \
+            -X github.com/kevinelliott/agentpipe/internal/version.CommitHash=${COMMIT_HASH} \
+            -X github.com/kevinelliott/agentpipe/internal/version.BuildDate=${BUILD_DATE} -s -w" \
             -o agentpipe_${{ matrix.name }}${{ matrix.ext }} .
 
       - name: Create archive

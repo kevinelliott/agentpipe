@@ -6,9 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/kevinelliott/agentpipe/internal/version"
 )
 
-var cfgFile string
+var (
+	cfgFile     string
+	showVersion bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "agentpipe",
@@ -16,6 +21,20 @@ var rootCmd = &cobra.Command{
 	Long: `AgentPipe is a CLI and TUI application that enables multiple AI agents
 to have conversations with each other. It supports various AI CLI tools like
 Claude, Gemini, and Qwen, allowing them to communicate in a shared "room".`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if showVersion {
+			fmt.Println(version.GetVersionString())
+			
+			// Quick update check
+			if hasUpdate, latestVersion, err := version.CheckForUpdate(); err == nil && hasUpdate {
+				fmt.Printf("\n📦 Update available: %s (current: %s)\n", latestVersion, version.GetShortVersion())
+				fmt.Printf("   Run 'agentpipe version' for more details\n")
+			}
+			os.Exit(0)
+		}
+		// If no flags, show help
+		cmd.Help()
+	},
 }
 
 func Execute() {
@@ -30,6 +49,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.agentpipe.yaml)")
 	rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
+	rootCmd.Flags().BoolVarP(&showVersion, "version", "V", false, "Show version information")
 
 	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
 		fmt.Fprintf(os.Stderr, "Error binding verbose flag: %v\n", err)

@@ -2,8 +2,12 @@
 
 # Variables
 BINARY_NAME=agentpipe
-VERSION?=$(shell git describe --tags --always --dirty)
-LDFLAGS=-ldflags "-X main.Version=$(VERSION) -s -w"
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
+LDFLAGS=-ldflags "-X github.com/kevinelliott/agentpipe/internal/version.Version=$(VERSION) \
+	-X github.com/kevinelliott/agentpipe/internal/version.CommitHash=$(COMMIT_HASH) \
+	-X github.com/kevinelliott/agentpipe/internal/version.BuildDate=$(BUILD_DATE) -s -w"
 PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64
 
 # Build for current platform
@@ -59,6 +63,12 @@ run-example:
 
 run-tui:
 	go run . run -c examples/brainstorm.yaml --enhanced-tui
+
+version: build
+	./$(BINARY_NAME) version
+
+check-version: build
+	./$(BINARY_NAME) -V
 
 # Linting (requires golangci-lint)
 lint:
