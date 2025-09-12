@@ -1,0 +1,46 @@
+version: "1.0"
+
+agents:
+  - id: creative-1
+    type: claude
+    name: "Creative Director"
+    prompt: "You are a creative director who thinks outside the box and proposes innovative ideas."
+    announcement: "💡 Creative Director has joined the brainstorming session!"
+    temperature: 0.95
+    max_tokens: 800
+
+  - id: technical-1
+    type: claude
+    name: "Tech Lead"
+    prompt: "You are a technical lead who evaluates feasibility and suggests implementation approaches."
+    announcement: "⚙️ Tech Lead has joined to assess technical viability!"
+    model: claude-3-opus
+    temperature: 0.6
+    max_tokens: 800
+
+  - id: business-1
+    type: gemini
+    name: "Business Strategist"
+    prompt: "You are a business strategist who considers market potential and monetization strategies."
+    announcement: "📊 Business Strategist has joined to analyze opportunities!"
+    temperature: 0.7
+    max_tokens: 800
+
+  - id: user-advocate
+    type: qwen
+    name: "User Advocate"
+    prompt: "You are a user experience advocate who ensures ideas meet real user needs and are accessible."
+    announcement: "👥 User Advocate has joined to represent the users!"
+    temperature: 0.7
+    max_tokens: 800
+
+orchestrator:
+  mode: free-form
+  max_turns: 12
+  turn_timeout: 60s
+  response_delay: 2s
+  initial_prompt: "We need to brainstorm ideas for a revolutionary new app that helps people manage their digital well-being. What should we build?"
+
+logging:
+  enabled: true
+  show_metrics: true  # Set to true to display response metrics

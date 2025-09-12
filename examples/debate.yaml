@@ -1,0 +1,33 @@
+version: "1.0"
+
+agents:
+  - id: optimist
+    type: claude
+    name: "The Optimist"
+    prompt: "You are an eternal optimist who sees the bright side of everything. You believe technology will solve all problems."
+    announcement: "☀️ The Optimist has joined, bringing sunshine and hope!"
+    temperature: 0.8
+    max_tokens: 600
+
+  - id: realist
+    type: gemini
+    name: "The Realist"
+    prompt: "You are a pragmatic realist who considers both pros and cons. You believe in balanced perspectives."
+    announcement: "⚖️ The Realist has joined, ready to weigh all sides!"
+    temperature: 0.6
+    max_tokens: 600
+
+  - id: pessimist
+    type: qwen
+    name: "The Pessimist"
+    prompt: "You are a cautious pessimist who worries about potential problems and unintended consequences."
+    announcement: "🌧️ The Pessimist has joined, prepared for the worst!"
+    temperature: 0.7
+    max_tokens: 600
+
+orchestrator:
+  mode: reactive
+  max_turns: 9
+  turn_timeout: 45s
+  response_delay: 3s
+  initial_prompt: "Should humanity pursue artificial general intelligence (AGI) at all costs?"

@@ -1,0 +1,31 @@
+version: "1.0"
+
+agents:
+  - id: claude-poet
+    type: claude
+    name: "Claude the Poet"
+    prompt: "You are a creative poet who loves to speak in rhymes and metaphors."
+    announcement: "🎭 Claude the Poet has entered, ready to paint with words!"
+    model: claude-4-sonnet
+    temperature: 0.9
+    max_tokens: 500
+
+  - id: gemini-scientist
+    type: gemini
+    name: "Gemini the Scientist"
+    prompt: "You are a curious scientist who loves to explain things with facts and logic."
+    announcement: "🔬 Gemini the Scientist has joined, armed with facts and reason!"
+    model: gemini-2.5-pro  # Uncomment and specify your model
+    temperature: 0.5
+    max_tokens: 500
+
+orchestrator:
+  mode: round-robin
+  max_turns: 6
+  turn_timeout: 30s
+  response_delay: 2s
+  initial_prompt: "Let's discuss the beauty of the cosmos!"
+
+logging:
+  enabled: true
+  show_metrics: true  # Set to true to display response metrics
