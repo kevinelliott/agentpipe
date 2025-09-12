@@ -154,8 +154,9 @@ func compareVersions(v1, v2 string) int {
 	// Compare each part
 	for i := 0; i < 3; i++ {
 		var n1, n2 int
-		_, _ = fmt.Sscanf(parts1[i], "%d", &n1)
-		_, _ = fmt.Sscanf(parts2[i], "%d", &n2)
+		// Ignore errors - if Sscanf fails, the values remain 0 which is correct for comparison
+		fmt.Sscanf(parts1[i], "%d", &n1)
+		fmt.Sscanf(parts2[i], "%d", &n2)
 
 		if n1 > n2 {
 			return 1

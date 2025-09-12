@@ -82,6 +82,17 @@ issues:
       linters:
         - gocyclo
         - gocognit
+    
+    # Exclude specific errcheck cases where error handling is intentionally omitted
+    - path: internal/version/version.go
+      linters:
+        - errcheck
+      text: "fmt.Sscanf"
+    
+    - path: cmd/root.go
+      linters:
+        - errcheck
+      text: "cmd.Help"
 
   max-issues-per-linter: 0
   max-same-issues: 0

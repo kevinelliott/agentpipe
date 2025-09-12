@@ -33,7 +33,7 @@ Claude, Gemini, and Qwen, allowing them to communicate in a shared "room".`,
 			os.Exit(0)
 		}
 		// If no flags, show help
-		_ = cmd.Help()
+		cmd.Help()
 	},
 }
 
