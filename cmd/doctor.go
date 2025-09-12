@@ -107,4 +107,3 @@ func checkAgent(command string) AgentCheck {
 
 	return check
 }
-

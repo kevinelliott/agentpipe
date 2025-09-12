@@ -147,7 +147,10 @@ func (c *Config) applyDefaults() {
 
 	// Logging defaults
 	if c.Logging.ChatLogDir == "" {
-		homeDir, _ := os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			homeDir = "."
+		}
 		c.Logging.ChatLogDir = fmt.Sprintf("%s/.agentpipe/chats", homeDir)
 	}
 
