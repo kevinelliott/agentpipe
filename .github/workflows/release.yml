@@ -217,7 +217,7 @@ jobs:
           LINUX_AMD64_SHA=$(grep "agentpipe_linux_amd64.tar.gz" ../checksums.txt | cut -d' ' -f1)
           
           # Update formula
-          cat > Formula/agentpipe.rb << EOF
+          cat > Formulae/agentpipe.rb << EOF
           class Agentpipe < Formula
             desc "Orchestrate conversations between multiple AI CLI agents"
             homepage "https://github.com/kevinelliott/agentpipe"
