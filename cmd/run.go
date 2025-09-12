@@ -55,7 +55,7 @@ func init() {
 	runCmd.Flags().StringVarP(&initialPrompt, "prompt", "p", "", "Initial prompt to start the conversation")
 	runCmd.Flags().BoolVarP(&useTUI, "tui", "t", false, "Use TUI interface")
 	runCmd.Flags().Bool("skip-health-check", false, "Skip agent health checks (not recommended)")
-	runCmd.Flags().IntVar(&healthCheckTimeout, "health-check-timeout", 2, "Health check timeout in seconds")
+	runCmd.Flags().IntVar(&healthCheckTimeout, "health-check-timeout", 5, "Health check timeout in seconds")
 	runCmd.Flags().StringVar(&chatLogDir, "log-dir", "", "Directory to save chat logs (default: ~/.agentpipe/chats)")
 	runCmd.Flags().BoolVar(&disableLogging, "no-log", false, "Disable chat logging")
 	runCmd.Flags().BoolVar(&showMetrics, "metrics", false, "Show response metrics (duration, tokens, cost)")
@@ -183,7 +183,7 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 			timeout := time.Duration(healthCheckTimeout) * time.Second
 			if timeout == 0 {
-				timeout = 2 * time.Second
+				timeout = 5 * time.Second
 			}
 
 			healthCtx, cancel := context.WithTimeout(context.Background(), timeout)

@@ -162,7 +162,7 @@ jobs:
           agentpipe run -a claude:Alice -a gemini:Bob -p "Hello!"
           
           # Use enhanced TUI
-          agentpipe run --enhanced-tui -c examples/brainstorm.yaml
+          agentpipe run --tui -c examples/brainstorm.yaml
           \`\`\`
           EOF
 
@@ -266,6 +266,6 @@ jobs:
           cd homebrew-tap
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add Formula/agentpipe.rb
+          git add Formulae/agentpipe.rb
           git commit -m "Update agentpipe to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
           git push || echo "No changes to push"
