@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
 	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
@@ -230,7 +231,7 @@ func (m Model) startConversation() tea.Cmd {
 
 		go func() {
 			for range writer.messageChan {
-
+				// Drain the channel
 			}
 		}()
 

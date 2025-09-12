@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 

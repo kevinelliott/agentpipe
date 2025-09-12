@@ -5,8 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"gopkg.in/yaml.v3"
+
+	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 
 type Config struct {

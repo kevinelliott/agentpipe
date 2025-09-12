@@ -78,6 +78,12 @@ issues:
       linters:
         - gocognit
         - gocyclo
+    
+    # Allow complex message processing in adapters
+    - path: pkg/adapters/
+      linters:
+        - gocyclo
+        - gocognit
 
   max-issues-per-linter: 0
   max-same-issues: 0
