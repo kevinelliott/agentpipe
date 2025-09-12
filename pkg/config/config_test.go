@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
+
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 

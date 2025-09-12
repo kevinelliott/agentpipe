@@ -236,7 +236,7 @@ func (m Model) startConversation() tea.Cmd {
 
 		go func() {
 			if err := orch.Start(m.ctx); err != nil {
-
+				// Error is already logged by orchestrator
 			}
 			close(writer.messageChan)
 		}()

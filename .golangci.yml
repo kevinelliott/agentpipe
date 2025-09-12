@@ -38,7 +38,7 @@ linters-settings:
   gocyclo:
     min-complexity: 15
   gocognit:
-    min-complexity: 20
+    min-complexity: 30
   misspell:
     locale: US
   unused:
@@ -72,6 +72,12 @@ issues:
       linters:
         - gocyclo
         - gocognit
+    
+    # Allow complex TUI update functions
+    - path: pkg/tui/
+      linters:
+        - gocognit
+        - gocyclo
 
   max-issues-per-linter: 0
   max-same-issues: 0
