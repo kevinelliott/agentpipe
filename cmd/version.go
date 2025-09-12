@@ -45,11 +45,11 @@ func runVersion(cmd *cobra.Command, args []string) {
 			fmt.Printf("   Latest version:  %s\n", latestVersion)
 			fmt.Printf("\n   Update with: brew upgrade agentpipe\n")
 			fmt.Printf("   Or download from: https://github.com/kevinelliott/agentpipe/releases/latest\n")
-		} else if latestVersion == "" {
-			// Silently skip if we couldn't determine the latest version (likely rate limited)
-			fmt.Printf("   ℹ️  Update check unavailable at this time\n")
+		} else if latestVersion != "" {
+			fmt.Printf("   ✅ You're running the latest version! (%s)\n", latestVersion)
 		} else {
-			fmt.Printf("   ✅ You're running the latest version!\n")
+			// Couldn't determine the latest version
+			fmt.Printf("   ℹ️  Update check unavailable at this time\n")
 		}
 	}
 }

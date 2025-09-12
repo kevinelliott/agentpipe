@@ -50,7 +50,8 @@ func CheckForUpdate() (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusFound {
+	// Check if we got a redirect (302 or 301)
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusMovedPermanently {
 		// Try the API as a fallback (will hit rate limits but worth a try)
 		return checkViaAPI()
 	}
@@ -78,7 +79,8 @@ func CheckForUpdate() (bool, string, error) {
 		return true, latestTag, nil
 	}
 
-	return false, "", nil
+	// Return false with the latest version so we know the check succeeded
+	return false, latestTag, nil
 }
 
 // checkViaAPI is a fallback that uses the GitHub API (subject to rate limits)
