@@ -1,0 +1,78 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag_exists: ${{ steps.check_tag.outputs.exists }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo "Error: Version must be in format vX.Y.Z or vX.Y.Z-suffix"
+            exit 1
+          fi
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ inputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{ inputs.version }} does not exist, will create it"
+          fi
+
+      - name: Create tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "${{ inputs.version }}" -m "Release ${{ inputs.version }}"
+          git push origin "${{ inputs.version }}"
+
+  trigger-release:
+    name: Trigger Release Workflow
+    needs: create-tag
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger release workflow
+        run: |
+          echo "Tag created/exists. The release workflow will be triggered automatically."
+          echo "Version: ${{ inputs.version }}"
+          echo "Pre-release: ${{ inputs.prerelease }}"
+          
+      - name: Wait for release workflow
+        run: |
+          echo "Waiting for release workflow to start..."
+          sleep 10
+          
+      - name: Get release URL
+        run: |
+          echo "Once complete, the release will be available at:"
+          echo "https://github.com/kevinelliott/agentpipe/releases/tag/${{ inputs.version }}"

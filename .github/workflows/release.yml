@@ -1,0 +1,271 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # macOS
+          - goos: darwin
+            goarch: amd64
+            name: darwin_amd64
+          - goos: darwin
+            goarch: arm64
+            name: darwin_arm64
+          
+          # Linux
+          - goos: linux
+            goarch: amd64
+            name: linux_amd64
+          - goos: linux
+            goarch: arm64
+            name: linux_arm64
+          - goos: linux
+            goarch: "386"
+            name: linux_386
+          
+          # Windows
+          - goos: windows
+            goarch: amd64
+            name: windows_amd64
+            ext: .exe
+          - goos: windows
+            goarch: arm64
+            name: windows_arm64
+            ext: .exe
+          - goos: windows
+            goarch: "386"
+            name: windows_386
+            ext: .exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -s -w" \
+            -o agentpipe_${{ matrix.name }}${{ matrix.ext }} .
+
+      - name: Create archive
+        id: archive
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip agentpipe_${{ matrix.name }}.zip agentpipe_${{ matrix.name }}${{ matrix.ext }}
+            echo "ASSET=agentpipe_${{ matrix.name }}.zip" >> $GITHUB_OUTPUT
+          else
+            tar -czf agentpipe_${{ matrix.name }}.tar.gz agentpipe_${{ matrix.name }}${{ matrix.ext }}
+            echo "ASSET=agentpipe_${{ matrix.name }}.tar.gz" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentpipe_${{ matrix.name }}
+          path: ${{ steps.archive.outputs.ASSET }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Get version
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION_WITHOUT_V=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Move artifacts to dist
+        run: |
+          mkdir -p dist
+          find ./artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} dist/ \;
+          ls -la dist/
+
+      - name: Calculate checksums
+        run: |
+          cd dist
+          shasum -a 256 *.tar.gz *.zip > checksums.txt
+          cat checksums.txt
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << EOF
+          # AgentPipe ${{ steps.get_version.outputs.VERSION }}
+          
+          ## Installation
+          
+          ### Homebrew (macOS/Linux)
+          \`\`\`bash
+          brew tap kevinelliott/tap
+          brew install agentpipe
+          \`\`\`
+          
+          ### Direct Download
+          Download the appropriate archive for your platform from the assets below.
+          
+          ### Using Go
+          \`\`\`bash
+          go install github.com/kevinelliott/agentpipe@${{ steps.get_version.outputs.VERSION }}
+          \`\`\`
+          
+          ## What's Changed
+          See the [full changelog](https://github.com/kevinelliott/agentpipe/compare/$(git describe --tags --abbrev=0 HEAD^)...${{ steps.get_version.outputs.VERSION }})
+          
+          ## Checksums
+          \`\`\`
+          $(cat dist/checksums.txt)
+          \`\`\`
+          
+          ## Quick Start
+          \`\`\`bash
+          # Check available agents
+          agentpipe doctor
+          
+          # Start a conversation
+          agentpipe run -a claude:Alice -a gemini:Bob -p "Hello!"
+          
+          # Use enhanced TUI
+          agentpipe run --enhanced-tui -c examples/brainstorm.yaml
+          \`\`\`
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: AgentPipe ${{ steps.get_version.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, '-') }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: release
+    runs-on: ubuntu-latest
+    if: "!contains(github.ref, '-')"  # Skip for pre-releases
+    
+    steps:
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: kevinelliott/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Get version
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION_WITHOUT_V=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download checksums
+        run: |
+          curl -L -o checksums.txt \
+            https://github.com/kevinelliott/agentpipe/releases/download/${{ steps.get_version.outputs.VERSION }}/checksums.txt
+          cat checksums.txt
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+          
+          # Extract SHA256 values
+          DARWIN_ARM64_SHA=$(grep "agentpipe_darwin_arm64.tar.gz" ../checksums.txt | cut -d' ' -f1)
+          DARWIN_AMD64_SHA=$(grep "agentpipe_darwin_amd64.tar.gz" ../checksums.txt | cut -d' ' -f1)
+          LINUX_ARM64_SHA=$(grep "agentpipe_linux_arm64.tar.gz" ../checksums.txt | cut -d' ' -f1)
+          LINUX_AMD64_SHA=$(grep "agentpipe_linux_amd64.tar.gz" ../checksums.txt | cut -d' ' -f1)
+          
+          # Update formula
+          cat > Formula/agentpipe.rb << EOF
+          class Agentpipe < Formula
+            desc "Orchestrate conversations between multiple AI CLI agents"
+            homepage "https://github.com/kevinelliott/agentpipe"
+            version "${{ steps.get_version.outputs.VERSION_WITHOUT_V }}"
+            license "MIT"
+          
+            if OS.mac?
+              if Hardware::CPU.arm?
+                url "https://github.com/kevinelliott/agentpipe/releases/download/${{ steps.get_version.outputs.VERSION }}/agentpipe_darwin_arm64.tar.gz"
+                sha256 "${DARWIN_ARM64_SHA}"
+              else
+                url "https://github.com/kevinelliott/agentpipe/releases/download/${{ steps.get_version.outputs.VERSION }}/agentpipe_darwin_amd64.tar.gz"
+                sha256 "${DARWIN_AMD64_SHA}"
+              end
+            elsif OS.linux?
+              if Hardware::CPU.arm?
+                url "https://github.com/kevinelliott/agentpipe/releases/download/${{ steps.get_version.outputs.VERSION }}/agentpipe_linux_arm64.tar.gz"
+                sha256 "${LINUX_ARM64_SHA}"
+              else
+                url "https://github.com/kevinelliott/agentpipe/releases/download/${{ steps.get_version.outputs.VERSION }}/agentpipe_linux_amd64.tar.gz"
+                sha256 "${LINUX_AMD64_SHA}"
+              end
+            end
+          
+            head "https://github.com/kevinelliott/agentpipe.git", branch: "main"
+            depends_on "go" => :build if build.head?
+          
+            def install
+              if build.head?
+                system "go", "build", *std_go_args(ldflags: "-s -w")
+              else
+                # Extract the correct binary name from the archive
+                bin.install Dir["agentpipe_*"].first => "agentpipe"
+              end
+            end
+          
+            test do
+              output = shell_output("#{bin}/agentpipe doctor 2>&1")
+              assert_match "AgentPipe Doctor", output
+            end
+          end
+          EOF
+
+      - name: Commit and push formula update
+        run: |
+          cd homebrew-tap
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/agentpipe.rb
+          git commit -m "Update agentpipe to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
+          git push || echo "No changes to push"
