@@ -30,22 +30,88 @@ type GitHubRelease struct {
 // CheckForUpdate checks if there's a newer version available on GitHub
 func CheckForUpdate() (bool, string, error) {
 	// Skip update check for dev builds
-	if Version == "dev" || Version == "" {
+	if Version == "dev" || Version == "" || strings.Contains(Version, "dirty") {
 		return false, "", nil
 	}
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects, we just want the Location header
+			return http.ErrUseLastResponse
+		},
 	}
 
-	resp, err := client.Get("https://api.github.com/repos/kevinelliott/agentpipe/releases/latest")
+	// Use the latest release redirect URL which doesn't count against rate limits
+	// This returns a 302 redirect to the actual release page
+	resp, err := client.Head("https://github.com/kevinelliott/agentpipe/releases/latest")
 	if err != nil {
 		return false, "", fmt.Errorf("failed to check for updates: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusFound {
+		// Try the API as a fallback (will hit rate limits but worth a try)
+		return checkViaAPI()
+	}
+
+	// Extract version from the redirect URL
+	// The Location header will be something like:
+	// https://github.com/kevinelliott/agentpipe/releases/tag/v1.0.0
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return false, "", fmt.Errorf("no redirect location found")
+	}
+
+	// Extract version from URL
+	parts := strings.Split(location, "/")
+	if len(parts) == 0 {
+		return false, "", fmt.Errorf("invalid redirect URL")
+	}
+	
+	latestTag := parts[len(parts)-1]
+	latestVersion := strings.TrimPrefix(latestTag, "v")
+	currentVersion := strings.TrimPrefix(Version, "v")
+
+	// Simple version comparison (works for semantic versions)
+	if compareVersions(latestVersion, currentVersion) > 0 {
+		return true, latestTag, nil
+	}
+
+	return false, "", nil
+}
+
+// checkViaAPI is a fallback that uses the GitHub API (subject to rate limits)
+func checkViaAPI() (bool, string, error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Add a user agent to be a good citizen
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/kevinelliott/agentpipe/releases/latest", nil)
+	if err != nil {
+		return false, "", err
+	}
+	req.Header.Set("User-Agent", "agentpipe/"+Version)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to check for updates: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for rate limiting
+	if resp.StatusCode == http.StatusForbidden {
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		if remaining == "0" {
+			// Silently ignore rate limit errors
+			return false, "", nil
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		return false, "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+		// Silently ignore other API errors
+		return false, "", nil
 	}
 
 	var release GitHubRelease
