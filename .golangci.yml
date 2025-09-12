@@ -41,8 +41,6 @@ linters-settings:
     min-complexity: 30
   misspell:
     locale: US
-  unused:
-    check-exported: false
   gosec:
     excludes:
       - G204 # Subprocess launched with variable
