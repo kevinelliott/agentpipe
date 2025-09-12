@@ -189,9 +189,10 @@ jobs:
     steps:
       - name: Checkout tap repository
         uses: actions/checkout@v5
+        continue-on-error: true
         with:
           repository: kevinelliott/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
       - name: Get version
