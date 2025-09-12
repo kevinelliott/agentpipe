@@ -6,7 +6,7 @@
 [![Release](https://img.shields.io/github/v/release/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kevinelliott/agentpipe)](https://goreportcard.com/report/github.com/kevinelliott/agentpipe)
 
-AgentPipe is a CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Gemini, Qwen) to communicate with each other in a shared "room", creating dynamic multi-agent conversations.
+AgentPipe is a powerful CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Gemini, Qwen, Ollama) to communicate with each other in a shared "room", creating dynamic multi-agent conversations with real-time metrics, cost tracking, and interactive user participation.
 
 ## Screenshots
 
@@ -23,15 +23,16 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
   - `free-form`: Agents participate freely as they see fit
 - **Flexible Configuration**: Use command-line flags or YAML configuration files
 - **Enhanced TUI Interface**: 
-  - Beautiful panelized layout with agent list, conversation view, and user input
-  - Color-coded agent messages with custom badges
-  - Real-time agent activity indicators (green/grey dots)
-  - Real-time metrics display (duration, tokens, cost)
-  - Modal system for agent details
-  - User participation in conversations
-  - Topic panel showing initial prompt
-  - Statistics panel with turn/agent counters
-  - Configuration panel showing active settings
+  - Multi-panel layout with dedicated sections for agents, chat, stats, and config
+  - Color-coded agent messages with unique colors per agent
+  - Real-time agent activity indicators (🟢 active/responding, ⚫ idle)
+  - Inline metrics display (response time in seconds, token count, cost)
+  - Topic panel showing initial conversation prompt
+  - Statistics panel with turn counters and total conversation cost
+  - Configuration panel displaying all active settings and config file path
+  - Interactive user input panel for joining conversations
+  - Smart message consolidation (headers only on speaker change)
+  - Proper multi-paragraph message formatting
 - **Chat Logging**: Automatic conversation logging to `~/.agentpipe/chats/`
 - **Response Metrics**: Track response time, token usage, and estimated costs
 - **Health Checks**: Automatic agent health verification before conversations
@@ -40,20 +41,43 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 
 ## What's New 🎉
 
-### Latest Features (v0.0.7)
-- **Enhanced TUI Interface**: 
-  - Beautiful multi-panel layout with dedicated sections for agents, chat, stats, and config
-  - Real-time agent activity indicators showing when agents are thinking/responding
-  - Consolidated message headers (only shown when speaker changes)
+### Latest Updates (v0.0.8-dev)
+#### TUI Improvements
+- **Real-time Activity Indicators**: Visual feedback showing which agent is currently responding
+- **Enhanced Metrics Display**: 
+  - Response time shown in seconds with 1 decimal precision (e.g., 2.5s)
+  - Token count for each response
+  - Cost estimate per response (e.g., $0.0012)
+  - Total conversation cost tracking in Statistics panel
+- **Improved Message Formatting**:
+  - Consolidated headers (timestamp and name only shown when speaker changes)
   - Proper multi-paragraph message handling
-  - Topic panel displaying the initial conversation prompt
-  - Statistics showing current/max turns, connected/configured agents, and total cost
-  - Configuration panel showing all active settings including config file path
-- **Response Metrics**: Real-time tracking with inline display in chat (X.Xs, XXX tokens, $X.XXXX)
-- **Improved Message Formatting**: Better handling of multi-line agent responses
-- **Chat Logging**: Dual output support - logs to file while displaying in TUI
-- **Configuration Honoring**: TUI mode now properly respects all config settings
-- **User Participation**: Seamless integration allowing users to join agent conversations
+  - Clean spacing between messages
+  - No extra newlines between paragraphs from same speaker
+- **Configuration Improvements**:
+  - TUI now properly honors all configuration settings
+  - Config file path displayed in Configuration panel
+  - Dual output support (logs to file while displaying in TUI)
+  - Metrics display controlled by `show_metrics` config option
+
+#### Agent & Orchestration
+- **Better Error Handling**: Clearer error messages for agent failures and timeouts
+- **Improved Health Checks**: More robust agent verification before starting conversations
+- **Cost Tracking**: Automatic calculation and accumulation of API costs
+- **Metrics Pipeline**: End-to-end metrics flow from orchestrator to TUI display
+
+## Key Improvements in Latest Version
+
+### Performance & Reliability
+- **Optimized Message Handling**: Reduced memory usage and improved message rendering performance
+- **Better Concurrency**: Proper goroutine management and channel handling
+- **Graceful Shutdowns**: Clean termination of agents and proper resource cleanup
+
+### User Experience
+- **Intuitive Panel Navigation**: Tab-based navigation between panels
+- **Real-time Feedback**: Instant visual indicators for agent activity
+- **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
+- **Cost Transparency**: See exactly how much each conversation costs
 
 ## Installation
 
@@ -88,10 +112,10 @@ go build -o agentpipe .
 
 AgentPipe requires at least one AI CLI tool to be installed:
 
-- [Claude Code CLI](https://github.com/anthropics/claude-code) - `claude`
+- [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
-- [Qwen Code CLI](https://github.com/QwenLM/qwen-code) - `qwen`
-- [Codex CLI](https://github.com/openai/codex-cli) - `codex` (OpenAI's agentic CLI)
+- [Qwen CLI](https://github.com/QwenLM/qwen-code) - `qwen`
+- [Codex CLI](https://github.com/openai/codex-cli) - `codex`
 - [Ollama](https://github.com/ollama/ollama) - `ollama`
 
 Check which agents are available on your system:
@@ -108,8 +132,8 @@ agentpipe doctor
 # Start a conversation between Claude and Gemini
 agentpipe run -a claude:Alice -a gemini:Bob -p "Let's discuss AI ethics"
 
-# Use TUI mode for a better experience
-agentpipe run -a claude:Poet -a gemini:Scientist --tui
+# Use TUI mode with metrics for a rich experience
+agentpipe run -a claude:Poet -a gemini:Scientist --tui --metrics
 
 # Configure conversation parameters
 agentpipe run -a claude:Agent1 -a gemini:Agent2 \
@@ -164,10 +188,10 @@ orchestrator:
   initial_prompt: "Let's start our discussion!"
 
 logging:
-  enabled: true          # Enable chat logging
-  chat_log_dir: ~/.agentpipe/chats  # Custom log path (optional)
-  show_metrics: true     # Display response metrics in TUI
-  log_format: text      # Log format (text or json)
+  enabled: true                    # Enable chat logging
+  chat_log_dir: ~/.agentpipe/chats # Custom log path (optional)
+  show_metrics: true               # Display response metrics in TUI (time, tokens, cost)
+  log_format: text                 # Log format (text or json)
 ```
 
 ### Conversation Modes
@@ -191,10 +215,11 @@ Start a conversation between agents.
 - `--delay`: Delay between responses in seconds (default: 1)
 - `-p, --prompt`: Initial conversation prompt
 - `-t, --tui`: Use enhanced TUI interface with panels and user input
-- `--log-path`: Custom path for chat logs (default: ~/.agentpipe/chats)
+- `--log-dir`: Custom path for chat logs (default: ~/.agentpipe/chats)
 - `--no-log`: Disable chat logging
-- `--show-metrics`: Display response metrics (duration, tokens, cost)
+- `--metrics`: Display response metrics (duration, tokens, cost) in TUI
 - `--skip-health-check`: Skip agent health checks (not recommended)
+- `--health-check-timeout`: Health check timeout in seconds (default: 5)
 
 ### `agentpipe doctor`
 
@@ -231,19 +256,25 @@ orchestrator:
 
 Run with: `agentpipe run -c poetry-science.yaml --tui`
 
-### Creative Brainstorming
+### Creative Brainstorming with Metrics
 
 ```bash
 agentpipe run \
   -a claude:IdeaGenerator \
   -a gemini:CriticalThinker \
   -a qwen:Implementer \
-  -a codex:TechAdvisor \
   --mode free-form \
   --max-turns 15 \
-  --show-metrics \
+  --metrics \
+  --tui \
   -p "How can we make education more engaging?"
 ```
+
+When metrics are enabled, you'll see:
+- Response time for each agent (e.g., "2.3s")
+- Token usage per response (e.g., "150 tokens")
+- Cost estimate per response (e.g., "$0.0023")
+- Total conversation cost in the Statistics panel
 
 ## TUI Interface
 
