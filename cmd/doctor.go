@@ -36,6 +36,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		notes   string
 	}{
 		{"Claude", "claude", "Claude Code CLI (https://github.com/anthropics/claude-code)"},
+		{"Cursor", "cursor-agent", "Cursor CLI (https://cursor.com/cli)"},
 		{"Gemini", "gemini", "Gemini CLI (https://github.com/google/generative-ai-cli)"},
 		{"Qwen", "qwen", "Qwen Code CLI (https://github.com/QwenLM/qwen-code)"},
 		{"Codex", "codex", "Codex CLI (https://github.com/openai/codex-cli)"},

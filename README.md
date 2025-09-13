@@ -6,13 +6,22 @@
 [![Release](https://img.shields.io/github/v/release/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kevinelliott/agentpipe)](https://goreportcard.com/report/github.com/kevinelliott/agentpipe)
 
-AgentPipe is a powerful CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Gemini, Qwen, Ollama) to communicate with each other in a shared "room", creating dynamic multi-agent conversations with real-time metrics, cost tracking, and interactive user participation.
+AgentPipe is a powerful CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Cursor, Gemini, Qwen, Ollama) to communicate with each other in a shared "room", creating dynamic multi-agent conversations with real-time metrics, cost tracking, and interactive user participation.
 
 ## Screenshots
 
 ### Enhanced TUI Interface
 ![AgentPipe TUI](screenshots/tui/tui1.png)
 *Enhanced TUI with multi-panel layout: agent list with status indicators, conversation view with metrics, statistics panel showing turns and total cost, configuration panel, and user input area*
+
+## Supported AI Agents
+
+- ✅ **Claude** (Anthropic) - Advanced reasoning and coding
+- ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
+- ✅ **Gemini** (Google) - Multimodal understanding
+- ✅ **Qwen** (Alibaba) - Multilingual capabilities
+- ✅ **Codex** (OpenAI) - Code generation specialist
+- ✅ **Ollama** - Local LLM support
 
 ## Features
 
@@ -41,7 +50,17 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## What's New 🎉
 
-### Latest Updates (v0.0.8-dev)
+### Latest Updates (v0.0.9-dev)
+
+#### New Agent Support
+- **Cursor CLI Integration**: Full support for Cursor's AI agent (`cursor-agent`)
+  - Automatic authentication detection
+  - Intelligent retry logic for improved reliability
+  - Optimized timeout handling for cursor-agent's longer response times
+  - JSON stream parsing for real-time response streaming
+  - Robust error recovery and process management
+
+### v0.0.8 Features
 #### TUI Improvements
 - **Real-time Activity Indicators**: Visual feedback showing which agent is currently responding
 - **Enhanced Metrics Display**: 
@@ -113,6 +132,9 @@ go build -o agentpipe .
 AgentPipe requires at least one AI CLI tool to be installed:
 
 - [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
+- [Cursor CLI](https://cursor.com/cli) - `cursor-agent`
+  - Install: `curl https://cursor.com/install -fsS | bash`
+  - Authenticate: `cursor-agent login`
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
 - [Qwen CLI](https://github.com/QwenLM/qwen-code) - `qwen`
 - [Codex CLI](https://github.com/openai/codex-cli) - `codex`
@@ -230,6 +252,28 @@ agentpipe doctor
 ```
 
 ## Examples
+
+### Cursor and Claude Collaboration
+
+```yaml
+# Save as cursor-claude-team.yaml
+version: "1.0"
+agents:
+  - id: cursor-dev
+    type: cursor
+    name: "Cursor Developer"
+    prompt: "You are a senior developer who writes clean, efficient code."
+
+  - id: claude-reviewer
+    type: claude
+    name: "Claude Reviewer"
+    prompt: "You are a code reviewer who ensures best practices and identifies potential issues."
+
+orchestrator:
+  mode: round-robin
+  max_turns: 6
+  initial_prompt: "Let's design a simple REST API for a todo list application."
+```
 
 ### Poetry vs Science Debate
 
@@ -377,6 +421,14 @@ If you encounter health check failures:
 2. Check if the CLI requires authentication or API keys
 3. Try running the CLI manually to ensure it works
 4. Use `--skip-health-check` flag as a last resort (not recommended)
+
+### Cursor CLI Specific Issues
+The Cursor CLI (`cursor-agent`) has some unique characteristics:
+- **Authentication Required**: Run `cursor-agent login` before first use
+- **Longer Response Times**: Cursor typically takes 10-20 seconds to respond (AgentPipe handles this automatically)
+- **Process Management**: cursor-agent doesn't exit naturally; AgentPipe manages process termination
+- **Check Status**: Run `cursor-agent status` to verify authentication
+- **Timeout Errors**: If you see timeout errors, ensure you're authenticated and have a stable internet connection
 
 ### Qwen Code CLI Issues
 The Qwen Code CLI uses a different interface than other agents:

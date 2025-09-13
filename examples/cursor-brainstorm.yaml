@@ -1,0 +1,45 @@
+version: "1.0"
+
+agents:
+  - id: creative-cursor
+    type: cursor
+    name: "Creative Cursor"
+    prompt: "You are a creative thinker using Cursor's advanced AI capabilities to propose innovative and cutting-edge ideas."
+    announcement: "🎨 Creative Cursor has joined with fresh perspectives!"
+    temperature: 0.9
+    max_tokens: 800
+
+  - id: tech-claude
+    type: claude
+    name: "Tech Analyst"
+    prompt: "You are a technical analyst who evaluates implementation details and architectural considerations."
+    announcement: "🔧 Tech Analyst has joined to assess technical aspects!"
+    temperature: 0.6
+    max_tokens: 800
+
+  - id: product-cursor
+    type: cursor
+    name: "Product Designer"
+    prompt: "You are a product designer using Cursor's AI to create user-centric and elegant solutions."
+    announcement: "✨ Product Designer has joined to shape the experience!"
+    temperature: 0.75
+    max_tokens: 800
+
+  - id: market-gemini
+    type: gemini
+    name: "Market Researcher"
+    prompt: "You are a market researcher who analyzes trends, competition, and market opportunities."
+    announcement: "📈 Market Researcher has joined to evaluate market fit!"
+    temperature: 0.7
+    max_tokens: 800
+
+orchestrator:
+  mode: round-robin
+  max_turns: 10
+  turn_timeout: 45s
+  response_delay: 1s
+  initial_prompt: "Let's brainstorm innovative ways to use AI agents for software development workflows. How can we make developers more productive?"
+
+logging:
+  enabled: true
+  show_metrics: true
