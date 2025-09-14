@@ -68,7 +68,7 @@ func (c *CursorAgent) HealthCheck(ctx context.Context) error {
 
 		// Try with help flag as fallback
 		cmd = exec.CommandContext(ctx, c.execPath, "--help")
-		output, err = cmd.CombinedOutput()
+		_, err = cmd.CombinedOutput()
 
 		if err != nil {
 			return fmt.Errorf("cursor-agent CLI not responding: %w", err)
@@ -184,16 +184,16 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	if err := scanner.Err(); err != nil {
 		// Kill the process before returning error
 		if cmd.Process != nil {
-			cmd.Process.Kill()
-			cmd.Wait()
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
 		}
 		return fmt.Errorf("error reading output: %w", err)
 	}
 
 	// Kill the process if it's still running (cursor-agent doesn't terminate on its own)
 	if cmd.Process != nil {
-		cmd.Process.Kill()
-		cmd.Wait() // Clean up the process
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait() // Clean up the process
 	}
 
 	// Check if we got any output
@@ -223,43 +223,6 @@ func (c *CursorAgent) buildPrompt(conversation string) string {
 	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
 }
 
-// parseJSONStreamOutput parses the complete JSON stream output and extracts all text
-func (c *CursorAgent) parseJSONStreamOutput(output string) string {
-	var result strings.Builder
-	lines := strings.Split(output, "\n")
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		// Check for error messages in the output
-		if strings.Contains(line, "Error") || strings.Contains(line, "error") {
-			// Check if it's a JSON error message
-			var errMsg struct {
-				Type    string `json:"type"`
-				IsError bool   `json:"is_error"`
-				Error   string `json:"error"`
-			}
-			if err := json.Unmarshal([]byte(line), &errMsg); err == nil && errMsg.IsError {
-				// This is an actual error from cursor-agent
-				continue
-			}
-		}
-
-		// Check for result message which contains the complete response
-		if text := c.parseResultLine(line); text != "" {
-			return text // Return the complete result
-		}
-
-		// Otherwise accumulate assistant messages
-		if text := c.parseJSONLine(line); text != "" {
-			result.WriteString(text)
-		}
-	}
-
-	return result.String()
-}
 
 // parseResultLine checks for a result message which contains the complete response
 func (c *CursorAgent) parseResultLine(line string) string {
