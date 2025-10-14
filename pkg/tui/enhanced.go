@@ -59,6 +59,7 @@ type EnhancedModel struct {
 	activeAgent   string             // Track which agent is currently responding
 	chatLogger    *logger.ChatLogger // For logging conversations
 	totalCost     float64            // Track total cost of conversation
+	totalTime     time.Duration      // Track total time of agent requests
 
 	// Initialization params
 	skipHealthCheck    bool
@@ -573,9 +574,14 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.message.AgentName == m.activeAgent {
 					m.activeAgent = ""
 				}
-				// Accumulate cost if metrics are available
-				if msg.message.Metrics != nil && msg.message.Metrics.Cost > 0 {
-					m.totalCost += msg.message.Metrics.Cost
+				// Accumulate cost and time if metrics are available
+				if msg.message.Metrics != nil {
+					if msg.message.Metrics.Cost > 0 {
+						m.totalCost += msg.message.Metrics.Cost
+					}
+					if msg.message.Metrics.Duration > 0 {
+						m.totalTime += msg.message.Metrics.Duration
+					}
 				}
 			}
 			// If this is the "Starting AgentPipe conversation" message, mark as running
@@ -884,6 +890,18 @@ func (m *EnhancedModel) renderStats() string {
 		turnsDisplay = fmt.Sprintf("%d/∞", m.turnCount)
 	}
 
+	// Format time display
+	timeDisplay := ""
+	if m.totalTime < time.Second {
+		timeDisplay = fmt.Sprintf("%dms", m.totalTime.Milliseconds())
+	} else if m.totalTime < time.Minute {
+		timeDisplay = fmt.Sprintf("%.1fs", m.totalTime.Seconds())
+	} else {
+		minutes := int(m.totalTime.Minutes())
+		seconds := int(m.totalTime.Seconds()) % 60
+		timeDisplay = fmt.Sprintf("%dm%ds", minutes, seconds)
+	}
+
 	// Format with left/right alignment
 	items := []struct {
 		label string
@@ -892,6 +910,7 @@ func (m *EnhancedModel) renderStats() string {
 		{"Messages:", fmt.Sprintf("%d", len(m.messages))},
 		{"Agents:", fmt.Sprintf("%d/%d", connectedAgents, configuredAgents)},
 		{"Turns:", turnsDisplay},
+		{"Total Time:", timeDisplay},
 		{"Total Cost:", fmt.Sprintf("$%.4f", m.totalCost)},
 	}
 
