@@ -41,6 +41,7 @@ type Agent interface {
 	GetID() string
 	GetName() string
 	GetType() string
+	GetModel() string
 	Initialize(config AgentConfig) error
 	SendMessage(ctx context.Context, messages []Message) (string, error)
 	StreamMessage(ctx context.Context, messages []Message, writer io.Writer) error
@@ -66,6 +67,14 @@ func (b *BaseAgent) GetName() string {
 }
 
 func (b *BaseAgent) GetType() string {
+	return b.Type
+}
+
+func (b *BaseAgent) GetModel() string {
+	if b.Config.Model != "" {
+		return b.Config.Model
+	}
+	// Return type as fallback
 	return b.Type
 }
 

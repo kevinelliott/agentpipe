@@ -57,9 +57,10 @@ func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 		if err := testCmd.Start(); err != nil {
 			return fmt.Errorf("gemini CLI cannot be executed: %w", err)
 		}
-		if err := testCmd.Process.Kill(); err != nil {
-			// Process might have already exited, which is fine
-			return nil
+		// Kill the process if it's still running
+		if testCmd.Process != nil {
+			_ = testCmd.Process.Kill()
+			_ = testCmd.Wait() // Clean up the process
 		}
 		// If we can start it, consider it healthy
 		return nil

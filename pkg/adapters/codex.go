@@ -182,20 +182,7 @@ func (c *CodexAgent) formatConversation(messages []agent.Message) string {
 }
 
 func (c *CodexAgent) buildPrompt(conversation string) string {
-	var prompt strings.Builder
-
-	if c.Config.Prompt != "" {
-		prompt.WriteString(c.Config.Prompt)
-		prompt.WriteString("\n\n")
-	}
-
-	prompt.WriteString("You are participating in a multi-agent conversation. ")
-	prompt.WriteString(fmt.Sprintf("Your name is '%s'. ", c.Name))
-	prompt.WriteString("Here is the conversation so far:\n\n")
-	prompt.WriteString(conversation)
-	prompt.WriteString("\n\nPlease provide your response:")
-
-	return prompt.String()
+	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
 }
 
 func init() {

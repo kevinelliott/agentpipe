@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -277,7 +278,7 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	if !cfg.Logging.Enabled {
 		fmt.Println("📝 Chat logging disabled (use --log-dir to enable)")
 	}
-	fmt.Println(string(make([]byte, 60)) + "=")
+	fmt.Println(strings.Repeat("=", 60))
 
 	for _, a := range agentsList {
 		orch.AddAgent(a)
@@ -287,7 +288,7 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		return fmt.Errorf("orchestrator error: %w", err)
 	}
 
-	fmt.Println("\n" + string(make([]byte, 60)) + "=")
+	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("Conversation ended.")
 
 	return nil

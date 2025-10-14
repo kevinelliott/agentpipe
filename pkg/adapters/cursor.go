@@ -13,6 +13,12 @@ import (
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 
+const (
+	// Cursor-specific timeout constants
+	cursorStreamTimeout = 30 * time.Second
+	cursorReadDeadline  = 25 * time.Second
+)
+
 type CursorAgent struct {
 	agent.BaseAgent
 	execPath string
@@ -108,7 +114,7 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 
 	// Create a context with timeout for streaming
 	// cursor-agent needs more time to respond (typically 10-15 seconds)
-	streamCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	streamCtx, cancel := context.WithTimeout(ctx, cursorStreamTimeout)
 	defer cancel()
 
 	// Use --print mode for streaming
@@ -132,11 +138,18 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 
 	// Read stderr in background to capture any errors
 	var stderrBuf strings.Builder
+	stderrDone := make(chan struct{})
 	go func() {
+		defer close(stderrDone)
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			stderrBuf.WriteString(scanner.Text())
-			stderrBuf.WriteString("\n")
+			select {
+			case <-streamCtx.Done():
+				return
+			default:
+				stderrBuf.WriteString(scanner.Text())
+				stderrBuf.WriteString("\n")
+			}
 		}
 	}()
 
@@ -145,13 +158,16 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	var streamedContent strings.Builder
 
 	// Set a deadline for reading
-	readDeadline := time.After(25 * time.Second)
+	readDeadline := time.After(cursorReadDeadline)
 
 scanLoop:
 	for scanner.Scan() {
 		select {
 		case <-readDeadline:
 			// Reading timeout - stop processing
+			break scanLoop
+		case <-streamCtx.Done():
+			// Context canceled - stop processing
 			break scanLoop
 		default:
 			line := scanner.Text()

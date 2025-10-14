@@ -160,7 +160,9 @@ func (c *Config) applyDefaults() {
 	}
 
 	for i := range c.Agents {
-		if c.Agents[i].Temperature == 0 {
+		// Only apply temperature default if not explicitly set (< 0 means not set)
+		// Allow 0 as a valid temperature for deterministic outputs
+		if c.Agents[i].Temperature < 0 {
 			c.Agents[i].Temperature = 0.7
 		}
 		if c.Agents[i].MaxTokens == 0 {

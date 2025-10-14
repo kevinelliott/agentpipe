@@ -58,9 +58,10 @@ func (q *QwenAgent) HealthCheck(ctx context.Context) error {
 			if err := testCmd.Start(); err != nil {
 				return fmt.Errorf("qwen CLI cannot be executed: %w", err)
 			}
-			if err := testCmd.Process.Kill(); err != nil {
-				// Process might have already exited, which is fine
-				return nil
+			// Kill the process if it's still running
+			if testCmd.Process != nil {
+				_ = testCmd.Process.Kill()
+				_ = testCmd.Wait() // Clean up the process
 			}
 			// If we can start it, consider it healthy
 			return nil
@@ -141,20 +142,7 @@ func (q *QwenAgent) formatConversation(messages []agent.Message) string {
 }
 
 func (q *QwenAgent) buildPrompt(conversation string) string {
-	var prompt strings.Builder
-
-	if q.Config.Prompt != "" {
-		prompt.WriteString(q.Config.Prompt)
-		prompt.WriteString("\n\n")
-	}
-
-	prompt.WriteString("You are participating in a multi-agent conversation. ")
-	prompt.WriteString(fmt.Sprintf("Your name is '%s'. ", q.Name))
-	prompt.WriteString("Here is the conversation so far:\n\n")
-	prompt.WriteString(conversation)
-	prompt.WriteString("\n\nPlease provide your response:")
-
-	return prompt.String()
+	return BuildAgentPrompt(q.Name, q.Config.Prompt, conversation)
 }
 
 func init() {

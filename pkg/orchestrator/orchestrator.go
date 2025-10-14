@@ -274,8 +274,8 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	outputTokens := utils.EstimateTokens(response)
 	totalTokens := inputTokens + outputTokens
 
-	// Get model from agent config (if available)
-	model := a.GetType() // Default to type, but ideally get from config
+	// Get model from agent
+	model := a.GetModel()
 
 	// Calculate estimated cost
 	cost := utils.EstimateCost(model, inputTokens, outputTokens)
