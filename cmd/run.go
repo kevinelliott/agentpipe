@@ -155,11 +155,14 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Track graceful shutdown for summary display
+	gracefulShutdown := false
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		fmt.Println("\n\nInterrupted. Shutting down...")
+		fmt.Println("\n\n⏸️  Interrupted. Shutting down gracefully...")
+		gracefulShutdown = true
 		cancel()
 	}()
 
@@ -284,12 +287,86 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		orch.AddAgent(a)
 	}
 
-	if err := orch.Start(ctx); err != nil {
+	err := orch.Start(ctx)
+
+	// Print summary
+	fmt.Println("\n" + strings.Repeat("=", 60))
+
+	if gracefulShutdown {
+		fmt.Println("📊 Session Summary")
+		fmt.Println(strings.Repeat("=", 60))
+		printSessionSummary(orch, cfg)
+		return nil
+	}
+
+	if err != nil {
 		return fmt.Errorf("orchestrator error: %w", err)
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("Conversation ended.")
 
 	return nil
+}
+
+// printSessionSummary prints a summary of the conversation session
+func printSessionSummary(orch *orchestrator.Orchestrator, cfg *config.Config) {
+	messages := orch.GetMessages()
+
+	// Calculate statistics
+	totalMessages := 0
+	agentMessages := 0
+	systemMessages := 0
+	totalCost := 0.0
+	totalTime := time.Duration(0)
+	totalTokens := 0
+
+	for _, msg := range messages {
+		totalMessages++
+
+		if msg.Role == "agent" {
+			agentMessages++
+			if msg.Metrics != nil {
+				if msg.Metrics.Cost > 0 {
+					totalCost += msg.Metrics.Cost
+				}
+				if msg.Metrics.Duration > 0 {
+					totalTime += msg.Metrics.Duration
+				}
+				if msg.Metrics.TotalTokens > 0 {
+					totalTokens += msg.Metrics.TotalTokens
+				}
+			}
+		} else if msg.Role == "system" {
+			systemMessages++
+		}
+	}
+
+	// Display summary
+	fmt.Printf("Total Messages:      %d\n", totalMessages)
+	fmt.Printf("  Agent Messages:    %d\n", agentMessages)
+	fmt.Printf("  System Messages:   %d\n", systemMessages)
+
+	if totalTokens > 0 {
+		fmt.Printf("Total Tokens:        %d\n", totalTokens)
+	}
+
+	// Format time
+	if totalTime > 0 {
+		if totalTime < time.Second {
+			fmt.Printf("Total Time:          %dms\n", totalTime.Milliseconds())
+		} else if totalTime < time.Minute {
+			fmt.Printf("Total Time:          %.1fs\n", totalTime.Seconds())
+		} else {
+			minutes := int(totalTime.Minutes())
+			seconds := int(totalTime.Seconds()) % 60
+			fmt.Printf("Total Time:          %dm%ds\n", minutes, seconds)
+		}
+	}
+
+	if totalCost > 0 {
+		fmt.Printf("Total Cost:          $%.4f\n", totalCost)
+	}
+
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("Session ended. All messages logged.")
 }
