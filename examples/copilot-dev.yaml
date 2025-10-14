@@ -1,0 +1,28 @@
+version: "1.0"
+
+agents:
+  - id: copilot-dev
+    type: copilot
+    name: "GitHub Copilot"
+    prompt: "You are an experienced software developer who writes clean, well-documented code and follows best practices."
+    announcement: "GitHub Copilot has joined the conversation!"
+    # Optional: Specify model (defaults to Claude Sonnet 4.5)
+    # model: "gpt-5"
+
+  - id: code-reviewer
+    type: claude
+    name: "Code Reviewer"
+    prompt: "You are a senior code reviewer who provides constructive feedback, identifies potential issues, and suggests improvements."
+    announcement: "Code Reviewer is here to ensure quality!"
+
+orchestrator:
+  mode: round-robin
+  max_turns: 8
+  turn_timeout: 45s
+  response_delay: 2s
+  initial_prompt: "Let's design and implement a simple URL shortener service. Discuss the architecture, data model, and key implementation details."
+
+logging:
+  enabled: true
+  show_metrics: true
+  log_format: text

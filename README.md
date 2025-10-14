@@ -17,6 +17,7 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 ## Supported AI Agents
 
 - ✅ **Claude** (Anthropic) - Advanced reasoning and coding
+- ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Gemini** (Google) - Multimodal understanding
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
@@ -50,9 +51,35 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## What's New 🎉
 
-### Latest Updates (v0.0.9-dev)
+### Latest Updates (v0.0.10-dev)
 
 #### New Agent Support
+- **GitHub Copilot CLI Integration**: Full support for GitHub's Copilot terminal agent (`copilot`)
+  - Non-interactive mode support using `--prompt` flag
+  - Automatic tool permission handling with `--allow-all-tools`
+  - Multi-model support (Claude Sonnet 4.5, GPT-5, etc.)
+  - Authentication detection and helpful error messages
+  - Subscription requirement validation
+
+#### UX Improvements
+- **Graceful CTRL-C Handling**: Interrupting a conversation now displays a session summary
+  - Total messages (agent + system)
+  - Total tokens used
+  - Total time spent (intelligently formatted: ms/s/m:s)
+  - Total conversation cost
+  - All messages are properly logged before exit
+- **Total Time Tracking in TUI**: Statistics panel now shows cumulative time for all agent requests
+
+#### Bug Fixes & Performance
+- **Resource Leak Fixes**:
+  - Fixed timer leak in cursor adapter (using `time.NewTimer` with proper cleanup)
+  - Message channel now properly closed on TUI exit
+  - Dropped messages now logged to stderr with counts
+  - Orchestrator goroutine lifecycle properly tracked with graceful shutdown
+
+### v0.0.9 Updates
+
+#### Agent Support
 - **Cursor CLI Integration**: Full support for Cursor's AI agent (`cursor-agent`)
   - Automatic authentication detection
   - Intelligent retry logic for improved reliability
@@ -132,6 +159,10 @@ go build -o agentpipe .
 AgentPipe requires at least one AI CLI tool to be installed:
 
 - [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
+- [GitHub Copilot CLI](https://github.com/github/copilot-cli) - `copilot`
+  - Install: `npm install -g @github/copilot`
+  - Authenticate: Launch `copilot` and use `/login` command
+  - Requires: Node.js v22+, npm v10+, and active GitHub Copilot subscription
 - [Cursor CLI](https://cursor.com/cli) - `cursor-agent`
   - Install: `curl https://cursor.com/install -fsS | bash`
   - Authenticate: `cursor-agent login`
@@ -379,11 +410,13 @@ agentpipe/
 ├── pkg/
 │   ├── agent/       # Agent interface and registry
 │   ├── adapters/    # Agent implementations
-│   │   ├── claude.go   # Claude adapter
-│   │   ├── gemini.go   # Gemini adapter
-│   │   ├── qwen.go     # Qwen adapter
-│   │   ├── codex.go    # Codex (OpenAI) adapter
-│   │   └── ollama.go   # Ollama adapter
+│   │   ├── claude.go    # Claude adapter
+│   │   ├── copilot.go   # GitHub Copilot adapter
+│   │   ├── cursor.go    # Cursor adapter
+│   │   ├── gemini.go    # Gemini adapter
+│   │   ├── qwen.go      # Qwen adapter
+│   │   ├── codex.go     # Codex (OpenAI) adapter
+│   │   └── ollama.go    # Ollama adapter
 │   ├── config/      # Configuration handling
 │   ├── orchestrator/# Conversation orchestration
 │   ├── logger/      # Chat logging and output
@@ -421,6 +454,14 @@ If you encounter health check failures:
 2. Check if the CLI requires authentication or API keys
 3. Try running the CLI manually to ensure it works
 4. Use `--skip-health-check` flag as a last resort (not recommended)
+
+### GitHub Copilot CLI Issues
+The GitHub Copilot CLI has specific requirements:
+- **Authentication**: Run `copilot` in interactive mode and use `/login` command
+- **Subscription Required**: Requires an active GitHub Copilot subscription
+- **Model Selection**: Default is Claude Sonnet 4.5; use `model` config option to specify others
+- **Node.js Requirements**: Requires Node.js v22+ and npm v10+
+- **Check Status**: Run `copilot --help` to verify installation
 
 ### Cursor CLI Specific Issues
 The Cursor CLI (`cursor-agent`) has some unique characteristics:
