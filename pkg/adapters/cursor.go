@@ -157,13 +157,14 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	scanner := bufio.NewScanner(stdout)
 	var streamedContent strings.Builder
 
-	// Set a deadline for reading
-	readDeadline := time.After(cursorReadDeadline)
+	// Set a deadline for reading - use NewTimer so we can stop it
+	readTimer := time.NewTimer(cursorReadDeadline)
+	defer readTimer.Stop()
 
 scanLoop:
 	for scanner.Scan() {
 		select {
-		case <-readDeadline:
+		case <-readTimer.C:
 			// Reading timeout - stop processing
 			break scanLoop
 		case <-streamCtx.Done():

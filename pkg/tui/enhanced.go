@@ -260,6 +260,9 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err := p.Run()
 
+	// Close the message channel to signal cleanup
+	close(msgChan)
+
 	// Close the logger if it exists
 	if chatLogger != nil {
 		chatLogger.Close()
@@ -1171,6 +1174,7 @@ type messageWriter struct {
 	currentAgent   string                 // Track current speaking agent
 	currentContent strings.Builder        // Accumulate content for current agent
 	currentMetrics *agent.ResponseMetrics // Metrics for current message
+	droppedCount   int                    // Track number of dropped messages
 }
 
 func (w *messageWriter) Write(p []byte) (n int, err error) {
@@ -1273,6 +1277,8 @@ func (w *messageWriter) Write(p []byte) (n int, err error) {
 						case w.msgChan <- msg:
 						default:
 							// Channel full, drop message
+							w.droppedCount++
+							fmt.Fprintf(os.Stderr, "Warning: Message channel full, dropped message (total dropped: %d)\n", w.droppedCount)
 						}
 					}
 				} else {
@@ -1339,6 +1345,8 @@ func (w *messageWriter) flushCurrentMessage() {
 		case w.msgChan <- msg:
 		default:
 			// Channel full, drop message
+			w.droppedCount++
+			fmt.Fprintf(os.Stderr, "Warning: Message channel full, dropped message (total dropped: %d)\n", w.droppedCount)
 		}
 
 		w.currentAgent = ""
@@ -1363,8 +1371,13 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 			m.orch.AddAgent(a)
 		}
 
+		// Create a done channel to track orchestrator completion
+		orchDone := make(chan struct{})
+
 		// Start the orchestrator in a goroutine
 		go func() {
+			defer close(orchDone)
+
 			// Use a longer timeout context for the entire conversation
 			orchCtx, cancel := context.WithTimeout(m.ctx, 10*time.Minute)
 			defer cancel()
@@ -1375,6 +1388,24 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 			}
 			// Mark as not running when done
 			m.running = false
+		}()
+
+		// Wait for orchestrator to finish with a timeout on TUI exit
+		// This goroutine will clean up when the orchestrator completes
+		go func() {
+			select {
+			case <-orchDone:
+				// Orchestrator finished normally
+			case <-m.ctx.Done():
+				// Context canceled (TUI exiting), wait briefly for orchestrator
+				select {
+				case <-orchDone:
+					// Orchestrator finished during grace period
+				case <-time.After(2 * time.Second):
+					// Grace period expired, orchestrator will be canceled by its own context
+					fmt.Fprintf(os.Stderr, "Warning: Orchestrator did not finish within grace period\n")
+				}
+			}
 		}()
 
 		// Return the initial startup message
