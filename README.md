@@ -51,7 +51,7 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## What's New 🎉
 
-### Latest Updates (v0.0.10-dev)
+### Latest Updates (v0.0.10)
 
 #### New Agent Support
 - **GitHub Copilot CLI Integration**: Full support for GitHub's Copilot terminal agent (`copilot`)
