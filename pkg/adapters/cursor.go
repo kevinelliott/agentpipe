@@ -141,19 +141,18 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	}()
 
 	hasOutput := false
-	gotResult := false
 	scanner := bufio.NewScanner(stdout)
 	var streamedContent strings.Builder
 
 	// Set a deadline for reading
 	readDeadline := time.After(25 * time.Second)
 
+scanLoop:
 	for scanner.Scan() {
 		select {
 		case <-readDeadline:
 			// Reading timeout - stop processing
-			gotResult = true
-			break
+			break scanLoop
 		default:
 			line := scanner.Text()
 
@@ -161,23 +160,18 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 			if result := c.parseResultLine(line); result != "" {
 				// If we get a complete result, only use it if we haven't streamed content
 				if streamedContent.Len() == 0 {
-					fmt.Fprint(writer, result)
+					_, _ = fmt.Fprint(writer, result)
 				}
 				hasOutput = true
-				gotResult = true
-				break
+				break scanLoop
 			}
 
 			// Otherwise stream assistant messages
 			if text := c.parseJSONLine(line); text != "" {
-				fmt.Fprint(writer, text)
+				_, _ = fmt.Fprint(writer, text)
 				streamedContent.WriteString(text)
 				hasOutput = true
 			}
-		}
-
-		if gotResult {
-			break
 		}
 	}
 
@@ -222,7 +216,6 @@ func (c *CursorAgent) formatConversation(messages []agent.Message) string {
 func (c *CursorAgent) buildPrompt(conversation string) string {
 	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
 }
-
 
 // parseResultLine checks for a result message which contains the complete response
 func (c *CursorAgent) parseResultLine(line string) string {

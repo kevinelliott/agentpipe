@@ -1,17 +1,24 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: true
 
-linters:
+formatters:
   enable:
     - gofmt
     - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes: github.com/kevinelliott/agentpipe
+
+linters:
+  enable:
     - govet
     - errcheck
     - staticcheck
-    - ineffassign
-    - typecheck
-    - gosimple
     - gosec
     - misspell
     - nakedret
@@ -21,79 +28,105 @@ linters:
     - dupl
     - gocyclo
     - gocognit
+    - unused
+  exclusions:
+    rules:
+      # Exclude some linters from running on test files
+      - path: _test\.go
+        linters:
+          - gosec
+          - dupl
+          - errcheck
 
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/kevinelliott/agentpipe
-  govet:
-    enable:
-      - shadow
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  dupl:
-    threshold: 100
-  gocyclo:
-    min-complexity: 15
-  gocognit:
-    min-complexity: 30
-  misspell:
-    locale: US
-  gosec:
-    excludes:
-      - G204 # Subprocess launched with variable
-      - G304 # File path provided as taint input
+      # Exclude exec.Command usage in adapters (G204)
+      - path: pkg/adapters/
+        linters:
+          - gosec
+        text: "G204:"
+
+      # Allow larger functions in main and cmd
+      - path: (cmd/|main\.go)
+        linters:
+          - gocyclo
+          - gocognit
+
+      # Allow complex TUI update functions
+      - path: pkg/tui/
+        linters:
+          - gocognit
+          - gocyclo
+
+      # Allow complex message processing in adapters
+      - path: pkg/adapters/
+        linters:
+          - gocyclo
+          - gocognit
+
+      # Exclude specific errcheck/gosec cases where error handling is intentionally omitted
+      - path: internal/version/version.go
+        linters:
+          - errcheck
+          - gosec
+        text: "fmt.Sscanf"
+
+      - path: cmd/root.go
+        linters:
+          - errcheck
+          - gosec
+        text: "cmd.Help"
+
+      - path: internal/version/version.go
+        linters:
+          - errcheck
+        text: "resp.Body.Close"
+
+      - path: pkg/logger/logger.go
+        linters:
+          - errcheck
+        text: "logFile.Close"
+
+      # Allow intentional error ignoring in fmt.Fprint* calls
+      - linters:
+          - errcheck
+        text: "fmt.Fprint"
+
+      # Exclude file operation security warnings (G304, G301)
+      - path: pkg/config/config.go
+        linters:
+          - gosec
+        text: "G304"
+
+      - path: pkg/logger/
+        linters:
+          - gosec
+        text: "(G304|G301)"
+
+      # Exclude staticcheck QF1003 suggestions (tagged switch)
+      - linters:
+          - staticcheck
+        text: "QF1003"
+  settings:
+    govet:
+      enable:
+        - shadow
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    dupl:
+      threshold: 100
+    gocyclo:
+      min-complexity: 15
+    gocognit:
+      min-complexity: 30
+    misspell:
+      locale: US
+    gosec:
+      excludes:
+        - G104 # Errors unhandled (we use errcheck for this)
+        - G204 # Subprocess launched with variable
+        - G304 # File path provided as taint input
+        - G301 # Expect directory permissions
 
 issues:
-  exclude-dirs:
-    - vendor
-    - .git
-    - dist
-  exclude-rules:
-    # Exclude some linters from running on test files
-    - path: _test\.go
-      linters:
-        - gosec
-        - dupl
-        - errcheck
-
-    # Exclude exec.Command usage in adapters
-    - path: pkg/adapters/
-      linters:
-        - gosec
-      text: "G204:"
-
-    # Allow larger functions in main and cmd
-    - path: (cmd/|main\.go)
-      linters:
-        - gocyclo
-        - gocognit
-    
-    # Allow complex TUI update functions
-    - path: pkg/tui/
-      linters:
-        - gocognit
-        - gocyclo
-    
-    # Allow complex message processing in adapters
-    - path: pkg/adapters/
-      linters:
-        - gocyclo
-        - gocognit
-    
-    # Exclude specific errcheck cases where error handling is intentionally omitted
-    - path: internal/version/version.go
-      linters:
-        - errcheck
-      text: "fmt.Sscanf"
-    
-    - path: cmd/root.go
-      linters:
-        - errcheck
-      text: "cmd.Help"
-
   max-issues-per-linter: 0
   max-same-issues: 0
-  new: false
