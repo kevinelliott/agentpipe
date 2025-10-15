@@ -18,6 +18,8 @@ type MockAgent struct {
 	name            string
 	agentType       string
 	model           string
+	rateLimit       float64
+	rateLimitBurst  int
 	available       bool
 	healthCheckErr  error
 	sendMessageResp string
@@ -29,12 +31,14 @@ type MockAgent struct {
 	failCount  int
 }
 
-func (m *MockAgent) GetID() string     { return m.id }
-func (m *MockAgent) GetName() string   { return m.name }
-func (m *MockAgent) GetType() string   { return m.agentType }
-func (m *MockAgent) GetModel() string  { return m.model }
-func (m *MockAgent) IsAvailable() bool { return m.available }
-func (m *MockAgent) Announce() string  { return m.name + " has joined" }
+func (m *MockAgent) GetID() string          { return m.id }
+func (m *MockAgent) GetName() string        { return m.name }
+func (m *MockAgent) GetType() string        { return m.agentType }
+func (m *MockAgent) GetModel() string       { return m.model }
+func (m *MockAgent) GetRateLimit() float64  { return m.rateLimit }
+func (m *MockAgent) GetRateLimitBurst() int { return m.rateLimitBurst }
+func (m *MockAgent) IsAvailable() bool      { return m.available }
+func (m *MockAgent) Announce() string       { return m.name + " has joined" }
 func (m *MockAgent) Initialize(config agent.AgentConfig) error {
 	m.id = config.ID
 	m.name = config.Name
@@ -595,10 +599,10 @@ func TestCalculateBackoffDelay(t *testing.T) {
 	orch := NewOrchestrator(config, nil)
 
 	tests := []struct {
-		attempt      int
-		expectedMin  time.Duration
-		expectedMax  time.Duration
-		description  string
+		attempt     int
+		expectedMin time.Duration
+		expectedMax time.Duration
+		description string
 	}{
 		{1, 2 * time.Second, 2 * time.Second, "first retry: 1s * 2^1 = 2s"},
 		{2, 4 * time.Second, 4 * time.Second, "second retry: 1s * 2^2 = 4s"},
@@ -690,5 +694,136 @@ func TestRetryDefaults(t *testing.T) {
 	}
 	if orch.config.RetryMultiplier != 2.0 {
 		t.Errorf("expected default RetryMultiplier=2.0, got %v", orch.config.RetryMultiplier)
+	}
+}
+
+func TestRateLimitingCreation(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode: ModeRoundRobin,
+	}
+	orch := NewOrchestrator(config, nil)
+
+	mockAgent := &MockAgent{
+		id:             "rate-limited-agent",
+		name:           "RateLimitedAgent",
+		agentType:      "mock",
+		available:      true,
+		rateLimit:      10.0, // 10 requests per second
+		rateLimitBurst: 5,
+	}
+
+	orch.AddAgent(mockAgent)
+
+	// Verify rate limiter was created
+	orch.mu.RLock()
+	limiter := orch.rateLimiters[mockAgent.GetID()]
+	orch.mu.RUnlock()
+
+	if limiter == nil {
+		t.Fatal("expected rate limiter to be created for agent")
+	}
+
+	// Verify rate limiter has correct configuration
+	stats := limiter.GetStats()
+	if stats.Rate != 10.0 {
+		t.Errorf("expected rate 10.0, got %.2f", stats.Rate)
+	}
+	if stats.Burst != 5 {
+		t.Errorf("expected burst 5, got %d", stats.Burst)
+	}
+}
+
+func TestRateLimitingEnforcement(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:          ModeRoundRobin,
+		MaxTurns:      5,
+		TurnTimeout:   5 * time.Second,
+		ResponseDelay: 10 * time.Millisecond,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	// Agent with tight rate limit: 5 req/s, burst 2
+	mockAgent := &MockAgent{
+		id:              "rate-limited-agent",
+		name:            "RateLimitedAgent",
+		agentType:       "mock",
+		available:       true,
+		rateLimit:       5.0, // 5 requests per second
+		rateLimitBurst:  2,
+		sendMessageResp: "Response",
+	}
+
+	orch.AddAgent(mockAgent)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := orch.Start(ctx)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// With 5 turns and rate limit of 5 req/s with burst of 2:
+	// - First 2 requests: immediate (from burst)
+	// - Requests 3-5: need to wait for token refill
+	// - At 5 req/s, each token takes 200ms
+	// - So 3 more requests need ~600ms minimum
+	// Total should be at least 400ms (accounting for burst and response delays)
+	if elapsed < 400*time.Millisecond {
+		t.Errorf("expected rate limiting to slow down requests, took only %v", elapsed)
+	}
+
+	// Verify all turns completed
+	if mockAgent.callCount != 5 {
+		t.Errorf("expected 5 calls, got %d", mockAgent.callCount)
+	}
+}
+
+func TestRateLimitingUnlimited(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:          ModeRoundRobin,
+		MaxTurns:      3,
+		TurnTimeout:   5 * time.Second,
+		ResponseDelay: 10 * time.Millisecond,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	// Agent with no rate limit (0 = unlimited)
+	mockAgent := &MockAgent{
+		id:              "unlimited-agent",
+		name:            "UnlimitedAgent",
+		agentType:       "mock",
+		available:       true,
+		rateLimit:       0, // Unlimited
+		rateLimitBurst:  0,
+		sendMessageResp: "Response",
+	}
+
+	orch.AddAgent(mockAgent)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := orch.Start(ctx)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should complete quickly without rate limiting
+	// 3 turns * 10ms response delay = ~30ms + overhead
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("unlimited rate limit took too long: %v", elapsed)
+	}
+
+	if mockAgent.callCount != 3 {
+		t.Errorf("expected 3 calls, got %d", mockAgent.callCount)
 	}
 }

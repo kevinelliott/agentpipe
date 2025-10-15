@@ -63,6 +63,10 @@ type AgentConfig struct {
 	Temperature float64 `yaml:"temperature"`
 	// MaxTokens limits the length of generated responses
 	MaxTokens int `yaml:"max_tokens"`
+	// RateLimit is the maximum requests per second for this agent (0 = unlimited)
+	RateLimit float64 `yaml:"rate_limit"`
+	// RateLimitBurst is the maximum burst size for rate limiting (default: 1)
+	RateLimitBurst int `yaml:"rate_limit_burst"`
 	// CustomSettings allows agent-specific configuration options
 	CustomSettings map[string]interface{} `yaml:"custom_settings"`
 }
@@ -78,6 +82,10 @@ type Agent interface {
 	GetType() string
 	// GetModel returns the specific model being used
 	GetModel() string
+	// GetRateLimit returns the rate limit in requests per second (0 = unlimited)
+	GetRateLimit() float64
+	// GetRateLimitBurst returns the burst size for rate limiting
+	GetRateLimitBurst() int
 	// Initialize configures the agent with the provided configuration
 	Initialize(config AgentConfig) error
 	// SendMessage sends a message to the agent and returns the response
@@ -130,6 +138,21 @@ func (b *BaseAgent) GetModel() string {
 	}
 	// Return type as fallback
 	return b.Type
+}
+
+// GetRateLimit returns the rate limit in requests per second for this agent.
+// A value of 0 means unlimited (no rate limiting).
+func (b *BaseAgent) GetRateLimit() float64 {
+	return b.Config.RateLimit
+}
+
+// GetRateLimitBurst returns the burst size for rate limiting.
+// This is the maximum number of requests that can be made in a burst.
+func (b *BaseAgent) GetRateLimitBurst() int {
+	if b.Config.RateLimitBurst > 0 {
+		return b.Config.RateLimitBurst
+	}
+	return 1 // Default burst size
 }
 
 // Announce returns the agent's announcement message.

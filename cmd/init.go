@@ -43,7 +43,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(outputPath); err == nil {
 		fmt.Printf("⚠️  Configuration file '%s' already exists.\n", outputPath)
 		if !promptYesNo(reader, "Overwrite?", false) {
-			fmt.Println("❌ Cancelled.")
+			fmt.Println("❌ Canceled.")
 			return nil
 		}
 		fmt.Println()
@@ -124,6 +124,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 			// Model (optional)
 			agentCfg.Model = promptString(reader, "  Model (optional, e.g., claude-sonnet-4.5)", "")
+
+			// Rate limiting (optional)
+			if promptYesNo(reader, "  Configure rate limiting for this agent?", false) {
+				agentCfg.RateLimit = promptFloat(reader, "  Rate limit (requests per second, 0 for unlimited)", 0.0)
+				if agentCfg.RateLimit > 0 {
+					agentCfg.RateLimitBurst = promptInt(reader, "  Rate limit burst size", 1)
+				}
+			}
 
 			cfg.Agents = append(cfg.Agents, agentCfg)
 			fmt.Printf("  ✅ Added %s\n", agentCfg.Name)
@@ -243,6 +251,25 @@ func promptInt(reader *bufio.Reader, prompt string, defaultValue int) int {
 		}
 
 		value, err := strconv.Atoi(input)
+		if err != nil {
+			fmt.Printf("  ❌ Invalid number. Please try again.\n")
+			continue
+		}
+		return value
+	}
+}
+
+func promptFloat(reader *bufio.Reader, prompt string, defaultValue float64) float64 {
+	for {
+		fmt.Printf("%s (default: %.1f): ", prompt, defaultValue)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "" {
+			return defaultValue
+		}
+
+		value, err := strconv.ParseFloat(input, 64)
 		if err != nil {
 			fmt.Printf("  ❌ Invalid number. Please try again.\n")
 			continue

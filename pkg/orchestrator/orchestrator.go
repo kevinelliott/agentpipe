@@ -14,6 +14,7 @@ import (
 
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
+	"github.com/kevinelliott/agentpipe/pkg/ratelimit"
 	"github.com/kevinelliott/agentpipe/pkg/utils"
 )
 
@@ -55,12 +56,13 @@ type OrchestratorConfig struct {
 // It manages agent registration, turn-taking, message history, and logging.
 // All methods are safe for concurrent use.
 type Orchestrator struct {
-	config   OrchestratorConfig
-	agents   []agent.Agent
-	messages []agent.Message
-	mu       sync.RWMutex
-	writer   io.Writer
-	logger   *logger.ChatLogger
+	config       OrchestratorConfig
+	agents       []agent.Agent
+	messages     []agent.Message
+	rateLimiters map[string]*ratelimit.Limiter // per-agent rate limiters
+	mu           sync.RWMutex
+	writer       io.Writer
+	logger       *logger.ChatLogger
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -99,10 +101,11 @@ func NewOrchestrator(config OrchestratorConfig, writer io.Writer) *Orchestrator 
 	}
 
 	return &Orchestrator{
-		config:   config,
-		agents:   make([]agent.Agent, 0),
-		messages: make([]agent.Message, 0),
-		writer:   writer,
+		config:       config,
+		agents:       make([]agent.Agent, 0),
+		messages:     make([]agent.Message, 0),
+		rateLimiters: make(map[string]*ratelimit.Limiter),
+		writer:       writer,
 	}
 }
 
@@ -114,11 +117,17 @@ func (o *Orchestrator) SetLogger(logger *logger.ChatLogger) {
 
 // AddAgent registers an agent with the orchestrator.
 // The agent's announcement is added to the conversation history and logged.
+// A rate limiter is created for the agent based on its configuration.
 // This method is thread-safe.
 func (o *Orchestrator) AddAgent(a agent.Agent) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.agents = append(o.agents, a)
+
+	// Create rate limiter for this agent
+	rateLimit := a.GetRateLimit()
+	rateLimitBurst := a.GetRateLimitBurst()
+	o.rateLimiters[a.GetID()] = ratelimit.NewLimiter(rateLimit, rateLimitBurst)
 
 	announcement := agent.Message{
 		AgentID:   a.GetID(),
@@ -310,6 +319,17 @@ func (o *Orchestrator) runFreeForm(ctx context.Context) error {
 }
 
 func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) error {
+	// Apply rate limiting before attempting to get response
+	o.mu.RLock()
+	limiter := o.rateLimiters[a.GetID()]
+	o.mu.RUnlock()
+
+	if limiter != nil {
+		if err := limiter.Wait(ctx); err != nil {
+			return fmt.Errorf("rate limit wait failed: %w", err)
+		}
+	}
+
 	messages := o.getMessages()
 
 	// Calculate input tokens from conversation history (once, outside retry loop)

@@ -84,11 +84,23 @@ linters:
           - gocyclo
           - gocognit
 
+      # Allow complex orchestrator functions (retry logic, rate limiting)
+      - path: 'pkg/orchestrator/'
+        linters:
+          - gocyclo
+          - gocognit
+
       # Allow weak random number generator for agent selection (not security-sensitive)
       - path: 'pkg/orchestrator/'
         linters:
           - gosec
         text: "G404:"
+
+      # Allow 0644 permissions for config files in init command
+      - path: 'cmd/init.go'
+        linters:
+          - gosec
+        text: "G306:"
 
       # Exclude specific errcheck/gosec cases where error handling is intentionally omitted
       - path: 'internal/version/version.go'
