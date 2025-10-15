@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  agentpipe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
+    image: agentpipe:latest
+    container_name: agentpipe
+
+    # Mount configuration and logs
+    volumes:
+      # Mount local config
+      - ./examples:/home/agentpipe/examples:ro
+      # Mount custom config if exists
+      - ./config.yaml:/home/agentpipe/config.yaml:ro
+      # Persist logs
+      - agentpipe-logs:/home/agentpipe/.agentpipe/chats
+
+    # Environment variables
+    environment:
+      - AGENTPIPE_LOG_DIR=/home/agentpipe/.agentpipe/chats
+      - AGENTPIPE_CONFIG=/home/agentpipe/config.yaml
+      # Agent API keys (pass through from host)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+    # Command to run
+    command: ["run", "-c", "/home/agentpipe/config.yaml"]
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Development service with hot reload
+  agentpipe-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        VERSION: dev
+    image: agentpipe:dev
+    container_name: agentpipe-dev
+    profiles:
+      - dev
+
+    volumes:
+      # Mount source code for development
+      - .:/app
+      - go-cache:/go/pkg/mod
+
+    environment:
+      - CGO_ENABLED=0
+      - GOOS=linux
+      - GOARCH=amd64
+
+    command: ["go", "run", ".", "--help"]
+
+    working_dir: /app
+
+volumes:
+  agentpipe-logs:
+    driver: local
+  go-cache:
+    driver: local

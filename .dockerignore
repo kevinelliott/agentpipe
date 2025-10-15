@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+.github
+
+# Build artifacts
+agentpipe
+*.exe
+*.dll
+*.so
+*.dylib
+dist/
+bin/
+
+# Test files
+*.test
+*.out
+coverage.txt
+coverage.out
+*.prof
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+*.log
+.agentpipe/
+
+# CI/CD
+.travis.yml
+.circleci/
+.gitlab-ci.yml
+
+# Local configuration
+*.local.yaml
+*.dev.yaml
+config.yaml
+
+# Dependencies (will be downloaded in build)
+vendor/
+
+# Test data
+test/
+testdata/

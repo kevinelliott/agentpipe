@@ -1,110 +1,46 @@
-.PHONY: build test clean install release-build release
+.PHONY: help build test lint clean docker-build docker-run docker-push install dev
 
 # Variables
 BINARY_NAME=agentpipe
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
-LDFLAGS=-ldflags "-X github.com/kevinelliott/agentpipe/internal/version.Version=$(VERSION) \
-	-X github.com/kevinelliott/agentpipe/internal/version.CommitHash=$(COMMIT_HASH) \
-	-X github.com/kevinelliott/agentpipe/internal/version.BuildDate=$(BUILD_DATE) -s -w"
-PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64
+COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE?=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+DOCKER_IMAGE=agentpipe
+DOCKER_TAG?=latest
+DOCKER_REGISTRY?=docker.io/kevinelliott
 
-# Build for current platform
-build:
+# Go build flags
+LDFLAGS=-ldflags="-w -s \
+	-X github.com/kevinelliott/agentpipe/internal/version.Version=$(VERSION) \
+	-X github.com/kevinelliott/agentpipe/internal/version.Commit=$(COMMIT) \
+	-X github.com/kevinelliott/agentpipe/internal/version.Date=$(DATE)"
+
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## Build the binary
+	@echo "Building $(BINARY_NAME) $(VERSION)..."
 	go build $(LDFLAGS) -o $(BINARY_NAME) .
 
-# Run tests
-test:
-	go test -v ./...
+test: ## Run tests
+	@echo "Running tests..."
+	go test -v -race ./...
 
-# Clean build artifacts
-clean:
+lint: ## Run linter
+	@echo "Running linter..."
+	golangci-lint run --timeout=5m
+
+clean: ## Clean build artifacts
+	@echo "Cleaning..."
 	rm -f $(BINARY_NAME)
 	rm -rf dist/
+	go clean -cache -testcache
 
-# Install locally
-install: build
-	sudo mv $(BINARY_NAME) /usr/local/bin/
+docker-build: ## Build Docker image
+	@echo "Building Docker image..."
+	docker build --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
-# Build for all platforms
-release-build: clean
-	mkdir -p dist
-	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*} GOARCH=$${platform#*/} \
-		go build $(LDFLAGS) \
-			-o dist/$(BINARY_NAME)_$${platform%/*}_$${platform#*/}$(if $(findstring windows,$${platform}),.exe,) .; \
-		if [ "$${platform%/*}" != "windows" ]; then \
-			tar -czf dist/$(BINARY_NAME)_$${platform%/*}_$${platform#*/}.tar.gz \
-				-C dist $(BINARY_NAME)_$${platform%/*}_$${platform#*/}; \
-		else \
-			cd dist && zip $(BINARY_NAME)_$${platform%/*}_$${platform#*/}.zip \
-				$(BINARY_NAME)_$${platform%/*}_$${platform#*/}.exe && cd ..; \
-		fi; \
-	done
-
-# Create a new release (requires gh CLI)
-release: release-build
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Please specify VERSION=vX.Y.Z"; \
-		exit 1; \
-	fi
-	gh release create $(VERSION) dist/*.tar.gz dist/*.zip \
-		--title "AgentPipe $(VERSION)" \
-		--notes "Release $(VERSION)" \
-		--draft
-
-# Development commands
-run:
-	go run . doctor
-
-run-example:
-	go run . run -c examples/simple-conversation.yaml
-
-run-tui:
-	go run . run -c examples/brainstorm.yaml --enhanced-tui
-
-version: build
-	./$(BINARY_NAME) version
-
-check-version: build
-	./$(BINARY_NAME) -V
-
-# Linting (requires golangci-lint)
-lint:
-	golangci-lint run
-
-# Format code
-fmt:
-	go fmt ./...
-	gofumpt -w .
-
-# Update dependencies
-deps:
-	go mod tidy
-	go mod download
-
-# Check for security vulnerabilities
-audit:
-	go list -json -deps ./... | nancy sleuth
-
-# Generate documentation
-docs:
-	go doc -all > API.md
-
-help:
-	@echo "Available targets:"
-	@echo "  build         - Build for current platform"
-	@echo "  test          - Run tests"
-	@echo "  clean         - Remove build artifacts"
-	@echo "  install       - Build and install locally"
-	@echo "  release-build - Build for all platforms"
-	@echo "  release       - Create a new GitHub release"
-	@echo "  run           - Run doctor command"
-	@echo "  run-example   - Run simple conversation example"
-	@echo "  run-tui       - Run enhanced TUI example"
-	@echo "  lint          - Run linter"
-	@echo "  fmt           - Format code"
-	@echo "  deps          - Update dependencies"
-	@echo "  audit         - Check for vulnerabilities"
-	@echo "  docs          - Generate documentation"
+.DEFAULT_GOAL := help
