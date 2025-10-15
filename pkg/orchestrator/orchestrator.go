@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -257,11 +259,12 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	startTime := time.Now()
 
 	// Calculate input tokens from conversation history
-	inputText := ""
+	var inputBuilder strings.Builder
 	for _, msg := range messages {
-		inputText += msg.Content + " "
+		inputBuilder.WriteString(msg.Content)
+		inputBuilder.WriteString(" ")
 	}
-	inputTokens := utils.EstimateTokens(inputText)
+	inputTokens := utils.EstimateTokens(inputBuilder.String())
 
 	// Get the response
 	response, err := a.SendMessage(timeoutCtx, messages)
@@ -333,18 +336,33 @@ func (o *Orchestrator) getMessages() []agent.Message {
 }
 
 func (o *Orchestrator) selectNextAgent(lastSpeaker string) agent.Agent {
-	availableAgents := make([]agent.Agent, 0)
+	// Count available agents (excluding last speaker)
+	availableCount := 0
 	for _, a := range o.agents {
 		if a.GetID() != lastSpeaker {
-			availableAgents = append(availableAgents, a)
+			availableCount++
 		}
 	}
 
-	if len(availableAgents) == 0 {
+	if availableCount == 0 {
 		return nil
 	}
 
-	return availableAgents[time.Now().UnixNano()%int64(len(availableAgents))]
+	// Select a random index among available agents
+	targetIndex := rand.Intn(availableCount)
+
+	// Find the agent at that index
+	currentIndex := 0
+	for _, a := range o.agents {
+		if a.GetID() != lastSpeaker {
+			if currentIndex == targetIndex {
+				return a
+			}
+			currentIndex++
+		}
+	}
+
+	return nil
 }
 
 func shouldRespond(messages []agent.Message, a agent.Agent) bool {

@@ -84,6 +84,12 @@ linters:
           - gocyclo
           - gocognit
 
+      # Allow weak random number generator for agent selection (not security-sensitive)
+      - path: 'pkg/orchestrator/'
+        linters:
+          - gosec
+        text: "G404:"
+
       # Exclude specific errcheck/gosec cases where error handling is intentionally omitted
       - path: 'internal/version/version.go'
         linters:
