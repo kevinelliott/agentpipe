@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kevinelliott/agentpipe/pkg/agent"
+	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/ratelimit"
 	"github.com/kevinelliott/agentpipe/pkg/utils"
@@ -129,6 +130,14 @@ func (o *Orchestrator) AddAgent(a agent.Agent) {
 	rateLimitBurst := a.GetRateLimitBurst()
 	o.rateLimiters[a.GetID()] = ratelimit.NewLimiter(rateLimit, rateLimitBurst)
 
+	log.WithFields(map[string]interface{}{
+		"agent_id":   a.GetID(),
+		"agent_name": a.GetName(),
+		"agent_type": a.GetType(),
+		"rate_limit": rateLimit,
+		"burst":      rateLimitBurst,
+	}).Info("agent added to orchestrator")
+
 	announcement := agent.Message{
 		AgentID:   a.GetID(),
 		AgentName: a.GetName(),
@@ -154,8 +163,16 @@ func (o *Orchestrator) AddAgent(a agent.Agent) {
 // This method blocks until the conversation completes.
 func (o *Orchestrator) Start(ctx context.Context) error {
 	if len(o.agents) == 0 {
+		log.Error("conversation start failed: no agents configured")
 		return fmt.Errorf("no agents configured")
 	}
+
+	log.WithFields(map[string]interface{}{
+		"mode":       o.config.Mode,
+		"max_turns":  o.config.MaxTurns,
+		"agents":     len(o.agents),
+		"has_prompt": o.config.InitialPrompt != "",
+	}).Info("starting conversation")
 
 	if o.config.InitialPrompt != "" {
 		initialMsg := agent.Message{
@@ -187,6 +204,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	case ModeFreeForm:
 		return o.runFreeForm(ctx)
 	default:
+		log.WithField("mode", o.config.Mode).Error("unknown conversation mode")
 		return fmt.Errorf("unknown conversation mode: %s", o.config.Mode)
 	}
 }
@@ -326,6 +344,10 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 	if limiter != nil {
 		if err := limiter.Wait(ctx); err != nil {
+			log.WithFields(map[string]interface{}{
+				"agent_id":   a.GetID(),
+				"agent_name": a.GetName(),
+			}).WithError(err).Error("rate limit wait failed")
 			return fmt.Errorf("rate limit wait failed: %w", err)
 		}
 	}
@@ -340,6 +362,13 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	}
 	inputTokens := utils.EstimateTokens(inputBuilder.String())
 
+	log.WithFields(map[string]interface{}{
+		"agent_id":     a.GetID(),
+		"agent_name":   a.GetName(),
+		"input_tokens": inputTokens,
+		"max_retries":  o.config.MaxRetries,
+	}).Debug("requesting agent response")
+
 	// Retry loop with exponential backoff
 	var lastErr error
 	var response string
@@ -349,6 +378,12 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 		// Apply exponential backoff delay before retry (skip on first attempt)
 		if attempt > 0 {
 			delay := o.calculateBackoffDelay(attempt)
+			log.WithFields(map[string]interface{}{
+				"agent_name": a.GetName(),
+				"attempt":    attempt,
+				"max_retries": o.config.MaxRetries,
+				"delay":      delay.String(),
+			}).Warn("retrying agent request after failure")
 			if o.writer != nil {
 				fmt.Fprintf(o.writer, "[Retry] Waiting %v before retry %d/%d for %s...\n",
 					delay, attempt, o.config.MaxRetries, a.GetName())
@@ -369,6 +404,11 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 		if lastErr == nil {
 			// Success! Break out of retry loop
+			log.WithFields(map[string]interface{}{
+				"agent_name": a.GetName(),
+				"attempt":    attempt + 1,
+				"duration":   time.Since(startTime).String(),
+			}).Debug("agent response received")
 			break
 		}
 
@@ -380,10 +420,20 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 			fmt.Fprintf(o.writer, "[Error] Agent %s attempt %d/%d failed: %v\n",
 				a.GetName(), attempt+1, o.config.MaxRetries+1, lastErr)
 		}
+
+		log.WithFields(map[string]interface{}{
+			"agent_name": a.GetName(),
+			"attempt":    attempt + 1,
+			"max_retries": o.config.MaxRetries + 1,
+		}).WithError(lastErr).Warn("agent request attempt failed")
 	}
 
 	// If all retries failed, return the last error
 	if lastErr != nil {
+		log.WithFields(map[string]interface{}{
+			"agent_name": a.GetName(),
+			"attempts":   o.config.MaxRetries + 1,
+		}).WithError(lastErr).Error("all agent request attempts failed")
 		return lastErr
 	}
 
@@ -397,6 +447,16 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 	// Calculate estimated cost
 	cost := utils.EstimateCost(model, inputTokens, outputTokens)
+
+	log.WithFields(map[string]interface{}{
+		"agent_name":    a.GetName(),
+		"model":         model,
+		"duration_ms":   duration.Milliseconds(),
+		"input_tokens":  inputTokens,
+		"output_tokens": outputTokens,
+		"total_tokens":  totalTokens,
+		"cost":          cost,
+	}).Info("agent response successful")
 
 	// Store the message in history with metrics
 	msg := agent.Message{

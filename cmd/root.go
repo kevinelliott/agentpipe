@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/kevinelliott/agentpipe/internal/version"
+	"github.com/kevinelliott/agentpipe/pkg/log"
 )
 
 var (
@@ -57,11 +59,20 @@ func init() {
 }
 
 func initConfig() {
+	// Initialize logger first
+	level := zerolog.InfoLevel
+	if viper.GetBool("verbose") {
+		level = zerolog.DebugLevel
+	}
+	log.InitLogger(os.Stderr, level, true) // Use pretty console output for CLI
+
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
+		log.WithField("config_file", cfgFile).Debug("using specified config file")
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
+			log.WithError(err).Error("failed to get home directory")
 			fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
 			os.Exit(1)
 		}
@@ -75,8 +86,11 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
+		log.WithField("config_file", viper.ConfigFileUsed()).Info("loaded configuration file")
 		if viper.GetBool("verbose") {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())
 		}
+	} else {
+		log.WithError(err).Debug("no config file found, using defaults")
 	}
 }

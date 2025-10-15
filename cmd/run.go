@@ -16,6 +16,7 @@ import (
 	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
+	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
 	"github.com/kevinelliott/agentpipe/pkg/tui"
@@ -67,22 +68,32 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 	var err error
 
 	if configPath != "" {
+		log.WithField("config_path", configPath).Debug("loading configuration from file")
 		cfg, err = config.LoadConfig(configPath)
 		if err != nil {
+			log.WithError(err).WithField("config_path", configPath).Error("failed to load configuration")
 			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 			os.Exit(1)
 		}
+		log.WithFields(map[string]interface{}{
+			"config_path": configPath,
+			"agents":      len(cfg.Agents),
+			"mode":        cfg.Orchestrator.Mode,
+		}).Info("configuration loaded successfully")
 	} else if len(agents) > 0 {
+		log.WithField("agent_count", len(agents)).Debug("creating configuration from CLI arguments")
 		cfg = config.NewDefaultConfig()
 		for i, agentSpec := range agents {
 			agentCfg, err := parseAgentSpec(agentSpec, i)
 			if err != nil {
+				log.WithError(err).WithField("agent_spec", agentSpec).Error("failed to parse agent specification")
 				fmt.Fprintf(os.Stderr, "Error parsing agent spec: %v\n", err)
 				os.Exit(1)
 			}
 			cfg.Agents = append(cfg.Agents, agentCfg)
 		}
 	} else {
+		log.Error("no configuration source specified (need --config or --agents)")
 		fmt.Fprintf(os.Stderr, "Error: Either --config or --agents must be specified\n")
 		os.Exit(1)
 	}
@@ -187,12 +198,26 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 			fmt.Printf("  Creating agent %s (type: %s)...\n", agentCfg.Name, agentCfg.Type)
 		}
 
+		log.WithFields(map[string]interface{}{
+			"agent_name": agentCfg.Name,
+			"agent_type": agentCfg.Type,
+			"agent_id":   agentCfg.ID,
+		}).Debug("creating agent")
+
 		a, err := agent.CreateAgent(agentCfg)
 		if err != nil {
+			log.WithError(err).WithFields(map[string]interface{}{
+				"agent_name": agentCfg.Name,
+				"agent_type": agentCfg.Type,
+			}).Error("failed to create agent")
 			return fmt.Errorf("failed to create agent %s: %w", agentCfg.Name, err)
 		}
 
 		if !a.IsAvailable() {
+			log.WithFields(map[string]interface{}{
+				"agent_name": agentCfg.Name,
+				"agent_type": agentCfg.Type,
+			}).Error("agent CLI not available")
 			return fmt.Errorf("agent %s (type: %s) is not available - please run 'agentpipe doctor'", agentCfg.Name, agentCfg.Type)
 		}
 
@@ -283,11 +308,25 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	}
 	fmt.Println(strings.Repeat("=", 60))
 
+	log.WithFields(map[string]interface{}{
+		"mode":         cfg.Orchestrator.Mode,
+		"max_turns":    cfg.Orchestrator.MaxTurns,
+		"agent_count":  len(agentsList),
+		"logging":      cfg.Logging.Enabled,
+		"show_metrics": cfg.Logging.ShowMetrics,
+	}).Info("starting agentpipe conversation")
+
 	for _, a := range agentsList {
 		orch.AddAgent(a)
 	}
 
 	err := orch.Start(ctx)
+
+	if err != nil {
+		log.WithError(err).Error("orchestrator error during conversation")
+	} else {
+		log.Info("conversation completed successfully")
+	}
 
 	// Print summary
 	fmt.Println("\n" + strings.Repeat("=", 60))
