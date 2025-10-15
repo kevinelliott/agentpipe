@@ -1,3 +1,6 @@
+// Package config provides configuration management for AgentPipe.
+// It defines the structure for YAML configuration files and handles
+// loading, validation, and default value application.
 package config
 
 import (
@@ -10,28 +13,47 @@ import (
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 
+// Config is the top-level configuration structure for AgentPipe.
+// It defines agents, orchestration behavior, and logging settings.
 type Config struct {
-	Version      string              `yaml:"version"`
-	Agents       []agent.AgentConfig `yaml:"agents"`
-	Orchestrator OrchestratorConfig  `yaml:"orchestrator"`
-	Logging      LoggingConfig       `yaml:"logging"`
+	// Version is the configuration file format version
+	Version string `yaml:"version"`
+	// Agents is the list of agent configurations
+	Agents []agent.AgentConfig `yaml:"agents"`
+	// Orchestrator defines conversation orchestration settings
+	Orchestrator OrchestratorConfig `yaml:"orchestrator"`
+	// Logging defines logging behavior
+	Logging LoggingConfig `yaml:"logging"`
 }
 
+// OrchestratorConfig defines how the orchestrator manages conversations.
 type OrchestratorConfig struct {
-	Mode          string        `yaml:"mode"`
-	MaxTurns      int           `yaml:"max_turns"`
-	TurnTimeout   time.Duration `yaml:"turn_timeout"`
+	// Mode is the orchestration mode: "round-robin", "reactive", or "free-form"
+	Mode string `yaml:"mode"`
+	// MaxTurns is the maximum number of conversation turns (0 = unlimited)
+	MaxTurns int `yaml:"max_turns"`
+	// TurnTimeout is the maximum time an agent has to respond
+	TurnTimeout time.Duration `yaml:"turn_timeout"`
+	// ResponseDelay is the pause between agent responses
 	ResponseDelay time.Duration `yaml:"response_delay"`
-	InitialPrompt string        `yaml:"initial_prompt"`
+	// InitialPrompt is an optional starting prompt for the conversation
+	InitialPrompt string `yaml:"initial_prompt"`
 }
 
+// LoggingConfig defines conversation logging behavior.
 type LoggingConfig struct {
-	Enabled     bool   `yaml:"enabled"`
-	ChatLogDir  string `yaml:"chat_log_dir"`
-	LogFormat   string `yaml:"log_format"` // "text" or "json"
-	ShowMetrics bool   `yaml:"show_metrics"`
+	// Enabled determines if conversation logging is active
+	Enabled bool `yaml:"enabled"`
+	// ChatLogDir is the directory where chat logs are stored
+	ChatLogDir string `yaml:"chat_log_dir"`
+	// LogFormat is either "text" or "json"
+	LogFormat string `yaml:"log_format"`
+	// ShowMetrics determines if token/cost metrics are logged
+	ShowMetrics bool `yaml:"show_metrics"`
 }
 
+// NewDefaultConfig creates a configuration with sensible defaults.
+// The default log directory is ~/.agentpipe/chats.
 func NewDefaultConfig() *Config {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -57,6 +79,9 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// LoadConfig loads and validates a configuration from a YAML file.
+// It applies default values for any missing optional fields.
+// Returns an error if the file cannot be read, parsed, or is invalid.
 func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -77,6 +102,8 @@ func LoadConfig(path string) (*Config, error) {
 	return &config, nil
 }
 
+// SaveConfig writes the configuration to a YAML file.
+// The file is created with 0600 permissions (read/write for owner only).
 func (c *Config) SaveConfig(path string) error {
 	data, err := yaml.Marshal(c)
 	if err != nil {
@@ -90,6 +117,9 @@ func (c *Config) SaveConfig(path string) error {
 	return nil
 }
 
+// Validate checks the configuration for errors.
+// It ensures at least one agent is configured, all required fields are present,
+// agent IDs are unique, and the orchestration mode is valid.
 func (c *Config) Validate() error {
 	if len(c.Agents) == 0 {
 		return fmt.Errorf("at least one agent must be configured")

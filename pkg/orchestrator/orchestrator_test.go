@@ -24,6 +24,9 @@ type MockAgent struct {
 	sendMessageErr  error
 	sendDelay       time.Duration
 	callCount       int
+	// For retry testing: fail first N attempts
+	failFirstN int
+	failCount  int
 }
 
 func (m *MockAgent) GetID() string     { return m.id }
@@ -53,6 +56,15 @@ func (m *MockAgent) SendMessage(ctx context.Context, messages []agent.Message) (
 			return "", ctx.Err()
 		}
 	}
+
+	// Support conditional failures for retry testing
+	if m.failFirstN > 0 {
+		m.failCount++
+		if m.failCount <= m.failFirstN {
+			return "", errors.New("simulated failure")
+		}
+	}
+
 	if m.sendMessageErr != nil {
 		return "", m.sendMessageErr
 	}
@@ -272,10 +284,12 @@ func TestContextCancellation(t *testing.T) {
 
 func TestAgentTimeout(t *testing.T) {
 	config := OrchestratorConfig{
-		Mode:          ModeRoundRobin,
-		MaxTurns:      1,
-		TurnTimeout:   100 * time.Millisecond,
-		ResponseDelay: 10 * time.Millisecond,
+		Mode:              ModeRoundRobin,
+		MaxTurns:          1,
+		TurnTimeout:       100 * time.Millisecond,
+		ResponseDelay:     10 * time.Millisecond,
+		MaxRetries:        0,                    // Disable retries for this test
+		RetryInitialDelay: 1 * time.Millisecond, // Must set to indicate retry config is explicit
 	}
 	var buf bytes.Buffer
 	orch := NewOrchestrator(config, &buf)
@@ -365,10 +379,12 @@ func TestInitialPrompt(t *testing.T) {
 
 func TestAgentError(t *testing.T) {
 	config := OrchestratorConfig{
-		Mode:          ModeRoundRobin,
-		MaxTurns:      1,
-		TurnTimeout:   5 * time.Second,
-		ResponseDelay: 10 * time.Millisecond,
+		Mode:              ModeRoundRobin,
+		MaxTurns:          1,
+		TurnTimeout:       5 * time.Second,
+		ResponseDelay:     10 * time.Millisecond,
+		MaxRetries:        0,                    // Disable retries for this test
+		RetryInitialDelay: 1 * time.Millisecond, // Must set to indicate retry config is explicit
 	}
 	var buf bytes.Buffer
 	orch := NewOrchestrator(config, &buf)
@@ -445,5 +461,234 @@ func TestSelectNextAgent(t *testing.T) {
 	selected = orch2.selectNextAgent("agent-1")
 	if selected != nil {
 		t.Error("expected nil when all agents excluded")
+	}
+}
+
+func TestRetrySuccessAfterFailures(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:              ModeRoundRobin,
+		MaxTurns:          1,
+		TurnTimeout:       5 * time.Second,
+		ResponseDelay:     10 * time.Millisecond,
+		MaxRetries:        3,
+		RetryInitialDelay: 50 * time.Millisecond,
+		RetryMaxDelay:     5 * time.Second,
+		RetryMultiplier:   2.0,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	// Agent that fails twice then succeeds
+	mockAgent := &MockAgent{
+		id:              "retry-agent",
+		name:            "RetryAgent",
+		agentType:       "mock",
+		available:       true,
+		failFirstN:      2,
+		sendMessageResp: "Success after retries",
+	}
+
+	orch.AddAgent(mockAgent)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := orch.Start(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have succeeded on 3rd attempt
+	if mockAgent.callCount != 3 {
+		t.Errorf("expected 3 attempts, got %d", mockAgent.callCount)
+	}
+
+	// Should have 1 agent message (success)
+	messages := orch.GetMessages()
+	agentMessages := 0
+	for _, msg := range messages {
+		if msg.Role == "agent" {
+			agentMessages++
+			if !strings.Contains(msg.Content, "Success after retries") {
+				t.Error("expected success message in conversation")
+			}
+		}
+	}
+
+	if agentMessages != 1 {
+		t.Errorf("expected 1 agent message, got %d", agentMessages)
+	}
+
+	// Check output contains retry messages
+	output := buf.String()
+	if !strings.Contains(output, "Retry") && !strings.Contains(output, "attempt") {
+		t.Error("expected retry messages in output")
+	}
+}
+
+func TestRetryExhaustion(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:              ModeRoundRobin,
+		MaxTurns:          1,
+		TurnTimeout:       5 * time.Second,
+		ResponseDelay:     10 * time.Millisecond,
+		MaxRetries:        2,
+		RetryInitialDelay: 50 * time.Millisecond,
+		RetryMaxDelay:     5 * time.Second,
+		RetryMultiplier:   2.0,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	// Agent that always fails
+	failingAgent := &MockAgent{
+		id:             "failing-agent",
+		name:           "FailingAgent",
+		agentType:      "mock",
+		available:      true,
+		sendMessageErr: errors.New("persistent failure"),
+	}
+
+	orch.AddAgent(failingAgent)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := orch.Start(ctx)
+	if err != nil {
+		t.Fatalf("unexpected orchestrator error: %v", err)
+	}
+
+	// Should have tried MaxRetries + 1 times (initial + 2 retries)
+	if failingAgent.callCount != 3 {
+		t.Errorf("expected 3 attempts, got %d", failingAgent.callCount)
+	}
+
+	// Should have no agent messages (all failed)
+	messages := orch.GetMessages()
+	agentMessages := 0
+	for _, msg := range messages {
+		if msg.Role == "agent" {
+			agentMessages++
+		}
+	}
+
+	if agentMessages != 0 {
+		t.Errorf("expected 0 agent messages, got %d", agentMessages)
+	}
+
+	// Check output contains error and retry messages
+	output := buf.String()
+	if !strings.Contains(output, "Error") {
+		t.Error("expected error message in output")
+	}
+}
+
+func TestCalculateBackoffDelay(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:              ModeRoundRobin,
+		MaxRetries:        5,
+		RetryInitialDelay: 1 * time.Second,
+		RetryMaxDelay:     30 * time.Second,
+		RetryMultiplier:   2.0,
+	}
+	orch := NewOrchestrator(config, nil)
+
+	tests := []struct {
+		attempt      int
+		expectedMin  time.Duration
+		expectedMax  time.Duration
+		description  string
+	}{
+		{1, 2 * time.Second, 2 * time.Second, "first retry: 1s * 2^1 = 2s"},
+		{2, 4 * time.Second, 4 * time.Second, "second retry: 1s * 2^2 = 4s"},
+		{3, 8 * time.Second, 8 * time.Second, "third retry: 1s * 2^3 = 8s"},
+		{4, 16 * time.Second, 16 * time.Second, "fourth retry: 1s * 2^4 = 16s"},
+		{5, 30 * time.Second, 30 * time.Second, "fifth retry: capped at max 30s"},
+		{10, 30 * time.Second, 30 * time.Second, "large retry: capped at max 30s"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			delay := orch.calculateBackoffDelay(tt.attempt)
+
+			if delay < tt.expectedMin || delay > tt.expectedMax {
+				t.Errorf("attempt %d: expected delay between %v and %v, got %v",
+					tt.attempt, tt.expectedMin, tt.expectedMax, delay)
+			}
+		})
+	}
+}
+
+func TestRetryWithCustomConfig(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode:              ModeRoundRobin,
+		MaxTurns:          1,
+		TurnTimeout:       5 * time.Second,
+		ResponseDelay:     10 * time.Millisecond,
+		MaxRetries:        1,
+		RetryInitialDelay: 100 * time.Millisecond,
+		RetryMaxDelay:     1 * time.Second,
+		RetryMultiplier:   3.0,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	// Agent fails once, then succeeds
+	mockAgent := &MockAgent{
+		id:              "custom-retry-agent",
+		name:            "CustomRetryAgent",
+		agentType:       "mock",
+		available:       true,
+		failFirstN:      1,
+		sendMessageResp: "Success on retry",
+	}
+
+	orch.AddAgent(mockAgent)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := orch.Start(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if mockAgent.callCount != 2 {
+		t.Errorf("expected 2 attempts, got %d", mockAgent.callCount)
+	}
+
+	messages := orch.GetMessages()
+	agentMessages := 0
+	for _, msg := range messages {
+		if msg.Role == "agent" {
+			agentMessages++
+		}
+	}
+
+	if agentMessages != 1 {
+		t.Errorf("expected 1 agent message after retry, got %d", agentMessages)
+	}
+}
+
+func TestRetryDefaults(t *testing.T) {
+	config := OrchestratorConfig{
+		Mode: ModeRoundRobin,
+		// Don't set retry configs - should use defaults
+	}
+	orch := NewOrchestrator(config, nil)
+
+	// Check defaults were applied
+	if orch.config.MaxRetries != 3 {
+		t.Errorf("expected default MaxRetries=3, got %d", orch.config.MaxRetries)
+	}
+	if orch.config.RetryInitialDelay != 1*time.Second {
+		t.Errorf("expected default RetryInitialDelay=1s, got %v", orch.config.RetryInitialDelay)
+	}
+	if orch.config.RetryMaxDelay != 30*time.Second {
+		t.Errorf("expected default RetryMaxDelay=30s, got %v", orch.config.RetryMaxDelay)
+	}
+	if orch.config.RetryMultiplier != 2.0 {
+		t.Errorf("expected default RetryMultiplier=2.0, got %v", orch.config.RetryMultiplier)
 	}
 }
