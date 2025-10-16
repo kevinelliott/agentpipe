@@ -200,20 +200,12 @@ func (a *AmpAgent) createThread(ctx context.Context, allMessages, newMessages []
 		}
 	}
 
-	// Log details about what messages we're sending
-	var msgDetails []string
-	for i, msg := range allMessages {
-		msgDetails = append(msgDetails, fmt.Sprintf("%d: AgentID=%s AgentName=%s Role=%s Content=%s...",
-			i, msg.AgentID, msg.AgentName, msg.Role, truncateString(msg.Content, 50)))
-	}
-
 	log.WithFields(map[string]interface{}{
 		"agent_name":        a.Name,
 		"filtered_messages": len(allMessages),
 		"system_messages":   systemMsgCount,
 		"has_custom_prompt": a.Config.Prompt != "",
 		"custom_prompt_len": len(a.Config.Prompt),
-		"message_details":   strings.Join(msgDetails, " | "),
 	}).Info("creating new amp thread with relevant conversation context")
 
 	// Create an empty thread first, then send the initial request as thread continue
@@ -263,7 +255,7 @@ func (a *AmpAgent) createThread(ctx context.Context, allMessages, newMessages []
 		log.WithFields(map[string]interface{}{
 			"agent_name":   a.Name,
 			"prompt_start": prompt[:previewLen],
-		}).Info("amp initial prompt preview")
+		}).Debug("amp initial prompt preview")
 	}
 
 	// Now send the initial request as thread continue
@@ -588,20 +580,9 @@ func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) s
 			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
 				// This is the orchestrator's initial prompt - show it prominently
 				initialPrompt = msg.Content
-				log.WithFields(map[string]interface{}{
-					"agent_name":     a.Name,
-					"extracted_from": fmt.Sprintf("AgentID=%s AgentName=%s", msg.AgentID, msg.AgentName),
-					"prompt_len":     len(initialPrompt),
-				}).Debug("extracted orchestrator initial prompt")
 			} else {
 				// ALL other messages (agent announcements, other system messages, agent responses)
 				otherMessages = append(otherMessages, msg)
-				log.WithFields(map[string]interface{}{
-					"agent_name":    a.Name,
-					"msg_agentid":   msg.AgentID,
-					"msg_agentname": msg.AgentName,
-					"msg_role":      msg.Role,
-				}).Debug("message added to otherMessages (not initial prompt)")
 			}
 		}
 
@@ -660,14 +641,6 @@ func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) s
 	}
 
 	return prompt.String()
-}
-
-// truncateString truncates a string to maxLen characters
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen]
 }
 
 // parseJSONLine parses a single JSON line from amp --stream-json output
