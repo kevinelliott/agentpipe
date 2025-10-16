@@ -140,8 +140,11 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 		"timeout":       cursorStreamTimeout.String(),
 	}).Debug("starting cursor streaming message")
 
-	conversation := c.formatConversation(messages)
-	prompt := c.buildPrompt(conversation)
+	// Filter out this agent's own messages
+	relevantMessages := c.filterRelevantMessages(messages)
+
+	// Build prompt with structured format
+	prompt := c.buildPrompt(relevantMessages, true)
 
 	// Create a context with timeout for streaming
 	// cursor-agent needs more time to respond (typically 10-15 seconds)
@@ -263,19 +266,86 @@ scanLoop:
 	return nil
 }
 
-func (c *CursorAgent) formatConversation(messages []agent.Message) string {
-	parts := make([]string, 0, len(messages))
-
+func (c *CursorAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
+	relevant := make([]agent.Message, 0, len(messages))
 	for _, msg := range messages {
-		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-		parts = append(parts, fmt.Sprintf("[%s] %s: %s", timestamp, msg.AgentName, msg.Content))
+		// Exclude this agent's own messages
+		if msg.AgentName == c.Name || msg.AgentID == c.ID {
+			continue
+		}
+		relevant = append(relevant, msg)
 	}
-
-	return strings.Join(parts, "\n")
+	return relevant
 }
 
-func (c *CursorAgent) buildPrompt(conversation string) string {
-	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
+func (c *CursorAgent) buildPrompt(messages []agent.Message, isInitialSession bool) string {
+	var prompt strings.Builder
+
+	// PART 1: IDENTITY AND ROLE
+	prompt.WriteString("AGENT SETUP:\n")
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n")
+	prompt.WriteString(fmt.Sprintf("You are '%s' participating in a multi-agent conversation.\n\n", c.Name))
+
+	if c.Config.Prompt != "" {
+		prompt.WriteString("YOUR ROLE AND INSTRUCTIONS:\n")
+		prompt.WriteString(c.Config.Prompt)
+		prompt.WriteString("\n\n")
+	}
+
+	// PART 2: CONVERSATION CONTEXT
+	if len(messages) > 0 {
+		var initialPrompt string
+		var otherMessages []agent.Message
+
+		// Find the orchestrator's initial prompt (AgentID="system")
+		// vs agent announcements (system messages from specific agents)
+		for _, msg := range messages {
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+				// This is the orchestrator's initial prompt - show it prominently
+				initialPrompt = msg.Content
+			} else {
+				// ALL other messages (agent announcements, other system messages, agent responses)
+				otherMessages = append(otherMessages, msg)
+			}
+		}
+
+		// PART 2: Show initial topic prominently as DIRECT TASK
+		if initialPrompt != "" {
+			prompt.WriteString("YOUR TASK - PLEASE RESPOND TO THIS:\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n")
+			prompt.WriteString(initialPrompt)
+			prompt.WriteString("\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// PART 3: Show conversation history
+		if len(otherMessages) > 0 {
+			prompt.WriteString("CONVERSATION SO FAR:\n")
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n")
+			for _, msg := range otherMessages {
+				timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+				if msg.Role == "system" {
+					// Agent announcements come through as system messages
+					prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+				} else {
+					prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+				}
+			}
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// Add closing instruction if we showed the initial task
+		if initialPrompt != "" {
+			prompt.WriteString(fmt.Sprintf("Now respond to the task above as %s. Provide a direct, thoughtful answer.\n", c.Name))
+		}
+	}
+
+	return prompt.String()
 }
 
 // parseResultLine checks for a result message which contains the complete response

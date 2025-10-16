@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kevinelliott/agentpipe/pkg/agent"
+	"github.com/kevinelliott/agentpipe/pkg/log"
 )
 
 type GeminiAgent struct {
@@ -23,14 +24,29 @@ func NewGeminiAgent() agent.Agent {
 
 func (g *GeminiAgent) Initialize(config agent.AgentConfig) error {
 	if err := g.BaseAgent.Initialize(config); err != nil {
+		log.WithFields(map[string]interface{}{
+			"agent_id":   config.ID,
+			"agent_name": config.Name,
+		}).WithError(err).Error("gemini agent base initialization failed")
 		return err
 	}
 
 	path, err := exec.LookPath("gemini")
 	if err != nil {
+		log.WithFields(map[string]interface{}{
+			"agent_id":   g.ID,
+			"agent_name": g.Name,
+		}).WithError(err).Error("gemini CLI not found in PATH")
 		return fmt.Errorf("gemini CLI not found: %w", err)
 	}
 	g.execPath = path
+
+	log.WithFields(map[string]interface{}{
+		"agent_id":   g.ID,
+		"agent_name": g.Name,
+		"exec_path":  path,
+		"model":      g.Config.Model,
+	}).Info("gemini agent initialized successfully")
 
 	return nil
 }
@@ -42,8 +58,11 @@ func (g *GeminiAgent) IsAvailable() bool {
 
 func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 	if g.execPath == "" {
+		log.WithField("agent_name", g.Name).Error("gemini health check failed: not initialized")
 		return fmt.Errorf("gemini CLI not initialized")
 	}
+
+	log.WithField("agent_name", g.Name).Debug("starting gemini health check")
 
 	// Gemini takes longer to start, so we'll just check if the binary exists
 	// and can show help/version info
@@ -53,8 +72,10 @@ func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 	if err != nil {
 		// Gemini might be interactive and not support --help well
 		// Just check if we can execute it at all
+		log.WithField("agent_name", g.Name).Debug("--help check failed, trying --version")
 		testCmd := exec.Command(g.execPath, "--version")
 		if err := testCmd.Start(); err != nil {
+			log.WithField("agent_name", g.Name).WithError(err).Error("gemini health check failed: CLI not responding")
 			return fmt.Errorf("gemini CLI cannot be executed: %w", err)
 		}
 		// Kill the process if it's still running
@@ -63,14 +84,17 @@ func (g *GeminiAgent) HealthCheck(ctx context.Context) error {
 			_ = testCmd.Wait() // Clean up the process
 		}
 		// If we can start it, consider it healthy
+		log.WithField("agent_name", g.Name).Info("gemini health check passed")
 		return nil
 	}
 
 	// Check if output looks like gemini help
 	if len(output) < 50 {
+		log.WithField("agent_name", g.Name).Error("gemini health check failed: suspiciously short help output")
 		return fmt.Errorf("gemini CLI returned suspiciously short help output")
 	}
 
+	log.WithField("agent_name", g.Name).Info("gemini health check passed")
 	return nil
 }
 
@@ -79,10 +103,18 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 		return "", nil
 	}
 
-	conversation := g.formatConversation(messages)
-	prompt := g.buildPrompt(conversation)
+	log.WithFields(map[string]interface{}{
+		"agent_name":    g.Name,
+		"message_count": len(messages),
+	}).Debug("sending message to gemini CLI")
 
-	// Gemini CLI expects the prompt as a positional argument after any flags
+	// Filter out this agent's own messages
+	relevantMessages := g.filterRelevantMessages(messages)
+
+	// Build prompt with structured format
+	prompt := g.buildPrompt(relevantMessages, true)
+
+	// Build command args
 	args := []string{}
 
 	// Add model flag if specified
@@ -90,19 +122,30 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 		args = append(args, "--model", g.Config.Model)
 	}
 
-	// Add the prompt as the last argument
-	args = append(args, prompt)
-
+	// Use stdin for the prompt to avoid terminal detection issues
 	cmd := exec.CommandContext(ctx, g.execPath, args...)
+	cmd.Stdin = strings.NewReader(prompt)
 
+	startTime := time.Now()
 	output, err := cmd.CombinedOutput()
+	duration := time.Since(startTime)
+
 	if err != nil {
 		// Check for specific error patterns
 		outputStr := string(output)
 		if strings.Contains(outputStr, "404") || strings.Contains(outputStr, "NOT_FOUND") {
+			log.WithFields(map[string]interface{}{
+				"agent_name": g.Name,
+				"model":      g.Config.Model,
+				"duration":   duration.String(),
+			}).WithError(err).Error("gemini model not found")
 			return "", fmt.Errorf("gemini model not found - check model name in config: %s", g.Config.Model)
 		}
 		if strings.Contains(outputStr, "401") || strings.Contains(outputStr, "UNAUTHENTICATED") {
+			log.WithFields(map[string]interface{}{
+				"agent_name": g.Name,
+				"duration":   duration.String(),
+			}).WithError(err).Error("gemini authentication failed")
 			return "", fmt.Errorf("gemini authentication failed - check API keys")
 		}
 
@@ -113,12 +156,26 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 				if start := strings.Index(outputStr, `"message":`); start != -1 {
 					if end := strings.Index(outputStr[start:], `",`); end != -1 {
 						errMsg := outputStr[start+11 : start+end-1]
+						log.WithFields(map[string]interface{}{
+							"agent_name": g.Name,
+							"duration":   duration.String(),
+							"error_msg":  errMsg,
+						}).Error("gemini API error")
 						return "", fmt.Errorf("gemini API error: %s", errMsg)
 					}
 				}
 			}
+			log.WithFields(map[string]interface{}{
+				"agent_name": g.Name,
+				"exit_code":  exitErr.ExitCode(),
+				"duration":   duration.String(),
+			}).WithError(err).Error("gemini execution failed with exit code")
 			return "", fmt.Errorf("gemini execution failed (exit code %d): %s", exitErr.ExitCode(), outputStr)
 		}
+		log.WithFields(map[string]interface{}{
+			"agent_name": g.Name,
+			"duration":   duration.String(),
+		}).WithError(err).Error("gemini execution failed")
 		return "", fmt.Errorf("gemini execution failed: %w\nOutput: %s", err, outputStr)
 	}
 
@@ -138,6 +195,12 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 		cleanedLines = append(cleanedLines, line)
 	}
 
+	log.WithFields(map[string]interface{}{
+		"agent_name":    g.Name,
+		"duration":      duration.String(),
+		"response_size": len(output),
+	}).Info("gemini message sent successfully")
+
 	return strings.TrimSpace(strings.Join(cleanedLines, "\n")), nil
 }
 
@@ -146,14 +209,20 @@ func (g *GeminiAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 		return nil
 	}
 
-	conversation := g.formatConversation(messages)
-	prompt := g.buildPrompt(conversation)
+	// Filter out this agent's own messages
+	relevantMessages := g.filterRelevantMessages(messages)
+
+	// Build prompt with structured format
+	prompt := g.buildPrompt(relevantMessages, true)
+
+	// Build command with model flag if specified
+	args := []string{}
+	if g.Config.Model != "" {
+		args = append(args, "--model", g.Config.Model)
+	}
 
 	// Use stdin for the prompt
-	cmd := exec.CommandContext(ctx, g.execPath)
-	if g.Config.Model != "" {
-		cmd = exec.CommandContext(ctx, g.execPath, "--model", g.Config.Model)
-	}
+	cmd := exec.CommandContext(ctx, g.execPath, args...)
 	cmd.Stdin = strings.NewReader(prompt)
 
 	stdout, err := cmd.StdoutPipe()
@@ -188,19 +257,86 @@ func (g *GeminiAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	return nil
 }
 
-func (g *GeminiAgent) formatConversation(messages []agent.Message) string {
-	parts := make([]string, 0, len(messages))
-
+func (g *GeminiAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
+	relevant := make([]agent.Message, 0, len(messages))
 	for _, msg := range messages {
-		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-		parts = append(parts, fmt.Sprintf("[%s] %s: %s", timestamp, msg.AgentName, msg.Content))
+		// Exclude this agent's own messages
+		if msg.AgentName == g.Name || msg.AgentID == g.ID {
+			continue
+		}
+		relevant = append(relevant, msg)
 	}
-
-	return strings.Join(parts, "\n")
+	return relevant
 }
 
-func (g *GeminiAgent) buildPrompt(conversation string) string {
-	return BuildAgentPrompt(g.Name, g.Config.Prompt, conversation)
+func (g *GeminiAgent) buildPrompt(messages []agent.Message, isInitialSession bool) string {
+	var prompt strings.Builder
+
+	// PART 1: IDENTITY AND ROLE
+	prompt.WriteString("AGENT SETUP:\n")
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n")
+	prompt.WriteString(fmt.Sprintf("You are '%s' participating in a multi-agent conversation.\n\n", g.Name))
+
+	if g.Config.Prompt != "" {
+		prompt.WriteString("YOUR ROLE AND INSTRUCTIONS:\n")
+		prompt.WriteString(g.Config.Prompt)
+		prompt.WriteString("\n\n")
+	}
+
+	// PART 2: CONVERSATION CONTEXT
+	if len(messages) > 0 {
+		var initialPrompt string
+		var otherMessages []agent.Message
+
+		// Find the orchestrator's initial prompt (AgentID="system")
+		// vs agent announcements (system messages from specific agents)
+		for _, msg := range messages {
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+				// This is the orchestrator's initial prompt - show it prominently
+				initialPrompt = msg.Content
+			} else {
+				// ALL other messages (agent announcements, other system messages, agent responses)
+				otherMessages = append(otherMessages, msg)
+			}
+		}
+
+		// PART 2: Show initial topic prominently as DIRECT TASK
+		if initialPrompt != "" {
+			prompt.WriteString("YOUR TASK - PLEASE RESPOND TO THIS:\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n")
+			prompt.WriteString(initialPrompt)
+			prompt.WriteString("\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// PART 3: Show conversation history
+		if len(otherMessages) > 0 {
+			prompt.WriteString("CONVERSATION SO FAR:\n")
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n")
+			for _, msg := range otherMessages {
+				timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+				if msg.Role == "system" {
+					// Agent announcements come through as system messages
+					prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+				} else {
+					prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+				}
+			}
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// Add closing instruction if we showed the initial task
+		if initialPrompt != "" {
+			prompt.WriteString(fmt.Sprintf("Now respond to the task above as %s. Provide a direct, thoughtful answer.\n", g.Name))
+		}
+	}
+
+	return prompt.String()
 }
 
 func init() {

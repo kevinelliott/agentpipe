@@ -535,18 +535,6 @@ scanLoop:
 	return nil
 }
 
-// formatConversation formats the conversation history for Amp
-func (a *AmpAgent) formatConversation(messages []agent.Message) string {
-	parts := make([]string, 0, len(messages))
-
-	for _, msg := range messages {
-		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-		parts = append(parts, fmt.Sprintf("[%s] %s: %s", timestamp, msg.AgentName, msg.Content))
-	}
-
-	return strings.Join(parts, "\n")
-}
-
 // buildPrompt creates the final prompt for Amp with explicit context
 // For initial threads, we need to send setup BEFORE conversation to avoid confusion
 func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) string {

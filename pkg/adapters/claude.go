@@ -221,17 +221,6 @@ func (c *ClaudeAgent) filterRelevantMessages(messages []agent.Message) []agent.M
 	return relevant
 }
 
-func (c *ClaudeAgent) formatConversation(messages []agent.Message) string {
-	parts := make([]string, 0, len(messages))
-
-	for _, msg := range messages {
-		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-		parts = append(parts, fmt.Sprintf("[%s] %s: %s", timestamp, msg.AgentName, msg.Content))
-	}
-
-	return strings.Join(parts, "\n")
-}
-
 func (c *ClaudeAgent) buildPrompt(messages []agent.Message, isInitialSession bool) string {
 	var prompt strings.Builder
 
