@@ -267,9 +267,9 @@ func (c *ClaudeAgent) buildPrompt(messages []agent.Message, isInitialSession boo
 			}
 		}
 
-		// Show the initial topic/prompt VERY prominently
+		// Show the initial prompt as a DIRECT INSTRUCTION
 		if initialPrompt != "" {
-			prompt.WriteString("CONVERSATION TOPIC:\n")
+			prompt.WriteString("YOUR TASK - PLEASE RESPOND TO THIS:\n")
 			prompt.WriteString(strings.Repeat("=", 60))
 			prompt.WriteString("\n")
 			prompt.WriteString(initialPrompt)
@@ -296,7 +296,11 @@ func (c *ClaudeAgent) buildPrompt(messages []agent.Message, isInitialSession boo
 			prompt.WriteString("\n\n")
 		}
 
-		prompt.WriteString(fmt.Sprintf("Now, as %s, respond to this conversation...", c.Name))
+		if initialPrompt != "" {
+			prompt.WriteString(fmt.Sprintf("Now respond to the task above as %s. Provide a direct, thoughtful answer.", c.Name))
+		} else {
+			prompt.WriteString(fmt.Sprintf("Now, as %s, respond to the conversation.", c.Name))
+		}
 	}
 
 	return prompt.String()
