@@ -65,6 +65,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Correctly distinguishes between orchestrator messages (AgentID="system") and agent announcements
   - Agent announcements are system messages from specific agents, not the conversation topic
   - All agents now receive the orchestrator's initial prompt in the "YOUR TASK" section
+- **Codex Non-Interactive Mode**: Fixed terminal compatibility errors with Codex agent
+  - Uses `codex exec` subcommand for non-interactive execution
+  - Parses JSON output to extract agent messages cleanly
+  - Automatically bypasses approval prompts with safety flags
+  - No more "stdout is not a terminal" errors in multi-agent conversations
+- **Standardized All Adapters**: Applied consistent interaction pattern across all 7 adapters
+  - All adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qwen) now use identical:
+    - Three-part structured prompts (Setup → Task → History)
+    - Message filtering to exclude agent's own messages
+    - Comprehensive structured logging with timing and metrics
+    - Proper error handling with specific error detection
+  - Ensures reliable, consistent behavior across all agent types
 
 ## [v0.0.16] - 2025-10-15
 

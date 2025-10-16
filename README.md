@@ -16,14 +16,16 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## Supported AI Agents
 
-- ✅ **Amp** (Sourcegraph) - Advanced coding agent with autonomous reasoning
+All agents now use a **standardized interaction pattern** with structured three-part prompts, message filtering, and comprehensive logging for reliable multi-agent conversations.
+
+- ✅ **Amp** (Sourcegraph) - Advanced coding agent with autonomous reasoning ⚡ **Thread-optimized**
 - ✅ **Claude** (Anthropic) - Advanced reasoning and coding
+- ✅ **Codex** (OpenAI) - Code generation specialist (non-interactive exec mode)
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Gemini** (Google) - Multimodal understanding
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
-- ✅ **Codex** (OpenAI) - Code generation specialist
-- ✅ **Ollama** - Local LLM support
+- ✅ **Ollama** - Local LLM support (planned)
 
 ## Features
 
@@ -135,7 +137,10 @@ AgentPipe requires at least one AI CLI tool to be installed:
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
 - [Qwen CLI](https://github.com/QwenLM/qwen-code) - `qwen`
 - [Codex CLI](https://github.com/openai/codex-cli) - `codex`
-- [Ollama](https://github.com/ollama/ollama) - `ollama`
+  - Uses `codex exec` subcommand for non-interactive mode
+  - Automatically bypasses approval prompts for multi-agent conversations
+  - ⚠️ For development/testing only - not recommended for production use
+- [Ollama](https://github.com/ollama/ollama) - `ollama` (planned)
 
 Check which agents are available on your system:
 
@@ -503,19 +508,221 @@ agentpipe/
 
 ### Adding New Agent Types
 
-1. Create a new adapter in `pkg/adapters/`
-2. Implement the `Agent` interface
-3. Register the factory in `init()`
+When creating a new agent adapter, follow the standardized pattern for consistency:
+
+1. **Create adapter structure** in `pkg/adapters/`:
 
 ```go
+package adapters
+
+import (
+    "context"
+    "fmt"
+    "os/exec"
+    "strings"
+    "time"
+
+    "github.com/kevinelliott/agentpipe/pkg/agent"
+    "github.com/kevinelliott/agentpipe/pkg/log"
+)
+
 type MyAgent struct {
     agent.BaseAgent
+    execPath string
 }
 
+func NewMyAgent() agent.Agent {
+    return &MyAgent{}
+}
+```
+
+2. **Implement required methods** with structured logging:
+
+```go
+func (m *MyAgent) Initialize(config agent.AgentConfig) error {
+    if err := m.BaseAgent.Initialize(config); err != nil {
+        log.WithFields(map[string]interface{}{
+            "agent_id":   config.ID,
+            "agent_name": config.Name,
+        }).WithError(err).Error("myagent base initialization failed")
+        return err
+    }
+
+    path, err := exec.LookPath("myagent")
+    if err != nil {
+        log.WithFields(map[string]interface{}{
+            "agent_id":   m.ID,
+            "agent_name": m.Name,
+        }).WithError(err).Error("myagent CLI not found in PATH")
+        return fmt.Errorf("myagent CLI not found: %w", err)
+    }
+    m.execPath = path
+
+    log.WithFields(map[string]interface{}{
+        "agent_id":   m.ID,
+        "agent_name": m.Name,
+        "exec_path":  path,
+        "model":      m.Config.Model,
+    }).Info("myagent initialized successfully")
+
+    return nil
+}
+
+func (m *MyAgent) IsAvailable() bool {
+    _, err := exec.LookPath("myagent")
+    return err == nil
+}
+
+func (m *MyAgent) HealthCheck(ctx context.Context) error {
+    // Check if CLI is responsive
+    cmd := exec.CommandContext(ctx, m.execPath, "--version")
+    output, err := cmd.CombinedOutput()
+    // ... error handling with logging
+    return nil
+}
+```
+
+3. **Implement message filtering**:
+
+```go
+func (m *MyAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
+    relevant := make([]agent.Message, 0, len(messages))
+    for _, msg := range messages {
+        // Exclude this agent's own messages
+        if msg.AgentName == m.Name || msg.AgentID == m.ID {
+            continue
+        }
+        relevant = append(relevant, msg)
+    }
+    return relevant
+}
+```
+
+4. **Implement structured prompt building**:
+
+```go
+func (m *MyAgent) buildPrompt(messages []agent.Message, isInitialSession bool) string {
+    var prompt strings.Builder
+
+    // PART 1: IDENTITY AND ROLE
+    prompt.WriteString("AGENT SETUP:\n")
+    prompt.WriteString(strings.Repeat("=", 60))
+    prompt.WriteString("\n")
+    prompt.WriteString(fmt.Sprintf("You are '%s' participating in a multi-agent conversation.\n\n", m.Name))
+
+    if m.Config.Prompt != "" {
+        prompt.WriteString("YOUR ROLE AND INSTRUCTIONS:\n")
+        prompt.WriteString(m.Config.Prompt)
+        prompt.WriteString("\n\n")
+    }
+
+    // PART 2: CONVERSATION CONTEXT
+    if len(messages) > 0 {
+        var initialPrompt string
+        var otherMessages []agent.Message
+
+        // Find orchestrator's initial prompt vs agent announcements
+        for _, msg := range messages {
+            if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+                initialPrompt = msg.Content
+            } else {
+                otherMessages = append(otherMessages, msg)
+            }
+        }
+
+        // Show initial task prominently
+        if initialPrompt != "" {
+            prompt.WriteString("YOUR TASK - PLEASE RESPOND TO THIS:\n")
+            prompt.WriteString(strings.Repeat("=", 60))
+            prompt.WriteString("\n")
+            prompt.WriteString(initialPrompt)
+            prompt.WriteString("\n")
+            prompt.WriteString(strings.Repeat("=", 60))
+            prompt.WriteString("\n\n")
+        }
+
+        // Show conversation history
+        if len(otherMessages) > 0 {
+            prompt.WriteString("CONVERSATION SO FAR:\n")
+            prompt.WriteString(strings.Repeat("-", 60))
+            prompt.WriteString("\n")
+            for _, msg := range otherMessages {
+                timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+                if msg.Role == "system" {
+                    prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+                } else {
+                    prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+                }
+            }
+            prompt.WriteString(strings.Repeat("-", 60))
+            prompt.WriteString("\n\n")
+        }
+
+        if initialPrompt != "" {
+            prompt.WriteString(fmt.Sprintf("Now respond to the task above as %s. Provide a direct, thoughtful answer.\n", m.Name))
+        }
+    }
+
+    return prompt.String()
+}
+```
+
+5. **Implement SendMessage with timing and logging**:
+
+```go
+func (m *MyAgent) SendMessage(ctx context.Context, messages []agent.Message) (string, error) {
+    if len(messages) == 0 {
+        return "", nil
+    }
+
+    log.WithFields(map[string]interface{}{
+        "agent_name":    m.Name,
+        "message_count": len(messages),
+    }).Debug("sending message to myagent CLI")
+
+    // Filter and build prompt
+    relevantMessages := m.filterRelevantMessages(messages)
+    prompt := m.buildPrompt(relevantMessages, true)
+
+    // Execute CLI command (use stdin when possible)
+    cmd := exec.CommandContext(ctx, m.execPath)
+    cmd.Stdin = strings.NewReader(prompt)
+
+    startTime := time.Now()
+    output, err := cmd.CombinedOutput()
+    duration := time.Since(startTime)
+
+    if err != nil {
+        log.WithFields(map[string]interface{}{
+            "agent_name": m.Name,
+            "duration":   duration.String(),
+        }).WithError(err).Error("myagent execution failed")
+        return "", fmt.Errorf("myagent execution failed: %w", err)
+    }
+
+    log.WithFields(map[string]interface{}{
+        "agent_name":    m.Name,
+        "duration":      duration.String(),
+        "response_size": len(output),
+    }).Info("myagent message sent successfully")
+
+    return strings.TrimSpace(string(output)), nil
+}
+```
+
+6. **Register the factory**:
+
+```go
 func init() {
     agent.RegisterFactory("myagent", NewMyAgent)
 }
 ```
+
+**See existing adapters** in `pkg/adapters/` for complete reference implementations:
+- `claude.go` - Simple stdin-based pattern
+- `codex.go` - Non-interactive exec mode with flags
+- `amp.go` - Advanced thread management pattern
+- `cursor.go` - JSON stream parsing pattern
 
 ## Advanced Features
 
@@ -558,6 +765,68 @@ agents:
 ```
 
 See `examples/amp-coding.yaml` for a complete example.
+
+### Standardized Agent Interaction Pattern
+
+All AgentPipe adapters now implement a **consistent, reliable interaction pattern** that ensures agents properly understand and respond to conversation context:
+
+**Three-Part Structured Prompts:**
+
+Every agent receives prompts in the same clear, structured format:
+
+```
+PART 1: AGENT SETUP
+============================================================
+You are 'AgentName' participating in a multi-agent conversation.
+
+YOUR ROLE AND INSTRUCTIONS:
+<your custom prompt from config>
+============================================================
+
+PART 2: YOUR TASK - PLEASE RESPOND TO THIS
+============================================================
+<orchestrator's initial prompt - the conversation topic>
+============================================================
+
+PART 3: CONVERSATION SO FAR
+------------------------------------------------------------
+[timestamp] AgentName: message content
+[timestamp] SYSTEM: system announcement
+...
+------------------------------------------------------------
+
+Now respond to the task above as AgentName. Provide a direct, thoughtful answer.
+```
+
+**Key Features:**
+
+1. **Message Filtering**: Each agent automatically filters out its own previous messages to avoid redundancy
+2. **Directive Instructions**: Clear "YOUR TASK - PLEASE RESPOND TO THIS" header ensures agents understand what to do
+3. **Context Separation**: System messages are clearly labeled and separated from agent messages
+4. **Consistent Structure**: All 7 adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qwen) use identical patterns
+5. **Structured Logging**: Comprehensive debug logging with timing, message counts, and prompt previews
+
+**Benefits:**
+
+- ✅ **Immediate Engagement**: Agents respond directly to prompts instead of asking "what would you like help with?"
+- ✅ **Reduced Confusion**: Clear separation between setup, task, and conversation history
+- ✅ **Better Debugging**: Detailed logs show exactly what each agent receives
+- ✅ **Reliable Responses**: Standardized approach works consistently across all agent types
+- ✅ **Cost Efficiency**: Message filtering eliminates redundant data transfer
+
+**Implementation Details:**
+
+Each adapter implements:
+- `filterRelevantMessages()` - Excludes agent's own messages
+- `buildPrompt()` - Creates structured three-part prompts
+- Comprehensive error handling with specific error detection
+- Timing and metrics for all operations
+
+This pattern evolved from extensive testing with multi-agent conversations and addresses common issues like:
+- Agents not receiving the initial conversation topic
+- Agents treating prompts as passive context rather than direct instructions
+- Redundant message delivery increasing API costs
+- Inconsistent behavior across different agent types
 
 ### Prometheus Metrics & Monitoring
 
@@ -726,6 +995,15 @@ The Cursor CLI (`cursor-agent`) has some unique characteristics:
 - **Process Management**: cursor-agent doesn't exit naturally; AgentPipe manages process termination
 - **Check Status**: Run `cursor-agent status` to verify authentication
 - **Timeout Errors**: If you see timeout errors, ensure you're authenticated and have a stable internet connection
+
+### Codex CLI Specific Issues
+The Codex CLI requires non-interactive exec mode for multi-agent conversations:
+- **Non-Interactive Mode**: AgentPipe uses `codex exec` subcommand automatically
+- **JSON Output**: Responses are parsed from JSON format to extract agent messages
+- **Approval Bypass**: Uses `--dangerously-bypass-approvals-and-sandbox` flag for automated execution
+- **Important**: This is designed for development/testing environments only
+- **Security Note**: Never use with untrusted prompts or in production without proper sandboxing
+- Check status: `codex --help` to verify installation and available commands
 
 ### Qwen Code CLI Issues
 The Qwen Code CLI uses a different interface than other agents:

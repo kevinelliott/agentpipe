@@ -3,6 +3,7 @@ package adapters
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
@@ -176,7 +177,9 @@ func (c *CodexAgent) SendMessage(ctx context.Context, messages []agent.Message) 
 		"response_size": len(output),
 	}).Info("codex message sent successfully")
 
-	return strings.TrimSpace(string(output)), nil
+	// Parse JSON output and extract agent message
+	response := c.parseJSONOutput(string(output))
+	return strings.TrimSpace(response), nil
 }
 
 func (c *CodexAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
@@ -316,6 +319,56 @@ func (c *CodexAgent) StreamMessage(ctx context.Context, messages []agent.Message
 	}
 
 	return nil
+}
+
+// parseJSONOutput parses Codex's JSON output and extracts the agent message text
+func (c *CodexAgent) parseJSONOutput(output string) string {
+	// Codex --json mode outputs multiple JSON lines
+	// We need to find item.completed events with type="agent_message"
+	lines := strings.Split(output, "\n")
+	var messageText strings.Builder
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Try to parse as JSON
+		var event struct {
+			Type string `json:"type"`
+			Item struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"item"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			// If it's not JSON, it might be plain text - include it
+			if !strings.HasPrefix(line, "{") {
+				if messageText.Len() > 0 {
+					messageText.WriteString("\n")
+				}
+				messageText.WriteString(line)
+			}
+			continue
+		}
+
+		// Extract agent_message text
+		if event.Type == "item.completed" && event.Item.Type == "agent_message" {
+			if messageText.Len() > 0 {
+				messageText.WriteString("\n\n")
+			}
+			messageText.WriteString(event.Item.Text)
+		}
+	}
+
+	// If we didn't find any agent_message items, return the raw output
+	if messageText.Len() == 0 {
+		return output
+	}
+
+	return messageText.String()
 }
 
 func init() {
