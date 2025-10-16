@@ -82,12 +82,20 @@ type errMsg struct {
 }
 
 func Run(ctx context.Context, cfg *config.Config, agents []agent.Agent) error {
+	searchInput := textinput.New()
+	searchInput.Placeholder = "Search messages..."
+	searchInput.CharLimit = 100
+
 	m := Model{
-		ctx:      ctx,
-		config:   cfg,
-		agents:   agents,
-		messages: make([]agent.Message, 0),
-		running:  false,
+		ctx:                ctx,
+		config:             cfg,
+		agents:             agents,
+		messages:           make([]agent.Message, 0),
+		running:            false,
+		searchInput:        searchInput,
+		searchMode:         false,
+		searchResults:      make([]int, 0),
+		currentSearchIndex: -1,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -107,9 +115,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle search mode keys
+		if m.searchMode {
+			switch msg.Type {
+			case tea.KeyEsc:
+				// Exit search mode
+				m.searchMode = false
+				m.searchInput.SetValue("")
+				m.searchResults = make([]int, 0)
+				m.currentSearchIndex = -1
+				return m, nil
+			case tea.KeyEnter:
+				// Perform search
+				m.performSearch()
+				return m, nil
+			default:
+				// Handle other keys in search input
+				switch msg.String() {
+				case "n":
+					// Next search result
+					if len(m.searchResults) > 0 {
+						m.currentSearchIndex = (m.currentSearchIndex + 1) % len(m.searchResults)
+						m.scrollToSearchResult()
+					}
+					return m, nil
+				case "N":
+					// Previous search result
+					if len(m.searchResults) > 0 {
+						m.currentSearchIndex--
+						if m.currentSearchIndex < 0 {
+							m.currentSearchIndex = len(m.searchResults) - 1
+						}
+						m.scrollToSearchResult()
+					}
+					return m, nil
+				default:
+					// Update search input
+					var cmd tea.Cmd
+					m.searchInput, cmd = m.searchInput.Update(msg)
+					return m, cmd
+				}
+			}
+		}
+
+		// Handle normal mode keys
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return m, tea.Quit
+		case tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyCtrlF:
+			// Enter search mode (only if ready)
+			if m.ready {
+				m.searchMode = true
+				// Don't call Focus() to avoid cursor initialization issues in tests
+				// The searchMode flag will route events to searchInput
+				return m, nil
+			}
 		case tea.KeyCtrlS:
 			if !m.running {
 				m.running = true
@@ -133,6 +195,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ta.SetWidth(msg.Width - 4)
 			ta.SetHeight(3)
 			m.textarea = ta
+
+			// Initialize search input
+			searchInput := textinput.New()
+			searchInput.Placeholder = "Search messages..."
+			searchInput.CharLimit = 100
+			// Initialize the internal cursor by updating with a dummy message
+			searchInput, _ = searchInput.Update(nil)
+			m.searchInput = searchInput
+
+			// Initialize search state if not already set
+			if m.searchResults == nil {
+				m.searchResults = make([]int, 0)
+			}
+			if m.currentSearchIndex == 0 {
+				m.currentSearchIndex = -1
+			}
 
 			m.ready = true
 		} else {
@@ -188,8 +266,20 @@ func (m Model) View() string {
 	b.WriteString(statusStyle.Render(status))
 	b.WriteString("\n")
 
-	help := helpStyle.Render("Ctrl+C: Quit | Ctrl+S: Start | Ctrl+P: Pause/Resume | ↑↓: Scroll")
+	help := helpStyle.Render("Ctrl+C: Quit | Ctrl+S: Start | Ctrl+P: Pause/Resume | Ctrl+F: Search | ↑↓: Scroll")
 	b.WriteString(help)
+
+	// Show search bar when in search mode
+	if m.searchMode {
+		b.WriteString("\n")
+		searchBar := searchStyle.Render("Search: ") + m.searchInput.View()
+		if len(m.searchResults) > 0 {
+			searchBar += fmt.Sprintf(" (%d/%d matches, n/N to navigate)", m.currentSearchIndex+1, len(m.searchResults))
+		} else if m.searchInput.Value() != "" {
+			searchBar += " (no matches)"
+		}
+		b.WriteString(searchBar)
+	}
 
 	if m.err != nil {
 		b.WriteString("\n")
@@ -223,6 +313,64 @@ func (m Model) renderMessages() string {
 	}
 
 	return b.String()
+}
+
+// performSearch searches through messages for the search term
+func (m *Model) performSearch() {
+	searchTerm := strings.ToLower(m.searchInput.Value())
+	if searchTerm == "" {
+		m.searchResults = make([]int, 0)
+		m.currentSearchIndex = -1
+		return
+	}
+
+	// Clear previous results
+	m.searchResults = make([]int, 0)
+
+	// Search through all messages
+	for i, msg := range m.messages {
+		// Search in message content and agent name
+		if strings.Contains(strings.ToLower(msg.Content), searchTerm) ||
+			strings.Contains(strings.ToLower(msg.AgentName), searchTerm) {
+			m.searchResults = append(m.searchResults, i)
+		}
+	}
+
+	// Set current index to first result if any found
+	if len(m.searchResults) > 0 {
+		m.currentSearchIndex = 0
+		m.scrollToSearchResult()
+	} else {
+		m.currentSearchIndex = -1
+	}
+}
+
+// scrollToSearchResult scrolls the viewport to show the current search result
+func (m *Model) scrollToSearchResult() {
+	if m.currentSearchIndex < 0 || m.currentSearchIndex >= len(m.searchResults) {
+		return
+	}
+
+	// Get the message index
+	msgIndex := m.searchResults[m.currentSearchIndex]
+
+	// Calculate approximate line position
+	// Each message takes roughly 4 lines (timestamp line + content + blank line + separator)
+	linePos := msgIndex * 4
+
+	// Scroll viewport to show this message
+	// Try to position it in the middle of the viewport
+	targetLine := linePos - (m.viewport.Height / 2)
+	if targetLine < 0 {
+		targetLine = 0
+	}
+
+	// Calculate the percentage position
+	totalLines := len(m.messages) * 4
+	if totalLines > 0 {
+		percent := float64(targetLine) / float64(totalLines)
+		m.viewport.SetYOffset(int(percent * float64(m.viewport.TotalLineCount())))
+	}
 }
 
 func (m Model) startConversation() tea.Cmd {

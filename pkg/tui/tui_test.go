@@ -405,7 +405,215 @@ func TestModel_StartConversation(t *testing.T) {
 	}
 }
 
-// TestModel_MultiplePanelUpdates tests sequential updates
+// TestModel_SearchMode tests entering and exiting search mode
+func TestModel_SearchMode(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		messages: make([]agent.Message, 0),
+		ready:    true,
+	}
+
+	// Initialize with window size to set up search input
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Add some test messages
+	m.messages = []agent.Message{
+		{AgentName: "Agent1", Content: "Hello world", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent2", Content: "Testing search", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent3", Content: "Another message", Role: "agent", Timestamp: time.Now().Unix()},
+	}
+
+	// Test entering search mode with Ctrl+F
+	keyMsg := tea.KeyMsg{Type: tea.KeyCtrlF}
+	newModel, _ := m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if !m.searchMode {
+		t.Error("Expected search mode to be enabled after Ctrl+F")
+	}
+
+	// Test exiting search mode with Esc
+	keyMsg = tea.KeyMsg{Type: tea.KeyEsc}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.searchMode {
+		t.Error("Expected search mode to be disabled after Esc")
+	}
+	if m.searchInput.Value() != "" {
+		t.Error("Expected search input to be cleared after Esc")
+	}
+}
+
+func TestModel_PerformSearch(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:        context.Background(),
+		config:     cfg,
+		messages:   make([]agent.Message, 0),
+		ready:      true,
+		searchMode: true,
+	}
+
+	// Initialize with window size to set up search input
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+	m.searchMode = true // Re-enable search mode after window size update
+
+	// Add test messages
+	m.messages = []agent.Message{
+		{AgentName: "Agent1", Content: "Hello world", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent2", Content: "Testing search", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent3", Content: "Another message", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent1", Content: "Hello again", Role: "agent", Timestamp: time.Now().Unix()},
+	}
+
+	tests := []struct {
+		name          string
+		searchTerm    string
+		expectedCount int
+		expectedFirst int
+	}{
+		{
+			name:          "Search for 'hello'",
+			searchTerm:    "hello",
+			expectedCount: 2,
+			expectedFirst: 0,
+		},
+		{
+			name:          "Search for 'search'",
+			searchTerm:    "search",
+			expectedCount: 1,
+			expectedFirst: 1,
+		},
+		{
+			name:          "Search for 'Agent1'",
+			searchTerm:    "Agent1",
+			expectedCount: 2,
+			expectedFirst: 0,
+		},
+		{
+			name:          "Search for non-existent term",
+			searchTerm:    "xyz123",
+			expectedCount: 0,
+			expectedFirst: -1,
+		},
+		{
+			name:          "Empty search",
+			searchTerm:    "",
+			expectedCount: 0,
+			expectedFirst: -1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m.searchInput.SetValue(tt.searchTerm)
+			m.performSearch()
+
+			if len(m.searchResults) != tt.expectedCount {
+				t.Errorf("Expected %d search results, got %d", tt.expectedCount, len(m.searchResults))
+			}
+
+			if tt.expectedCount > 0 {
+				if m.currentSearchIndex != 0 {
+					t.Errorf("Expected currentSearchIndex to be 0, got %d", m.currentSearchIndex)
+				}
+				if m.searchResults[0] != tt.expectedFirst {
+					t.Errorf("Expected first result at index %d, got %d", tt.expectedFirst, m.searchResults[0])
+				}
+			} else {
+				if m.currentSearchIndex != -1 {
+					t.Errorf("Expected currentSearchIndex to be -1 when no results, got %d", m.currentSearchIndex)
+				}
+			}
+		})
+	}
+}
+
+func TestModel_SearchNavigation(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:        context.Background(),
+		config:     cfg,
+		messages:   make([]agent.Message, 0),
+		ready:      true,
+		searchMode: true,
+	}
+
+	// Initialize with window size to set up search input
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+	m.searchMode = true // Re-enable search mode after window size update
+
+	// Add test messages with multiple matches
+	m.messages = []agent.Message{
+		{AgentName: "Agent1", Content: "test message 1", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent2", Content: "test message 2", Role: "agent", Timestamp: time.Now().Unix()},
+		{AgentName: "Agent3", Content: "test message 3", Role: "agent", Timestamp: time.Now().Unix()},
+	}
+
+	// Perform search
+	m.searchInput.SetValue("test")
+	m.performSearch()
+
+	if len(m.searchResults) != 3 {
+		t.Fatalf("Expected 3 search results, got %d", len(m.searchResults))
+	}
+	if m.currentSearchIndex != 0 {
+		t.Fatalf("Expected initial index 0, got %d", m.currentSearchIndex)
+	}
+
+	// Test next navigation (n key)
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newModel, _ := m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.currentSearchIndex != 1 {
+		t.Errorf("Expected index 1 after 'n', got %d", m.currentSearchIndex)
+	}
+
+	// Test next again
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.currentSearchIndex != 2 {
+		t.Errorf("Expected index 2 after second 'n', got %d", m.currentSearchIndex)
+	}
+
+	// Test wrapping (should go back to 0)
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.currentSearchIndex != 0 {
+		t.Errorf("Expected index 0 after wrap, got %d", m.currentSearchIndex)
+	}
+
+	// Test previous navigation (N key)
+	keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.currentSearchIndex != 2 {
+		t.Errorf("Expected index 2 after 'N' from 0 (reverse wrap), got %d", m.currentSearchIndex)
+	}
+}
+
 func TestModel_MultiplePanelUpdates(t *testing.T) {
 	cfg := &config.Config{
 		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
