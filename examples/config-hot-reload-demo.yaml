@@ -1,0 +1,44 @@
+# Example configuration for demonstrating hot-reload functionality
+#
+# To test hot-reload:
+# 1. Run: agentpipe run -c examples/config-hot-reload-demo.yaml --watch-config
+# 2. While the conversation is running, edit this file
+# 3. Change values like max_turns or agent prompts
+# 4. Save the file
+# 5. Watch as the configuration is automatically reloaded
+#
+# Note: Some changes (like mode or agents list) may require restarting
+# the conversation to take full effect.
+
+version: "1.0"
+
+agents:
+  - id: assistant-1
+    type: claude
+    name: Claude
+    prompt: |
+      You are a helpful AI assistant participating in a group conversation.
+      Be concise and collaborative. This configuration can be hot-reloaded!
+
+  - id: assistant-2
+    type: gemini
+    name: Gemini
+    prompt: |
+      You are an AI assistant in a group discussion.
+      Provide thoughtful responses. Try changing this prompt while running!
+
+orchestrator:
+  # Try changing max_turns while the conversation is running
+  max_turns: 5
+
+  mode: round-robin
+  turn_timeout: 30s
+  response_delay: 2s
+
+  initial_prompt: |
+    Discuss the benefits of configuration hot-reloading in development.
+
+logging:
+  enabled: true
+  log_format: text
+  show_metrics: true

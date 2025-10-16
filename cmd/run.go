@@ -35,6 +35,7 @@ var (
 	chatLogDir         string
 	disableLogging     bool
 	showMetrics        bool
+	watchConfig        bool
 )
 
 var runCmd = &cobra.Command{
@@ -61,6 +62,7 @@ func init() {
 	runCmd.Flags().StringVar(&chatLogDir, "log-dir", "", "Directory to save chat logs (default: ~/.agentpipe/chats)")
 	runCmd.Flags().BoolVar(&disableLogging, "no-log", false, "Disable chat logging")
 	runCmd.Flags().BoolVar(&showMetrics, "metrics", false, "Show response metrics (duration, tokens, cost)")
+	runCmd.Flags().BoolVar(&watchConfig, "watch-config", false, "Watch config file for changes and hot-reload (requires --config)")
 }
 
 func runConversation(cobraCmd *cobra.Command, args []string) {
@@ -165,6 +167,41 @@ func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Set up config watcher if requested
+	var configWatcher *config.ConfigWatcher
+	if watchConfig && configPath != "" {
+		var err error
+		configWatcher, err = config.NewConfigWatcher(configPath)
+		if err != nil {
+			log.WithError(err).Error("failed to create config watcher")
+			fmt.Fprintf(os.Stderr, "Warning: Failed to create config watcher: %v\n", err)
+		} else {
+			// Register callback to log config changes
+			configWatcher.OnConfigChange(func(oldConfig, newConfig *config.Config) {
+				log.WithFields(map[string]interface{}{
+					"old_agents":    len(oldConfig.Agents),
+					"new_agents":    len(newConfig.Agents),
+					"old_max_turns": oldConfig.Orchestrator.MaxTurns,
+					"new_max_turns": newConfig.Orchestrator.MaxTurns,
+					"old_mode":      oldConfig.Orchestrator.Mode,
+					"new_mode":      newConfig.Orchestrator.Mode,
+				}).Info("configuration file changed")
+
+				fmt.Println("\n📝 Configuration file changed!")
+				fmt.Printf("   Mode: %s → %s\n", oldConfig.Orchestrator.Mode, newConfig.Orchestrator.Mode)
+				fmt.Printf("   Max Turns: %d → %d\n", oldConfig.Orchestrator.MaxTurns, newConfig.Orchestrator.MaxTurns)
+				fmt.Printf("   Agents: %d → %d\n", len(oldConfig.Agents), len(newConfig.Agents))
+				fmt.Println("   Note: Some changes require restarting the conversation")
+			})
+
+			// Start watching in background
+			go configWatcher.StartWatching()
+			defer configWatcher.StopWatching()
+
+			fmt.Println("👀 Config file watching enabled (changes will be detected automatically)")
+		}
+	}
 
 	// Track graceful shutdown for summary display
 	gracefulShutdown := false
