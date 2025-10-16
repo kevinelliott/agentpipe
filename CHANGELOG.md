@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.0] - 2025-10-16
+
 ### Added
 - **Agent Type Indicators**: Message badges now show agent type in parentheses (e.g., "Alice (qoder)")
   - Helps users quickly identify which agent type is responding
@@ -276,7 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.0.16...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/kevinelliott/agentpipe/compare/v0.0.16...v0.1.0
 [v0.0.16]: https://github.com/kevinelliott/agentpipe/compare/v0.0.15...v0.0.16
 [v0.0.15]: https://github.com/kevinelliott/agentpipe/compare/v0.0.9...v0.0.15
 [v0.0.9]: https://github.com/kevinelliott/agentpipe/compare/v0.0.8...v0.0.9

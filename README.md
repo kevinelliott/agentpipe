@@ -90,15 +90,29 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.0.16 - Production-ready features including Prometheus metrics, middleware pipeline, conversation state management, rate limiting, retry logic, Docker support, and comprehensive test coverage.
+**Latest Release**: v0.1.0 - Enhanced TUI with agent type indicators, branded sunset logo, improved reliability with better error handling, and proper version display with build information.
 
-**Recent Improvements**:
-- Enhanced TUI with colored sunset gradient logo
-- Agent type indicators in message badges (e.g., "Alice (qoder)")
-- HOST vs SYSTEM message distinction for clearer conversation context
-- Improved Gemini adapter reliability with better error handling
-- Fixed TUI display corruption when metrics/logging enabled
-- Consistent agent badge colors across all messages
+**What's New in v0.1.0**:
+
+✨ **Major Features:**
+- **Agent Type Indicators**: Message badges now display agent type in parentheses (e.g., "Alice (qoder)") for quick identification
+- **Branded Sunset Logo**: Beautiful ASCII art logo with gradient colors in both CLI and TUI
+- **Enhanced HOST/SYSTEM Distinction**: Clear visual separation between orchestrator prompts (HOST) and system notifications (SYSTEM)
+- **Proper Version Display**: Shows version, commit hash, and build date in `agentpipe version`
+
+🚀 **Improvements:**
+- **Improved Gemini Adapter**: Better error handling for process exit issues, reduces false failures
+- **Consistent Badge Colors**: Fixed race condition ensuring agent badges always show correct colors
+- **Enhanced Output Cleaning**: Filters error traces and stack dumps from agent responses
+
+🐛 **Bug Fixes:**
+- Fixed TUI display corruption from stderr output interference
+- Fixed version information not displaying correctly in builds
+- Fixed inconsistent agent badge colors on first message
+
+📚 **Documentation:**
+- Added console and doctor command screenshots to README
+- Comprehensive CHANGELOG updates with all changes
 
 ## Installation
 
