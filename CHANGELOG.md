@@ -29,16 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduces API costs by 50-90% vs traditional approaches
 
 ### Improved
-- **Amp Agent Context Awareness**: Restructured prompt delivery to ensure instructions arrive BEFORE conversation
-  - **Three-part structured prompt** for initial threads:
+- **Standardized Agent Introduction**: All agents now receive complete conversation history when first coming online
+  - **Complete message delivery**: Agents receive ALL existing messages (system prompts + agent messages)
+  - **No message loss**: Correctly identifies orchestrator's initial prompt vs. agent announcements
+  - **Correct topic extraction**: Finds system message with AgentID="system" as the conversation topic
+  - **Clear labeling**: System messages are explicitly labeled as "SYSTEM:" in conversation history
+  - **Structured three-part prompt** format:
     1. **AGENT SETUP** (first): Agent's name, role, and custom instructions
     2. **CONVERSATION TOPIC** (second): Initial orchestrator prompt highlighted prominently
-    3. **CONVERSATION SO FAR** (third): Any existing messages from other agents
-  - This order prevents confusion by establishing role and context before showing conversation
+    3. **CONVERSATION SO FAR** (third): All existing messages (announcements + responses)
+- **Amp Agent Context Awareness**: Restructured prompt delivery with thread management
+  - Uses `amp thread new` and `amp thread continue` for efficient communication
   - **Smart message filtering**: Automatically excludes Amp's own messages from being sent back to it
   - Only sends messages from OTHER agents and system messages (Amp already knows what it said)
-  - **Thread management**: Uses `amp thread new` and `amp thread continue` for efficient communication
-  - Reduces API costs and improves response times by 50-90%
+  - **Thread management**: Reduces API costs and response times by 50-90%
   - Automatic thread ID tracking and incremental message sending
   - Enhanced logging with prompt previews (first 300 chars) for debugging
 - **Session Summary**: Now displayed for all conversation endings, not just CTRL-C interruptions

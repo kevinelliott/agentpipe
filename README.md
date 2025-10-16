@@ -122,6 +122,9 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - **Smart Filtering**: Only sends new messages from other agents, reducing API costs by 50-90%
   - **Structured Context**: Initial prompts are delivered in a clear, three-part structure
 - [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
+  - Install: See [installation guide](https://docs.claude.com/en/docs/claude-code/installation)
+  - Authenticate: Run `claude` and follow authentication prompts
+  - Features: Advanced reasoning, coding, complex task execution
 - [GitHub Copilot CLI](https://github.com/github/copilot-cli) - `copilot`
   - Install: `npm install -g @github/copilot`
   - Authenticate: Launch `copilot` and use `/login` command

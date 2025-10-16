@@ -561,16 +561,19 @@ func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) s
 
 	// PART 2: CONVERSATION CONTEXT (after role is established)
 	if isInitialThread && len(messages) > 0 {
-		// Find the initial system message (orchestrator prompt)
+		// When agent comes online for the first time, deliver ALL existing messages
+		// This includes: initial system prompt, any other system messages, and all agent messages
 		var initialPrompt string
 		var otherMessages []agent.Message
 
+		// IMPORTANT: Find the orchestrator's initial prompt (AgentID/AgentName = "system")
+		// Agent announcements are also system messages, but they come from specific agents
 		for _, msg := range messages {
-			if msg.Role == "system" && initialPrompt == "" {
-				// First system message is the orchestrator's initial prompt
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+				// This is the orchestrator's initial prompt - show it prominently
 				initialPrompt = msg.Content
-			} else if msg.Role != "system" {
-				// Other agent messages
+			} else {
+				// ALL other messages (agent announcements, other system messages, agent responses)
 				otherMessages = append(otherMessages, msg)
 			}
 		}
@@ -586,14 +589,19 @@ func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) s
 			prompt.WriteString("\n\n")
 		}
 
-		// Then show any existing conversation
+		// Then show ALL remaining conversation (system messages + agent messages)
 		if len(otherMessages) > 0 {
 			prompt.WriteString("CONVERSATION SO FAR:\n")
 			prompt.WriteString(strings.Repeat("-", 60))
 			prompt.WriteString("\n")
 			for _, msg := range otherMessages {
 				timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-				prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+				// Include role indicator for system messages to make them clear
+				if msg.Role == "system" {
+					prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+				} else {
+					prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+				}
 			}
 			prompt.WriteString(strings.Repeat("-", 60))
 			prompt.WriteString("\n\n")
@@ -607,7 +615,11 @@ func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) s
 		prompt.WriteString("\n")
 		for _, msg := range messages {
 			timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
-			prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+			if msg.Role == "system" {
+				prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+			} else {
+				prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+			}
 		}
 		prompt.WriteString(strings.Repeat("-", 60))
 		prompt.WriteString("\n\n")

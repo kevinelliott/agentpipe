@@ -106,10 +106,13 @@ func (c *ClaudeAgent) SendMessage(ctx context.Context, messages []agent.Message)
 		"message_count": len(messages),
 	}).Debug("sending message to claude CLI")
 
-	conversation := c.formatConversation(messages)
-	prompt := c.buildPrompt(conversation)
+	// Filter out this agent's own messages
+	relevantMessages := c.filterRelevantMessages(messages)
 
-	// Claude CLI takes prompt via stdin, no command line args for prompt
+	// Build prompt with structured format
+	prompt := c.buildPrompt(relevantMessages, true)
+
+	// Claude CLI takes prompt via stdin
 	cmd := exec.CommandContext(ctx, c.execPath)
 	cmd.Stdin = strings.NewReader(prompt)
 
@@ -152,10 +155,13 @@ func (c *ClaudeAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 		"message_count": len(messages),
 	}).Debug("starting claude streaming message")
 
-	conversation := c.formatConversation(messages)
-	prompt := c.buildPrompt(conversation)
+	// Filter out this agent's own messages
+	relevantMessages := c.filterRelevantMessages(messages)
 
-	// Claude CLI takes prompt via stdin, no command line args for prompt
+	// Build prompt with structured format
+	prompt := c.buildPrompt(relevantMessages, true)
+
+	// Claude CLI takes prompt via stdin
 	cmd := exec.CommandContext(ctx, c.execPath)
 	cmd.Stdin = strings.NewReader(prompt)
 
@@ -198,6 +204,23 @@ func (c *ClaudeAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	return nil
 }
 
+// filterRelevantMessages filters out this agent's own messages
+// We exclude this agent's own messages to avoid showing Claude what it already said
+func (c *ClaudeAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
+	relevant := make([]agent.Message, 0, len(messages))
+
+	for _, msg := range messages {
+		// Skip this agent's own messages
+		if msg.AgentName == c.Name || msg.AgentID == c.ID {
+			continue
+		}
+		// Include messages from other agents and system messages
+		relevant = append(relevant, msg)
+	}
+
+	return relevant
+}
+
 func (c *ClaudeAgent) formatConversation(messages []agent.Message) string {
 	parts := make([]string, 0, len(messages))
 
@@ -209,8 +232,74 @@ func (c *ClaudeAgent) formatConversation(messages []agent.Message) string {
 	return strings.Join(parts, "\n")
 }
 
-func (c *ClaudeAgent) buildPrompt(conversation string) string {
-	return BuildAgentPrompt(c.Name, c.Config.Prompt, conversation)
+func (c *ClaudeAgent) buildPrompt(messages []agent.Message, isInitialSession bool) string {
+	var prompt strings.Builder
+
+	// PART 1: IDENTITY AND ROLE (always first)
+	prompt.WriteString("AGENT SETUP:\n")
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n")
+	prompt.WriteString(fmt.Sprintf("You are '%s' participating in a multi-agent conversation.\n\n", c.Name))
+
+	if c.Config.Prompt != "" {
+		prompt.WriteString("YOUR ROLE AND INSTRUCTIONS:\n")
+		prompt.WriteString(c.Config.Prompt)
+		prompt.WriteString("\n")
+	}
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n\n")
+
+	// PART 2: CONVERSATION CONTEXT (after role is established)
+	if len(messages) > 0 {
+		// Deliver ALL existing messages including initial prompt and all conversation
+		var initialPrompt string
+		var otherMessages []agent.Message
+
+		// IMPORTANT: Find the orchestrator's initial prompt (AgentID/AgentName = "system")
+		// Agent announcements are also system messages, but they come from specific agents
+		for _, msg := range messages {
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+				// This is the orchestrator's initial prompt - show it prominently
+				initialPrompt = msg.Content
+			} else {
+				// ALL other messages (agent announcements, other system messages, agent responses)
+				otherMessages = append(otherMessages, msg)
+			}
+		}
+
+		// Show the initial topic/prompt VERY prominently
+		if initialPrompt != "" {
+			prompt.WriteString("CONVERSATION TOPIC:\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n")
+			prompt.WriteString(initialPrompt)
+			prompt.WriteString("\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// Then show ALL remaining conversation (system messages + agent messages)
+		if len(otherMessages) > 0 {
+			prompt.WriteString("CONVERSATION SO FAR:\n")
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n")
+			for _, msg := range otherMessages {
+				timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+				// Include role indicator for system messages to make them clear
+				if msg.Role == "system" {
+					prompt.WriteString(fmt.Sprintf("[%s] SYSTEM: %s\n", timestamp, msg.Content))
+				} else {
+					prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+				}
+			}
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		prompt.WriteString(fmt.Sprintf("Now, as %s, respond to this conversation...", c.Name))
+	}
+
+	return prompt.String()
 }
 
 func init() {

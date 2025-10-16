@@ -1,0 +1,63 @@
+# AgentPipe Configuration - Claude Code CLI Example
+#
+# This example demonstrates how to use the Claude Code CLI for
+# collaborative software development conversations with optimized
+# session management.
+#
+# Prerequisites:
+# - Install Claude CLI: https://docs.claude.com/en/docs/claude-code/installation
+# - Authenticate: Run `claude` and follow authentication prompts
+#
+# Usage:
+#   agentpipe run -c examples/claude-coding.yaml
+
+version: "1.0"
+
+orchestrator:
+  mode: round-robin
+  max_turns: 20
+  turn_timeout: 60s
+  response_delay: 2s
+  initial_prompt: "Let's design a new REST API for a todo list application. What should the endpoints be?"
+
+agents:
+  - id: claude-architect
+    name: "Claude Architect"
+    type: claude
+    prompt: |
+      You are an experienced software architect specializing in system design.
+      Focus on high-level architecture, design patterns, and best practices.
+      When discussing code, consider scalability, maintainability, and performance.
+    announcement: "🏗️ Claude Architect has joined the conversation"
+    model: claude-sonnet-4.5
+
+  - id: claude-developer
+    name: "Claude Developer"
+    type: claude
+    prompt: |
+      You are a practical software developer who writes clean, well-tested code.
+      Focus on implementation details, code quality, and testing strategies.
+      Provide concrete code examples and discuss trade-offs.
+    announcement: "💻 Claude Developer is ready to code"
+    model: claude-sonnet-4.5
+
+logging:
+  enabled: true
+  chat_log_dir: ~/.agentpipe/chats
+  console_output: true
+  log_format: text
+
+# Claude CLI Features:
+#
+# Smart message filtering:
+# - AgentPipe filters out Claude's own messages to avoid repetition
+# - Only messages from other agents and system messages are sent
+# - Structured prompt delivery (setup → topic → conversation)
+#
+# Claude provides:
+# - Advanced reasoning and problem-solving
+# - Expert code generation and review
+# - Context-aware assistance with complex tasks
+# - Integration with various development workflows
+#
+# Learn more: https://docs.claude.com/en/docs/claude-code
