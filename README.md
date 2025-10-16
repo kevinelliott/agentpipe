@@ -26,25 +26,47 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## Features
 
+### Core Capabilities
 - **Multi-Agent Conversations**: Connect multiple AI agents in a single conversation
 - **Multiple Conversation Modes**:
   - `round-robin`: Agents take turns in a fixed order
   - `reactive`: Agents respond based on conversation dynamics
   - `free-form`: Agents participate freely as they see fit
 - **Flexible Configuration**: Use command-line flags or YAML configuration files
-- **Enhanced TUI Interface**: 
-  - Multi-panel layout with dedicated sections for agents, chat, stats, and config
-  - Color-coded agent messages with unique colors per agent
-  - Real-time agent activity indicators (🟢 active/responding, ⚫ idle)
-  - Inline metrics display (response time in seconds, token count, cost)
-  - Topic panel showing initial conversation prompt
-  - Statistics panel with turn counters and total conversation cost
-  - Configuration panel displaying all active settings and config file path
-  - Interactive user input panel for joining conversations
-  - Smart message consolidation (headers only on speaker change)
-  - Proper multi-paragraph message formatting
-- **Chat Logging**: Automatic conversation logging to `~/.agentpipe/chats/`
-- **Response Metrics**: Track response time, token usage, and estimated costs
+
+### Enhanced TUI Interface
+- Multi-panel layout with dedicated sections for agents, chat, stats, and config
+- Color-coded agent messages with unique colors per agent
+- Real-time agent activity indicators (🟢 active/responding, ⚫ idle)
+- Inline metrics display (response time in seconds, token count, cost)
+- Topic panel showing initial conversation prompt
+- Statistics panel with turn counters and total conversation cost
+- Configuration panel displaying all active settings and config file path
+- Interactive user input panel for joining conversations
+- Smart message consolidation (headers only on speaker change)
+- Proper multi-paragraph message formatting
+
+### Production Features
+- **Prometheus Metrics**: Comprehensive observability with 10+ metrics types
+  - Request rates, durations, errors
+  - Token usage and cost tracking
+  - Active conversations, retry attempts, rate limit hits
+  - HTTP server with `/metrics`, `/health`, and web UI endpoints
+  - Ready for Grafana dashboards and alerting
+- **Conversation Management**:
+  - Save/resume conversations from state files
+  - Export to JSON, Markdown, or HTML formats
+  - Automatic chat logging to `~/.agentpipe/chats/`
+- **Reliability & Performance**:
+  - Rate limiting per agent with token bucket algorithm
+  - Retry logic with exponential backoff (configurable)
+  - Structured error handling with error types
+  - Config hot-reload for development workflows
+- **Middleware Pipeline**: Extensible message processing
+  - Built-in: logging, metrics, validation, sanitization, filtering
+  - Custom middleware support for transforms and filters
+  - Error recovery and panic handling
+- **Docker Support**: Multi-stage builds, docker-compose, production-ready
 - **Health Checks**: Automatic agent health verification before conversations
 - **Agent Detection**: Built-in doctor command to check installed AI CLIs
 - **Customizable Agents**: Configure prompts, models, and behaviors for each agent
@@ -273,6 +295,9 @@ Start a conversation between agents.
 - `--metrics`: Display response metrics (duration, tokens, cost) in TUI
 - `--skip-health-check`: Skip agent health checks (not recommended)
 - `--health-check-timeout`: Health check timeout in seconds (default: 5)
+- `--save-state`: Save conversation state to file on completion
+- `--state-file`: Custom state file path (default: auto-generated)
+- `--watch-config`: Watch config file for changes and reload (development mode)
 
 ### `agentpipe doctor`
 
@@ -281,6 +306,58 @@ Check which AI CLI tools are installed and available.
 ```bash
 agentpipe doctor
 ```
+
+### `agentpipe export`
+
+Export conversation from a state file to different formats.
+
+```bash
+# Export to JSON
+agentpipe export state.json --format json --output conversation.json
+
+# Export to Markdown
+agentpipe export state.json --format markdown --output conversation.md
+
+# Export to HTML (includes styling)
+agentpipe export state.json --format html --output conversation.html
+```
+
+**Flags:**
+- `--format`: Export format (json, markdown, html)
+- `--output`: Output file path
+
+### `agentpipe resume`
+
+Resume a saved conversation from a state file.
+
+```bash
+# List all saved conversations
+agentpipe resume --list
+
+# View a saved conversation
+agentpipe resume ~/.agentpipe/states/conversation-20231215-143022.json
+
+# Resume and continue (future feature)
+agentpipe resume state.json --continue
+```
+
+**Flags:**
+- `--list`: List all saved conversation states
+- `--continue`: Continue the conversation (planned feature)
+
+### `agentpipe init`
+
+Interactive wizard to create a new AgentPipe configuration file.
+
+```bash
+agentpipe init
+```
+
+Creates a YAML config file with guided prompts for:
+- Conversation mode selection
+- Agent configuration
+- Orchestrator settings
+- Logging preferences
 
 ## Examples
 
