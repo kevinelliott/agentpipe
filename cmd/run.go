@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -16,6 +17,7 @@ import (
 	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
+	"github.com/kevinelliott/agentpipe/pkg/conversation"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
@@ -36,6 +38,8 @@ var (
 	disableLogging     bool
 	showMetrics        bool
 	watchConfig        bool
+	saveState          bool
+	stateFile          string
 )
 
 var runCmd = &cobra.Command{
@@ -63,6 +67,8 @@ func init() {
 	runCmd.Flags().BoolVar(&disableLogging, "no-log", false, "Disable chat logging")
 	runCmd.Flags().BoolVar(&showMetrics, "metrics", false, "Show response metrics (duration, tokens, cost)")
 	runCmd.Flags().BoolVar(&watchConfig, "watch-config", false, "Watch config file for changes and hot-reload (requires --config)")
+	runCmd.Flags().BoolVar(&saveState, "save-state", false, "Save conversation state on exit (to ~/.agentpipe/states)")
+	runCmd.Flags().StringVar(&stateFile, "state-file", "", "Specific file path to save conversation state")
 }
 
 func runConversation(cobraCmd *cobra.Command, args []string) {
@@ -368,6 +374,14 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	// Print summary
 	fmt.Println("\n" + strings.Repeat("=", 60))
 
+	// Save conversation state if requested
+	if saveState || stateFile != "" {
+		if err := saveConversationState(orch, cfg, time.Now()); err != nil {
+			log.WithError(err).Error("failed to save conversation state")
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save conversation state: %v\n", err)
+		}
+	}
+
 	if gracefulShutdown {
 		fmt.Println("📊 Session Summary")
 		fmt.Println(strings.Repeat("=", 60))
@@ -380,6 +394,39 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	}
 
 	fmt.Println("Conversation ended.")
+
+	return nil
+}
+
+// saveConversationState saves the current conversation state to a file.
+func saveConversationState(orch *orchestrator.Orchestrator, cfg *config.Config, startedAt time.Time) error {
+	messages := orch.GetMessages()
+	state := conversation.NewState(messages, cfg, startedAt)
+
+	// Determine save path
+	var savePath string
+	if stateFile != "" {
+		savePath = stateFile
+	} else {
+		// Use default state directory
+		stateDir, err := conversation.GetDefaultStateDir()
+		if err != nil {
+			return fmt.Errorf("failed to get state directory: %w", err)
+		}
+
+		savePath = filepath.Join(stateDir, conversation.GenerateStateFileName())
+	}
+
+	// Save state
+	if err := state.Save(savePath); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n💾 Conversation state saved to: %s\n", savePath)
+	log.WithFields(map[string]interface{}{
+		"path":     savePath,
+		"messages": len(messages),
+	}).Info("conversation state saved successfully")
 
 	return nil
 }
