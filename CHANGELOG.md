@@ -51,6 +51,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows summary even when conversation ends with an error
   - Includes total messages, tokens, time spent, and cost for all endings
 
+### Fixed
+- **Agent Prompt Response**: Fixed critical bug where agents weren't properly responding to orchestrator's initial prompt
+  - Changed prompt header from passive "CONVERSATION TOPIC" to directive "YOUR TASK - PLEASE RESPOND TO THIS"
+  - Makes it clear the initial prompt is a direct instruction, not passive context
+  - Agents now immediately engage with the topic instead of asking "what would you like help with?"
+- **Amp Thread Creation Pattern**: Fixed empty response issue with Amp agent
+  - Previously: Created thread with prompt, received empty response
+  - Now: Create empty thread first, then send prompt via `thread continue`
+  - Matches Amp CLI's expected pattern where `thread new` only returns thread ID
+  - Amp now correctly responds to initial prompts on first turn
+- **Agent Introduction Logic**: Fixed orchestrator prompt detection
+  - Correctly distinguishes between orchestrator messages (AgentID="system") and agent announcements
+  - Agent announcements are system messages from specific agents, not the conversation topic
+  - All agents now receive the orchestrator's initial prompt in the "YOUR TASK" section
+
 ## [v0.0.16] - 2025-10-15
 
 ### Added - Production-Ready Features
