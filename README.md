@@ -16,6 +16,7 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## Supported AI Agents
 
+- ✅ **Amp** (Sourcegraph) - Advanced coding agent with autonomous reasoning
 - ✅ **Claude** (Anthropic) - Advanced reasoning and coding
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
@@ -280,6 +281,10 @@ go build -o agentpipe .
 
 AgentPipe requires at least one AI CLI tool to be installed:
 
+- [Amp CLI](https://ampcode.com) - `amp`
+  - Install: See [installation guide](https://ampcode.com/install)
+  - Authenticate: Follow Amp documentation
+  - Features: Autonomous coding, IDE integration, complex task execution
 - [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
 - [GitHub Copilot CLI](https://github.com/github/copilot-cli) - `copilot`
   - Install: `npm install -g @github/copilot`

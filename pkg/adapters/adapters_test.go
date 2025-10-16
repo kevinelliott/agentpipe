@@ -207,6 +207,34 @@ func TestCodexAgentInitialization(t *testing.T) {
 	}
 }
 
+func TestAmpAgentInitialization(t *testing.T) {
+	ampAgent := NewAmpAgent()
+
+	config := agent.AgentConfig{
+		ID:           "amp-1",
+		Type:         "amp",
+		Name:         "Amp",
+		Prompt:       "You are Amp",
+		Announcement: "Amp has joined!",
+		Model:        "claude-sonnet-4.5",
+	}
+
+	err := ampAgent.Initialize(config)
+	if err != nil {
+		t.Fatalf("initialization failed: %v", err)
+	}
+
+	if ampAgent.GetID() != "amp-1" {
+		t.Errorf("expected ID 'amp-1', got '%s'", ampAgent.GetID())
+	}
+	if ampAgent.GetName() != "Amp" {
+		t.Errorf("expected name 'Amp', got '%s'", ampAgent.GetName())
+	}
+	if ampAgent.GetType() != "amp" {
+		t.Errorf("expected type 'amp', got '%s'", ampAgent.GetType())
+	}
+}
+
 func TestAgentAnnouncement(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -220,6 +248,7 @@ func TestAgentAnnouncement(t *testing.T) {
 		{"cursor", NewCursorAgent, "Cursor", "Cursor online!"},
 		{"qwen", NewQwenAgent, "Qwen", "Qwen active!"},
 		{"codex", NewCodexAgent, "Codex", "Codex ready!"},
+		{"amp", NewAmpAgent, "Amp", "Amp is live!"},
 	}
 
 	for _, tt := range tests {
@@ -281,6 +310,7 @@ func TestAgentHealthCheckTimeout(t *testing.T) {
 		{"cursor", NewCursorAgent()},
 		{"qwen", NewQwenAgent()},
 		{"codex", NewCodexAgent()},
+		{"amp", NewAmpAgent()},
 	}
 
 	for _, tt := range agents {

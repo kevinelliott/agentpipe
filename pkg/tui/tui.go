@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -39,20 +40,35 @@ var (
 
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241"))
+
+	searchStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("226")).
+			Background(lipgloss.Color("235")).
+			Padding(0, 1)
+
+	searchMatchStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("226"))
 )
 
 type Model struct {
-	ctx      context.Context
-	config   *config.Config
-	agents   []agent.Agent
-	messages []agent.Message
-	viewport viewport.Model
-	textarea textarea.Model
-	width    int
-	height   int
-	ready    bool
-	running  bool
-	err      error
+	ctx                context.Context
+	config             *config.Config
+	agents             []agent.Agent
+	messages           []agent.Message
+	viewport           viewport.Model
+	textarea           textarea.Model
+	searchInput        textinput.Model
+	searchMode         bool
+	searchResults      []int // Message indices that match search
+	currentSearchIndex int   // Current position in searchResults
+	width              int
+	height             int
+	ready              bool
+	running            bool
+	err                error
 }
 
 type messageUpdate struct {

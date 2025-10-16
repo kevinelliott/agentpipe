@@ -1,0 +1,63 @@
+# AgentPipe Configuration - Amp Coding Agent Example
+#
+# This example demonstrates how to use the Amp coding agent for
+# collaborative software development conversations.
+#
+# Prerequisites:
+# - Install Amp CLI: https://ampcode.com/install
+# - Authenticate: Follow instructions from Amp documentation
+#
+# Usage:
+#   agentpipe run -c examples/amp-coding.yaml
+
+version: "1.0"
+
+orchestrator:
+  mode: round-robin
+  max_turns: 20
+  turn_timeout: 60s
+  response_delay: 2s
+  initial_prompt: "Let's design a new REST API for a todo list application. What should the endpoints be?"
+
+agents:
+  - id: amp-architect
+    name: "Amp Architect"
+    type: amp
+    prompt: |
+      You are an experienced software architect specializing in system design.
+      Focus on high-level architecture, design patterns, and best practices.
+      When discussing code, consider scalability, maintainability, and performance.
+    announcement: "🏗️ Amp Architect has joined the conversation"
+    model: claude-sonnet-4.5
+
+  - id: amp-developer
+    name: "Amp Developer"
+    type: amp
+    prompt: |
+      You are a practical software developer who writes clean, well-tested code.
+      Focus on implementation details, code quality, and testing strategies.
+      Provide concrete code examples and discuss trade-offs.
+    announcement: "💻 Amp Developer is ready to code"
+    model: claude-sonnet-4.5
+
+logging:
+  enabled: true
+  chat_log_dir: ~/.agentpipe/chats
+  console_output: true
+  log_format: text
+
+# Amp CLI Features:
+#
+# The Amp agent adapter uses the Amp CLI's execute mode:
+#   amp -x "your prompt here"
+#
+# For streaming output, it uses:
+#   amp --stream-json -x "your prompt"
+#
+# Amp provides:
+# - Advanced code generation and editing
+# - Context-aware programming assistance
+# - Integration with VS Code, Cursor, and other IDEs
+# - Complex task execution capabilities
+#
+# Learn more: https://ampcode.com/manual#cli
