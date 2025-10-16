@@ -73,7 +73,107 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## What's New 🎉
 
-### Latest Updates (v0.0.15)
+### Latest Updates (v0.0.16-dev - In Development)
+
+Major production-ready improvements since v0.0.15:
+
+#### 🚀 Production-Ready Features
+- **Prometheus Metrics**: Comprehensive observability with 10+ metric types ([1c3d3ac](https://github.com/kevinelliott/agentpipe/commit/1c3d3ac))
+  - HTTP server with `/metrics`, `/health`, and web UI endpoints
+  - Ready for Grafana dashboards and Prometheus alerting
+  - Track requests, durations, tokens, costs, errors, rate limits, retries
+  - OpenMetrics format support
+
+- **Middleware Pipeline**: Extensible message processing architecture ([e44bcc6](https://github.com/kevinelliott/agentpipe/commit/e44bcc6))
+  - 10+ built-in middleware (logging, metrics, validation, filtering, sanitization)
+  - Custom middleware support for transforms and filters
+  - Error recovery and panic handling
+  - Chain-of-responsibility pattern implementation
+
+- **Conversation State Management**: ([cfde23b](https://github.com/kevinelliott/agentpipe/commit/cfde23b))
+  - Save/resume conversations from JSON state files
+  - `agentpipe resume` command with --list flag
+  - Automatic state directory (~/.agentpipe/states/)
+  - Full conversation history, config, and metadata preservation
+
+- **Export Functionality**: Multi-format conversation export ([a4146ea](https://github.com/kevinelliott/agentpipe/commit/a4146ea))
+  - Export to JSON, Markdown, or HTML formats
+  - Professional HTML styling with responsive design
+  - XSS prevention with HTML escaping
+  - `agentpipe export` command
+
+#### ⚡ Reliability & Performance
+- **Rate Limiting**: Token bucket algorithm per agent ([2ae8560](https://github.com/kevinelliott/agentpipe/commit/2ae8560))
+  - Configurable rate and burst capacity
+  - Thread-safe implementation with ~60ns overhead
+  - Automatic rate limit hit tracking in metrics
+
+- **Retry Logic**: Exponential backoff with smart defaults ([ba16bf0](https://github.com/kevinelliott/agentpipe/commit/ba16bf0))
+  - 3 retries with 1s initial delay, 30s max, 2.0x multiplier
+  - Configurable per orchestrator
+  - Retry attempt tracking in metrics
+
+- **Structured Error Handling**: Typed error system ([ba16bf0](https://github.com/kevinelliott/agentpipe/commit/ba16bf0))
+  - AgentError, ConfigError, ValidationError, TimeoutError, etc.
+  - Error wrapping with context
+  - Better error classification for metrics
+
+- **Config Hot-Reload**: Development workflow enhancement ([abdab1c](https://github.com/kevinelliott/agentpipe/commit/abdab1c))
+  - Watch config files for changes with viper.WatchConfig
+  - Thread-safe reload with callbacks
+  - --watch-config flag for development mode
+
+#### 🐳 Docker Support
+Production-ready containerization ([6cced13](https://github.com/kevinelliott/agentpipe/commit/6cced13)):
+- Multi-stage Dockerfile (~50MB final image)
+- docker-compose.yml with metrics server on port 9090
+- Health checks and graceful shutdown
+- Volume mounts for configs and logs
+- Non-root user for security
+- Complete documentation in docs/docker.md
+
+#### 📊 Testing & Quality
+- **Comprehensive Test Coverage**: 200+ tests ([c0fb9c2](https://github.com/kevinelliott/agentpipe/commit/c0fb9c2), [39ede15](https://github.com/kevinelliott/agentpipe/commit/39ede15), [62551c8](https://github.com/kevinelliott/agentpipe/commit/62551c8))
+  - 86+ unit tests across orchestrator, adapters, logger, errors, ratelimit, config, conversation
+  - 15 integration tests for end-to-end conversation flows
+  - 25+ benchmark tests for performance regression detection
+  - TUI component tests with race detection
+  - All tests passing with concurrent access validation
+
+- **Documentation**: Complete docs/ directory ([e562275](https://github.com/kevinelliott/agentpipe/commit/e562275))
+  - architecture.md - System design and patterns
+  - contributing.md - Contribution guidelines
+  - development.md - Development setup and workflows
+  - troubleshooting.md - Common issues and solutions
+  - docker.md - Docker deployment guide
+
+#### 🛠️ Developer Experience
+- **Interactive Init Command**: Configuration wizard ([ba16bf0](https://github.com/kevinelliott/agentpipe/commit/ba16bf0))
+  - Guided prompts for all configuration options
+  - Agent selection and configuration
+  - Orchestrator mode and settings
+  - Automatic file creation
+
+- **Structured Logging**: Zerolog-based logging ([7fe863a](https://github.com/kevinelliott/agentpipe/commit/7fe863a))
+  - JSON and pretty console output
+  - Contextual fields for debugging
+  - Integration across orchestrator, adapters, and commands
+  - Maintains fmt.Fprintf for TUI display
+
+- **Enhanced CLI**: New commands and flags
+  - `agentpipe export` - Export conversations
+  - `agentpipe resume` - Resume saved conversations
+  - `agentpipe init` - Interactive config wizard
+  - --save-state, --state-file, --watch-config flags
+
+#### 📈 Code Quality Improvements
+- Godoc comments on all exported types and functions
+- 0 linting issues with golangci-lint
+- Structured error types replacing fmt.Errorf
+- Thread-safe implementations throughout
+- Proper resource cleanup and leak prevention
+
+### v0.0.15 (December 2024)
 
 #### New Agent Support
 - **GitHub Copilot CLI Integration**: Full support for GitHub's Copilot terminal agent (`copilot`)
@@ -480,30 +580,50 @@ go test ./...
 
 ```
 agentpipe/
-├── cmd/              # CLI commands
-│   ├── root.go      # Root command
-│   ├── run.go       # Run conversation command
-│   └── doctor.go    # Doctor diagnostic command
+├── cmd/                  # CLI commands
+│   ├── root.go          # Root command
+│   ├── run.go           # Run conversation command
+│   ├── doctor.go        # Doctor diagnostic command
+│   ├── export.go        # Export conversations
+│   ├── resume.go        # Resume conversations
+│   └── init.go          # Interactive configuration wizard
 ├── pkg/
-│   ├── agent/       # Agent interface and registry
-│   ├── adapters/    # Agent implementations
-│   │   ├── claude.go    # Claude adapter
-│   │   ├── copilot.go   # GitHub Copilot adapter
-│   │   ├── cursor.go    # Cursor adapter
-│   │   ├── gemini.go    # Gemini adapter
-│   │   ├── qwen.go      # Qwen adapter
-│   │   ├── codex.go     # Codex (OpenAI) adapter
-│   │   └── ollama.go    # Ollama adapter
-│   ├── config/      # Configuration handling
-│   ├── orchestrator/# Conversation orchestration
-│   ├── logger/      # Chat logging and output
-│   └── tui/         # Terminal UI
-│       ├── basic.go    # Basic TUI
-│       └── enhanced.go # Enhanced panelized TUI
-├── examples/        # Example configurations
+│   ├── agent/           # Agent interface and registry
+│   ├── adapters/        # Agent implementations (7 adapters)
+│   ├── config/          # Configuration handling
+│   │   └── watcher.go   # Config hot-reload support
+│   ├── conversation/    # Conversation state management
+│   │   └── state.go     # Save/load conversation states
+│   ├── errors/          # Structured error types
+│   ├── export/          # Export to JSON/Markdown/HTML
+│   ├── log/             # Structured logging (zerolog)
+│   ├── logger/          # Chat logging and output
+│   ├── metrics/         # Prometheus metrics
+│   │   ├── metrics.go   # Metrics collection
+│   │   └── server.go    # HTTP metrics server
+│   ├── middleware/      # Message processing pipeline
+│   │   ├── middleware.go # Core middleware pattern
+│   │   └── builtin.go   # Built-in middleware
+│   ├── orchestrator/    # Conversation orchestration
+│   ├── ratelimit/       # Token bucket rate limiting
+│   ├── tui/             # Terminal UI
+│   └── utils/           # Utilities (tokens, costs)
+├── docs/                # Documentation
+│   ├── architecture.md
+│   ├── contributing.md
+│   ├── development.md
+│   ├── troubleshooting.md
+│   └── docker.md
+├── examples/            # Example configurations
 │   ├── simple-conversation.yaml
 │   ├── brainstorm.yaml
-│   └── codex-brainstorm.yaml
+│   ├── middleware.yaml
+│   └── prometheus-metrics.yaml
+├── test/
+│   ├── integration/     # End-to-end tests
+│   └── benchmark/       # Performance benchmarks
+├── Dockerfile           # Multi-stage production build
+├── docker-compose.yml   # Docker Compose configuration
 └── main.go
 ```
 
@@ -522,6 +642,151 @@ func init() {
     agent.RegisterFactory("myagent", NewMyAgent)
 }
 ```
+
+## Advanced Features
+
+### Prometheus Metrics & Monitoring
+
+AgentPipe includes comprehensive Prometheus metrics for production monitoring:
+
+```go
+// Enable metrics in your code
+import "github.com/kevinelliott/agentpipe/pkg/metrics"
+
+// Start metrics server
+server := metrics.NewServer(metrics.ServerConfig{Addr: ":9090"})
+go server.Start()
+
+// Set metrics on orchestrator
+orch.SetMetrics(metrics.DefaultMetrics)
+```
+
+**Available Metrics:**
+- `agentpipe_agent_requests_total` - Request counter by agent and status
+- `agentpipe_agent_request_duration_seconds` - Request duration histogram
+- `agentpipe_agent_tokens_total` - Token usage by type (input/output)
+- `agentpipe_agent_cost_usd_total` - Estimated costs in USD
+- `agentpipe_agent_errors_total` - Error counter by type
+- `agentpipe_active_conversations` - Current active conversations
+- `agentpipe_conversation_turns_total` - Total turns by mode
+- `agentpipe_message_size_bytes` - Message size distribution
+- `agentpipe_retry_attempts_total` - Retry counter
+- `agentpipe_rate_limit_hits_total` - Rate limit hits
+
+**Endpoints:**
+- `http://localhost:9090/metrics` - Prometheus metrics (OpenMetrics format)
+- `http://localhost:9090/health` - Health check
+- `http://localhost:9090/` - Web UI with documentation
+
+See `examples/prometheus-metrics.yaml` for complete configuration, Prometheus queries, Grafana dashboard setup, and alerting rules.
+
+### Docker Support
+
+Run AgentPipe in Docker for production deployments:
+
+```bash
+# Build image
+docker build -t agentpipe:latest .
+
+# Run with docker-compose (includes metrics server)
+docker-compose up
+
+# Run standalone
+docker run -v ~/.agentpipe:/root/.agentpipe agentpipe:latest run -c /config/config.yaml
+```
+
+**Features:**
+- Multi-stage build (~50MB final image)
+- Health checks included
+- Volume mounts for configs and logs
+- Prometheus metrics exposed on port 9090
+- Production-ready with non-root user
+
+See `docs/docker.md` for complete Docker documentation.
+
+### Middleware Pipeline
+
+Extend AgentPipe with custom message processing:
+
+```go
+// Add built-in middleware
+orch.AddMiddleware(middleware.LoggingMiddleware())
+orch.AddMiddleware(middleware.MetricsMiddleware())
+orch.AddMiddleware(middleware.ContentFilterMiddleware(config))
+
+// Or use defaults
+orch.SetupDefaultMiddleware()
+
+// Create custom middleware
+custom := middleware.NewTransformMiddleware("uppercase",
+    func(ctx *MessageContext, msg *Message) (*Message, error) {
+        msg.Content = strings.ToUpper(msg.Content)
+        return msg, nil
+    })
+orch.AddMiddleware(custom)
+```
+
+**Built-in Middleware:**
+- `LoggingMiddleware` - Structured logging
+- `MetricsMiddleware` - Performance tracking
+- `ContentFilterMiddleware` - Content validation and filtering
+- `SanitizationMiddleware` - Message sanitization
+- `EmptyContentValidationMiddleware` - Empty message rejection
+- `RoleValidationMiddleware` - Role validation
+- `ErrorRecoveryMiddleware` - Panic recovery
+
+See `examples/middleware.yaml` for complete examples.
+
+### Rate Limiting
+
+Configure rate limits per agent:
+
+```yaml
+agents:
+  - id: claude
+    type: claude
+    rate_limit: 10        # 10 requests per second
+    rate_limit_burst: 5   # Burst capacity of 5
+```
+
+Uses token bucket algorithm with:
+- Configurable rate and burst capacity
+- Thread-safe implementation
+- Automatic rate limit hit tracking in metrics
+
+### Conversation State Management
+
+Save and resume conversations:
+
+```bash
+# Save conversation state on completion
+agentpipe run -c config.yaml --save-state
+
+# List saved conversations
+agentpipe resume --list
+
+# View saved conversation
+agentpipe resume ~/.agentpipe/states/conversation-20231215-143022.json
+
+# Export to different formats
+agentpipe export state.json --format html --output report.html
+```
+
+State files include:
+- Full conversation history
+- Configuration used
+- Metadata (turns, duration, timestamps)
+- Agent information
+
+### Config Hot-Reload (Development Mode)
+
+Enable config file watching for rapid development:
+
+```bash
+agentpipe run -c config.yaml --watch-config
+```
+
+Changes to the config file are automatically detected and reloaded without restarting the conversation.
 
 ## Troubleshooting
 
