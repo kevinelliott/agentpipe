@@ -6,9 +6,9 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 ## Key Technical Details
 
 ### Go Version
-- **IMPORTANT**: Requires Go 1.24+ (go.mod specifies 1.24.0)
-- GitHub Actions workflows must use Go 1.24
-- Some dependencies (bubbletea v1.3.9) require Go 1.24+
+- **IMPORTANT**: Requires Go 1.25.3+ (go.mod specifies 1.25.3)
+- GitHub Actions workflows must use Go 1.25
+- All dependencies are compatible with Go 1.25
 
 ### Health Check Configuration
 - Default timeout: 5 seconds (increased from 2 seconds)
@@ -107,9 +107,9 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 ```
 
 ## Recent Changes Log
+- Upgraded to Go 1.25
 - Increased health check timeout: 2s → 5s
 - Fixed Windows CI test command
-- Updated to Go 1.24 requirement
 - Fixed Homebrew formula path: Formulae → Formula
 - Added badges to README
 - Fixed all linting issues for CI

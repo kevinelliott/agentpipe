@@ -19,8 +19,8 @@ This guide provides detailed information for developing AgentPipe, including set
 ### Required Tools
 
 ```bash
-# Go 1.24+ (required)
-go version  # Must be 1.24 or higher
+# Go 1.25+ (required)
+go version  # Must be 1.25 or higher
 
 # golangci-lint (required for linting)
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

@@ -254,14 +254,14 @@ docker run --rm -it \
 docker run --rm \
   -v $(pwd):/app \
   -w /app \
-  golang:1.24-alpine \
+  golang:1.25-alpine \
   go test -v -race ./...
 
 # Run specific tests
 docker run --rm \
   -v $(pwd):/app \
   -w /app \
-  golang:1.24-alpine \
+  golang:1.25-alpine \
   go test -v ./pkg/orchestrator/
 ```
 
@@ -272,7 +272,7 @@ docker run --rm \
 docker run --rm \
   -v $(pwd):/app \
   -w /app \
-  golang:1.24-alpine \
+  golang:1.25-alpine \
   go build -o agentpipe .
 
 # Extract binary

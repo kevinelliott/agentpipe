@@ -15,11 +15,11 @@ This guide helps diagnose and resolve common issues with AgentPipe.
 
 ## Installation Issues
 
-### Issue: `go: version 1.24 required`
+### Issue: `go: version 1.25 required`
 
 **Symptoms:**
 ```
-go: version 1.24 required
+go: version 1.25 required
 ```
 
 **Solution:**
@@ -27,12 +27,12 @@ go: version 1.24 required
 # Check Go version
 go version
 
-# Install Go 1.24+ from https://golang.org/dl/
+# Install Go 1.25+ from https://golang.org/dl/
 # Or use version manager
-brew install go@1.24  # macOS
+brew install go@1.25  # macOS
 
 # Verify installation
-go version  # Should show 1.24 or higher
+go version  # Should show 1.25 or higher
 ```
 
 ###
@@ -533,7 +533,7 @@ go test ./...
 
 2. **Check Go version:**
 ```bash
-go version  # Must be 1.24+
+go version  # Must be 1.25+
 ```
 
 3. **Update dependencies:**

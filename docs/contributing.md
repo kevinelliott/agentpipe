@@ -35,7 +35,7 @@ Thank you for your interest in contributing to AgentPipe! This document provides
 
 ### Prerequisites
 
-- **Go 1.24+**: Required for building the project
+- **Go 1.25+**: Required for building the project
 - **Git**: For version control
 - **golangci-lint**: For code linting
 - **make**: For build automation (optional)
