@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -611,6 +612,318 @@ func TestModel_SearchNavigation(t *testing.T) {
 
 	if m.currentSearchIndex != 2 {
 		t.Errorf("Expected index 2 after 'N' from 0 (reverse wrap), got %d", m.currentSearchIndex)
+	}
+}
+
+func TestModel_CommandMode(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		messages: make([]agent.Message, 0),
+		ready:    true,
+	}
+
+	// Initialize with window size
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Test entering command mode with /
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+	newModel, _ := m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if !m.commandMode {
+		t.Error("Expected command mode to be enabled after /")
+	}
+
+	// Test exiting command mode with Esc
+	keyMsg = tea.KeyMsg{Type: tea.KeyEsc}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.commandMode {
+		t.Error("Expected command mode to be disabled after Esc")
+	}
+	if m.commandInput.Value() != "" {
+		t.Error("Expected command input to be cleared after Esc")
+	}
+}
+
+func TestModel_ExecuteFilterCommand(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	// Create mock agents
+	mockAgent1 := &mockAgent{id: "agent-1", name: "Agent1"}
+	mockAgent2 := &mockAgent{id: "agent-2", name: "Agent2"}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		agents:   []agent.Agent{mockAgent1, mockAgent2},
+		messages: make([]agent.Message, 0),
+		ready:    true,
+	}
+
+	// Initialize with window size
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Set command to filter by Agent1
+	m.commandInput.SetValue("filter Agent1")
+	m.executeCommand()
+
+	if m.filterAgent != "Agent1" {
+		t.Errorf("Expected filterAgent to be 'Agent1', got '%s'", m.filterAgent)
+	}
+	if !strings.Contains(m.statusMessage, "Agent1") {
+		t.Errorf("Expected status message to contain 'Agent1', got '%s'", m.statusMessage)
+	}
+}
+
+func TestModel_ExecuteClearCommand(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:         context.Background(),
+		config:      cfg,
+		messages:    make([]agent.Message, 0),
+		ready:       true,
+		filterAgent: "Agent1",
+	}
+
+	// Initialize with window size
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Execute clear command
+	m.commandInput.SetValue("clear")
+	m.executeCommand()
+
+	if m.filterAgent != "" {
+		t.Errorf("Expected filterAgent to be empty, got '%s'", m.filterAgent)
+	}
+	if !strings.Contains(m.statusMessage, "cleared") {
+		t.Errorf("Expected status message to contain 'cleared', got '%s'", m.statusMessage)
+	}
+}
+
+func TestModel_FilterMessages(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:    context.Background(),
+		config: cfg,
+		messages: []agent.Message{
+			{AgentName: "Agent1", Content: "Message from Agent1", Role: "agent", Timestamp: time.Now().Unix()},
+			{AgentName: "Agent2", Content: "Message from Agent2", Role: "agent", Timestamp: time.Now().Unix()},
+			{AgentName: "Agent1", Content: "Another from Agent1", Role: "agent", Timestamp: time.Now().Unix()},
+			{AgentName: "System", Content: "System message", Role: "system", Timestamp: time.Now().Unix()},
+		},
+		ready:       true,
+		filterAgent: "",
+	}
+
+	// Test without filter - should show all messages
+	rendered := m.renderMessages()
+	if !strings.Contains(rendered, "Agent1") {
+		t.Error("Expected rendered messages to contain Agent1")
+	}
+	if !strings.Contains(rendered, "Agent2") {
+		t.Error("Expected rendered messages to contain Agent2")
+	}
+	if !strings.Contains(rendered, "System") {
+		t.Error("Expected rendered messages to contain System")
+	}
+
+	// Test with filter - should show only Agent1 and System
+	m.filterAgent = "Agent1"
+	rendered = m.renderMessages()
+
+	if !strings.Contains(rendered, "Message from Agent1") {
+		t.Error("Expected rendered messages to contain Agent1's messages")
+	}
+	if strings.Contains(rendered, "Message from Agent2") {
+		t.Error("Expected rendered messages NOT to contain Agent2's messages")
+	}
+	if !strings.Contains(rendered, "System message") {
+		t.Error("Expected rendered messages to contain System messages even with filter")
+	}
+}
+
+func TestModel_UnknownCommand(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		messages: make([]agent.Message, 0),
+		ready:    true,
+	}
+
+	// Initialize with window size
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Execute unknown command
+	m.commandInput.SetValue("unknown arg1 arg2")
+	m.executeCommand()
+
+	if !strings.Contains(m.statusMessage, "Unknown command") {
+		t.Errorf("Expected status message to contain 'Unknown command', got '%s'", m.statusMessage)
+	}
+}
+
+// mockAgent is a simple mock implementation for testing
+type mockAgent struct {
+	id   string
+	name string
+}
+
+func (m *mockAgent) GetID() string                                        { return m.id }
+func (m *mockAgent) GetName() string                                      { return m.name }
+func (m *mockAgent) GetType() string                                      { return "mock" }
+func (m *mockAgent) GetModel() string                                     { return "mock-model" }
+func (m *mockAgent) GetRateLimit() float64                                { return 0 }
+func (m *mockAgent) GetRateLimitBurst() int                               { return 0 }
+func (m *mockAgent) Initialize(config agent.AgentConfig) error            { return nil }
+func (m *mockAgent) SendMessage(ctx context.Context, messages []agent.Message) (string, error) {
+	return "mock response", nil
+}
+func (m *mockAgent) StreamMessage(ctx context.Context, messages []agent.Message, writer io.Writer) error {
+	return nil
+}
+func (m *mockAgent) Announce() string           { return m.name + " joined" }
+func (m *mockAgent) IsAvailable() bool          { return true }
+func (m *mockAgent) HealthCheck(ctx context.Context) error { return nil }
+
+func TestModel_HelpModal(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		messages: make([]agent.Message, 0),
+		ready:    true,
+	}
+
+	// Initialize with window size
+	sizeMsg := tea.WindowSizeMsg{Width: 100, Height: 40}
+	updatedModel, _ := m.Update(sizeMsg)
+	m = updatedModel.(Model)
+
+	// Test showing help modal with ?
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}}
+	newModel, _ := m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if !m.showHelp {
+		t.Error("Expected showHelp to be true after ?")
+	}
+
+	// Test that view shows help content
+	view := m.View()
+	if !strings.Contains(view, "Keyboard Shortcuts Help") {
+		t.Error("Expected view to contain help modal title")
+	}
+	if !strings.Contains(view, "General Controls") {
+		t.Error("Expected view to contain General Controls section")
+	}
+	if !strings.Contains(view, "Ctrl+F") {
+		t.Error("Expected view to contain Ctrl+F keybinding")
+	}
+
+	// Test closing help modal with Esc
+	keyMsg = tea.KeyMsg{Type: tea.KeyEsc}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.showHelp {
+		t.Error("Expected showHelp to be false after Esc")
+	}
+
+	// Test toggling help modal again with ?
+	keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if !m.showHelp {
+		t.Error("Expected showHelp to be true after second ?")
+	}
+
+	// Test closing help modal with ? (toggle)
+	keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}}
+	newModel, _ = m.Update(keyMsg)
+	m = newModel.(Model)
+
+	if m.showHelp {
+		t.Error("Expected showHelp to be false after toggling with ?")
+	}
+}
+
+func TestModel_HelpModalContent(t *testing.T) {
+	cfg := &config.Config{
+		Orchestrator: config.OrchestratorConfig{Mode: "round-robin"},
+	}
+
+	m := Model{
+		ctx:      context.Background(),
+		config:   cfg,
+		messages: make([]agent.Message, 0),
+		ready:    true,
+		showHelp: true,
+	}
+
+	helpContent := m.renderHelp()
+
+	// Verify all sections are present
+	expectedSections := []string{
+		"Keyboard Shortcuts Help",
+		"General Controls",
+		"Conversation Controls",
+		"Search",
+		"Commands (Slash Commands)",
+	}
+
+	for _, section := range expectedSections {
+		if !strings.Contains(helpContent, section) {
+			t.Errorf("Expected help content to contain '%s'", section)
+		}
+	}
+
+	// Verify key keybindings are documented
+	expectedKeys := []string{
+		"Ctrl+C",
+		"Ctrl+S",
+		"Ctrl+P",
+		"Ctrl+F",
+		"/",
+		"?",
+		"filter <agent>",
+		"clear",
+	}
+
+	for _, key := range expectedKeys {
+		if !strings.Contains(helpContent, key) {
+			t.Errorf("Expected help content to document '%s' key", key)
+		}
 	}
 }
 

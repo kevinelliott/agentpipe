@@ -61,14 +61,19 @@ type Model struct {
 	viewport           viewport.Model
 	textarea           textarea.Model
 	searchInput        textinput.Model
+	commandInput       textinput.Model
 	searchMode         bool
+	commandMode        bool
+	showHelp           bool
 	searchResults      []int // Message indices that match search
 	currentSearchIndex int   // Current position in searchResults
+	filterAgent        string // Agent name to filter by (empty = no filter)
 	width              int
 	height             int
 	ready              bool
 	running            bool
 	err                error
+	statusMessage      string // Temporary status message
 }
 
 type messageUpdate struct {
@@ -86,6 +91,10 @@ func Run(ctx context.Context, cfg *config.Config, agents []agent.Agent) error {
 	searchInput.Placeholder = "Search messages..."
 	searchInput.CharLimit = 100
 
+	commandInput := textinput.New()
+	commandInput.Placeholder = "Enter command (filter <agent> | clear)..."
+	commandInput.CharLimit = 100
+
 	m := Model{
 		ctx:                ctx,
 		config:             cfg,
@@ -93,9 +102,12 @@ func Run(ctx context.Context, cfg *config.Config, agents []agent.Agent) error {
 		messages:           make([]agent.Message, 0),
 		running:            false,
 		searchInput:        searchInput,
+		commandInput:       commandInput,
 		searchMode:         false,
+		commandMode:        false,
 		searchResults:      make([]int, 0),
 		currentSearchIndex: -1,
+		filterAgent:        "",
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -115,6 +127,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle command mode keys
+		if m.commandMode {
+			switch msg.Type {
+			case tea.KeyEsc:
+				// Exit command mode
+				m.commandMode = false
+				m.commandInput.SetValue("")
+				return m, nil
+			case tea.KeyEnter:
+				// Execute command
+				m.executeCommand()
+				m.commandMode = false
+				m.commandInput.SetValue("")
+				return m, nil
+			default:
+				// Update command input
+				var cmd tea.Cmd
+				m.commandInput, cmd = m.commandInput.Update(msg)
+				return m, cmd
+			}
+		}
+
 		// Handle search mode keys
 		if m.searchMode {
 			switch msg.Type {
@@ -159,10 +193,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle normal mode keys
+		switch msg.String() {
+		case "/":
+			// Enter command mode
+			if m.ready && !m.searchMode && !m.showHelp {
+				m.commandMode = true
+				return m, nil
+			}
+		case "?":
+			// Toggle help modal
+			if m.ready && !m.searchMode && !m.commandMode {
+				m.showHelp = !m.showHelp
+				return m, nil
+			}
+		}
+
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEsc:
+			// Close help modal if open, otherwise quit
+			if m.showHelp {
+				m.showHelp = false
+				return m, nil
+			}
 			return m, tea.Quit
 		case tea.KeyCtrlF:
 			// Enter search mode (only if ready)
@@ -203,6 +257,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Initialize the internal cursor by updating with a dummy message
 			searchInput, _ = searchInput.Update(nil)
 			m.searchInput = searchInput
+
+			// Initialize command input
+			commandInput := textinput.New()
+			commandInput.Placeholder = "Enter command (filter <agent> | clear)..."
+			commandInput.CharLimit = 100
+			commandInput, _ = commandInput.Update(nil)
+			m.commandInput = commandInput
 
 			// Initialize search state if not already set
 			if m.searchResults == nil {
@@ -248,6 +309,11 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
+	// Show help modal if active
+	if m.showHelp {
+		return m.renderHelp()
+	}
+
 	var b strings.Builder
 
 	title := titleStyle.Render("🚀 AgentPipe - Multi-Agent Conversation")
@@ -266,8 +332,28 @@ func (m Model) View() string {
 	b.WriteString(statusStyle.Render(status))
 	b.WriteString("\n")
 
-	help := helpStyle.Render("Ctrl+C: Quit | Ctrl+S: Start | Ctrl+P: Pause/Resume | Ctrl+F: Search | ↑↓: Scroll")
+	help := helpStyle.Render("?: Help | Ctrl+C: Quit | Ctrl+S: Start | Ctrl+P: Pause/Resume | Ctrl+F: Search | /: Command | ↑↓: Scroll")
 	b.WriteString(help)
+
+	// Show filter status
+	if m.filterAgent != "" {
+		b.WriteString("\n")
+		filterStatus := searchStyle.Render(fmt.Sprintf("Filter: %s", m.filterAgent))
+		b.WriteString(filterStatus)
+	}
+
+	// Show status message if present
+	if m.statusMessage != "" {
+		b.WriteString("\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("green")).Render(m.statusMessage))
+	}
+
+	// Show command bar when in command mode
+	if m.commandMode {
+		b.WriteString("\n")
+		commandBar := searchStyle.Render("/") + m.commandInput.View()
+		b.WriteString(commandBar)
+	}
 
 	// Show search bar when in search mode
 	if m.searchMode {
@@ -293,6 +379,11 @@ func (m Model) renderMessages() string {
 	var b strings.Builder
 
 	for _, msg := range m.messages {
+		// Apply filter if active
+		if m.filterAgent != "" && msg.AgentName != m.filterAgent && msg.Role != "system" {
+			continue
+		}
+
 		timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
 
 		var prefix string
@@ -311,6 +402,152 @@ func (m Model) renderMessages() string {
 		b.WriteString(messageStyle.Render(msg.Content))
 		b.WriteString("\n\n")
 	}
+
+	return b.String()
+}
+
+// executeCommand parses and executes slash commands
+func (m *Model) executeCommand() {
+	command := strings.TrimSpace(m.commandInput.Value())
+	if command == "" {
+		return
+	}
+
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return
+	}
+
+	switch parts[0] {
+	case "filter":
+		if len(parts) < 2 {
+			m.statusMessage = "Usage: filter <agent-name>"
+			return
+		}
+		agentName := parts[1]
+
+		// Check if agent exists
+		agentExists := false
+		for _, agent := range m.agents {
+			if agent.GetName() == agentName {
+				agentExists = true
+				break
+			}
+		}
+
+		if !agentExists {
+			m.statusMessage = fmt.Sprintf("Agent '%s' not found", agentName)
+			return
+		}
+
+		m.filterAgent = agentName
+		m.statusMessage = fmt.Sprintf("Filtering by agent: %s", agentName)
+
+		// Update viewport with filtered messages
+		m.viewport.SetContent(m.renderMessages())
+
+	case "clear":
+		if m.filterAgent == "" {
+			m.statusMessage = "No filter active"
+		} else {
+			m.filterAgent = ""
+			m.statusMessage = "Filter cleared"
+
+			// Update viewport to show all messages
+			m.viewport.SetContent(m.renderMessages())
+		}
+
+	default:
+		m.statusMessage = fmt.Sprintf("Unknown command: %s", parts[0])
+	}
+}
+
+// renderHelp displays the help modal with all keybindings
+func (m Model) renderHelp() string {
+	var b strings.Builder
+
+	// Title
+	title := titleStyle.Render("📖 AgentPipe - Keyboard Shortcuts Help")
+	b.WriteString(title)
+	b.WriteString("\n\n")
+
+	// Create help sections
+	helpSections := []struct {
+		title string
+		items []struct {
+			key  string
+			desc string
+		}
+	}{
+		{
+			title: "General Controls",
+			items: []struct {
+				key  string
+				desc string
+			}{
+				{"Ctrl+C", "Quit application"},
+				{"Esc", "Quit application (or close modal)"},
+				{"?", "Toggle this help screen"},
+				{"↑↓", "Scroll through conversation"},
+			},
+		},
+		{
+			title: "Conversation Controls",
+			items: []struct {
+				key  string
+				desc string
+			}{
+				{"Ctrl+S", "Start conversation"},
+				{"Ctrl+P", "Pause/Resume conversation"},
+			},
+		},
+		{
+			title: "Search",
+			items: []struct {
+				key  string
+				desc string
+			}{
+				{"Ctrl+F", "Enter search mode"},
+				{"Enter", "Perform search (in search mode)"},
+				{"n", "Next search result"},
+				{"N", "Previous search result"},
+				{"Esc", "Exit search mode"},
+			},
+		},
+		{
+			title: "Commands (Slash Commands)",
+			items: []struct {
+				key  string
+				desc string
+			}{
+				{"/", "Enter command mode"},
+				{"filter <agent>", "Filter messages by agent name"},
+				{"clear", "Clear active filter"},
+				{"Esc", "Exit command mode"},
+			},
+		},
+	}
+
+	// Render help sections
+	for _, section := range helpSections {
+		sectionTitle := agentStyle.Render(section.title + ":")
+		b.WriteString(sectionTitle)
+		b.WriteString("\n")
+
+		for _, item := range section.items {
+			keyStyle := searchStyle.Render(fmt.Sprintf("  %-15s", item.key))
+			b.WriteString(keyStyle)
+			b.WriteString("  ")
+			b.WriteString(item.desc)
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	// Footer
+	footer := helpStyle.Render("Press ? or Esc to close this help screen")
+	b.WriteString("\n")
+	b.WriteString(footer)
 
 	return b.String()
 }
