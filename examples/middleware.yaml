@@ -1,0 +1,221 @@
+# AgentPipe Middleware Configuration Example
+#
+# This example demonstrates how to configure and use the middleware pattern
+# for message processing. Middleware allows you to intercept, transform,
+# validate, and augment messages as they flow through the orchestrator.
+#
+# Note: Currently middleware must be configured programmatically.
+# This file serves as documentation for future YAML-based configuration.
+
+orchestrator:
+  mode: round-robin
+  max_turns: 10
+  turn_timeout: 30s
+  response_delay: 1s
+
+agents:
+  - id: claude
+    name: Claude
+    type: claude
+    prompt: |
+      You are Claude, a thoughtful AI assistant. Provide helpful, accurate,
+      and well-reasoned responses.
+
+  - id: gemini
+    name: Gemini
+    type: gemini
+    prompt: |
+      You are Gemini, a knowledgeable AI assistant. Share insights and
+      engage in meaningful conversation.
+
+# Middleware Configuration (Conceptual - for programmatic reference)
+#
+# Middleware executes in the order defined. Each middleware can:
+# - Filter messages (allow/reject)
+# - Transform message content
+# - Validate message structure
+# - Add metadata and metrics
+# - Handle errors and panics
+#
+# Built-in Middleware:
+#
+# 1. ErrorRecoveryMiddleware
+#    - Catches panics in downstream middleware
+#    - Converts panics to errors for graceful handling
+#    - Should be first in chain for maximum coverage
+#
+# 2. LoggingMiddleware
+#    - Logs all messages with structured fields
+#    - Records processing duration
+#    - Logs errors with context
+#
+# 3. MetricsMiddleware
+#    - Tracks processing duration
+#    - Records input/output lengths
+#    - Stores metrics in context metadata
+#
+# 4. EmptyContentValidationMiddleware
+#    - Rejects messages with empty content
+#    - Trims whitespace before validation
+#
+# 5. SanitizationMiddleware(removeSpecialChars bool)
+#    - Trims whitespace
+#    - Collapses multiple spaces
+#    - Optionally removes special characters
+#
+# 6. ContentFilterMiddleware(config)
+#    - MaxLength: limit message length
+#    - MinLength: require minimum length
+#    - BlockedWords: reject messages containing words
+#    - RequiredWords: require certain words present
+#    - CaseSensitive: case-sensitive matching
+#
+# 7. RoleValidationMiddleware(allowedRoles)
+#    - Validates message role against allowed list
+#    - Example: ["user", "assistant", "system"]
+#
+# 8. RateLimitMiddleware(config)
+#    - MaxMessagesPerMinute: limit per minute
+#    - MaxMessagesPerHour: limit per hour
+#    - In-memory state per agent
+#
+# 9. MessageHistoryMiddleware(maxHistory int)
+#    - Tracks recent messages
+#    - Stores in context metadata
+#    - Useful for pattern analysis
+#
+# 10. ContextEnrichmentMiddleware(enricher func)
+#     - Adds custom metadata to context
+#     - User-defined enrichment logic
+#
+# Example Programmatic Configuration:
+#
+# ```go
+# orchestrator := orchestrator.NewOrchestrator(config, writer)
+#
+# // Option 1: Use default middleware stack
+# orchestrator.SetupDefaultMiddleware()
+#
+# // Option 2: Configure custom middleware
+# orchestrator.AddMiddleware(middleware.ErrorRecoveryMiddleware())
+# orchestrator.AddMiddleware(middleware.LoggingMiddleware())
+# orchestrator.AddMiddleware(middleware.MetricsMiddleware())
+#
+# // Add content filtering
+# orchestrator.AddMiddleware(middleware.ContentFilterMiddleware(
+#     middleware.ContentFilterMiddlewareConfig{
+#         MaxLength: 10000,
+#         MinLength: 1,
+#         BlockedWords: []string{"spam", "inappropriate"},
+#         CaseSensitive: false,
+#     },
+# ))
+#
+# // Add validation
+# orchestrator.AddMiddleware(middleware.EmptyContentValidationMiddleware())
+# orchestrator.AddMiddleware(middleware.RoleValidationMiddleware(
+#     []string{"user", "assistant", "system"},
+# ))
+#
+# // Add sanitization
+# orchestrator.AddMiddleware(middleware.SanitizationMiddleware(false))
+#
+# // Add rate limiting
+# orchestrator.AddMiddleware(middleware.RateLimitMiddleware(
+#     middleware.RateLimitConfig{
+#         MaxMessagesPerMinute: 60,
+#         MaxMessagesPerHour: 1000,
+#     },
+# ))
+#
+# // Add message history tracking
+# orchestrator.AddMiddleware(middleware.MessageHistoryMiddleware(100))
+#
+# // Add custom enrichment
+# orchestrator.AddMiddleware(middleware.ContextEnrichmentMiddleware(
+#     func(ctx *middleware.MessageContext, msg *agent.Message) {
+#         ctx.Metadata["environment"] = "production"
+#         ctx.Metadata["version"] = "1.0"
+#     },
+# ))
+# ```
+#
+# Custom Middleware Example:
+#
+# ```go
+# // Create a custom transform middleware
+# uppercaseMiddleware := middleware.NewTransformMiddleware(
+#     "uppercase",
+#     func(ctx *middleware.MessageContext, msg *agent.Message) (*agent.Message, error) {
+#         msg.Content = strings.ToUpper(msg.Content)
+#         return msg, nil
+#     },
+# )
+# orchestrator.AddMiddleware(uppercaseMiddleware)
+#
+# // Create a custom filter middleware
+# lengthFilter := middleware.NewFilterMiddleware(
+#     "length-filter",
+#     func(ctx *middleware.MessageContext, msg *agent.Message) (bool, error) {
+#         if len(msg.Content) > 1000 {
+#             return false, fmt.Errorf("message too long: %d characters", len(msg.Content))
+#         }
+#         return true, nil
+#     },
+# )
+# orchestrator.AddMiddleware(lengthFilter)
+#
+# // Create a custom validation middleware
+# contentValidator := middleware.NewValidationMiddleware(
+#     "content-validator",
+#     func(ctx *middleware.MessageContext, msg *agent.Message) error {
+#         if !strings.Contains(msg.Content, "important") {
+#             return fmt.Errorf("message must contain 'important' keyword")
+#         }
+#         return nil
+#     },
+# )
+# orchestrator.AddMiddleware(contentValidator)
+# ```
+#
+# Middleware Execution Order:
+#
+# Middleware executes in the order it's added (FIFO):
+# 1. ErrorRecovery wraps everything
+# 2. Logging logs the request
+# 3. Metrics starts timing
+# 4. Validation checks message
+# 5. Filter applies rules
+# 6. Transform modifies content
+# 7. Message processed
+# 8. Transform completes
+# 9. Filter completes
+# 10. Validation completes
+# 11. Metrics stores data
+# 12. Logging logs completion
+# 13. ErrorRecovery completes
+#
+# Best Practices:
+#
+# 1. Order matters:
+#    - Put ErrorRecovery first
+#    - Put Logging early for better visibility
+#    - Put Validation before Transform
+#    - Put Metrics early to measure everything
+#
+# 2. Performance:
+#    - Middleware adds minimal overhead (~1-2µs per middleware)
+#    - Keep middleware chains under 10 items
+#    - Use specific middleware instead of complex custom ones
+#
+# 3. Error handling:
+#    - Middleware errors stop the chain
+#    - Use ErrorRecovery to catch panics
+#    - Log errors with context
+#
+# 4. Testing:
+#    - Test middleware in isolation
+#    - Test middleware chains
+#    - Test error propagation
+#
+# See pkg/middleware/ for implementation details.

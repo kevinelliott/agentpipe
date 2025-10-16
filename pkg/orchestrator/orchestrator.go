@@ -15,6 +15,7 @@ import (
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
+	"github.com/kevinelliott/agentpipe/pkg/middleware"
 	"github.com/kevinelliott/agentpipe/pkg/ratelimit"
 	"github.com/kevinelliott/agentpipe/pkg/utils"
 )
@@ -57,13 +58,15 @@ type OrchestratorConfig struct {
 // It manages agent registration, turn-taking, message history, and logging.
 // All methods are safe for concurrent use.
 type Orchestrator struct {
-	config       OrchestratorConfig
-	agents       []agent.Agent
-	messages     []agent.Message
-	rateLimiters map[string]*ratelimit.Limiter // per-agent rate limiters
-	mu           sync.RWMutex
-	writer       io.Writer
-	logger       *logger.ChatLogger
+	config           OrchestratorConfig
+	agents           []agent.Agent
+	messages         []agent.Message
+	rateLimiters     map[string]*ratelimit.Limiter // per-agent rate limiters
+	middlewareChain  *middleware.Chain             // message processing middleware
+	mu               sync.RWMutex
+	writer           io.Writer
+	logger           *logger.ChatLogger
+	currentTurnNumber int // tracks the current turn number for middleware context
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -102,11 +105,13 @@ func NewOrchestrator(config OrchestratorConfig, writer io.Writer) *Orchestrator 
 	}
 
 	return &Orchestrator{
-		config:       config,
-		agents:       make([]agent.Agent, 0),
-		messages:     make([]agent.Message, 0),
-		rateLimiters: make(map[string]*ratelimit.Limiter),
-		writer:       writer,
+		config:           config,
+		agents:           make([]agent.Agent, 0),
+		messages:         make([]agent.Message, 0),
+		rateLimiters:     make(map[string]*ratelimit.Limiter),
+		middlewareChain:  middleware.NewChain(),
+		writer:           writer,
+		currentTurnNumber: 0,
 	}
 }
 
@@ -114,6 +119,27 @@ func NewOrchestrator(config OrchestratorConfig, writer io.Writer) *Orchestrator 
 // The logger receives all conversation messages for persistence.
 func (o *Orchestrator) SetLogger(logger *logger.ChatLogger) {
 	o.logger = logger
+}
+
+// AddMiddleware adds a middleware to the orchestrator's processing chain.
+// Middleware is executed in the order it is added (first added = first executed).
+// This method is thread-safe.
+func (o *Orchestrator) AddMiddleware(m middleware.Middleware) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.middlewareChain.Add(m)
+
+	log.WithField("middleware", m.Name()).Debug("middleware added to orchestrator")
+}
+
+// SetupDefaultMiddleware configures a sensible default middleware chain.
+// This includes logging, metrics, validation, and error recovery.
+func (o *Orchestrator) SetupDefaultMiddleware() {
+	o.AddMiddleware(middleware.ErrorRecoveryMiddleware())
+	o.AddMiddleware(middleware.LoggingMiddleware())
+	o.AddMiddleware(middleware.MetricsMiddleware())
+	o.AddMiddleware(middleware.EmptyContentValidationMiddleware())
+	o.AddMiddleware(middleware.SanitizationMiddleware(false))
 }
 
 // AddAgent registers an agent with the orchestrator.
@@ -475,8 +501,39 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 		},
 	}
 
+	// Process message through middleware chain
+	o.mu.RLock()
+	chain := o.middlewareChain
+	turnNumber := o.currentTurnNumber
+	o.mu.RUnlock()
+
+	if chain != nil && chain.Len() > 0 {
+		middlewareCtx := &middleware.MessageContext{
+			Ctx:        ctx,
+			AgentID:    a.GetID(),
+			AgentName:  a.GetName(),
+			TurnNumber: turnNumber,
+			Metadata:   make(map[string]interface{}),
+		}
+
+		processedMsg, err := chain.Process(middlewareCtx, &msg)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"agent_name": a.GetName(),
+				"turn":       turnNumber,
+			}).WithError(err).Error("middleware processing failed")
+			return fmt.Errorf("middleware processing failed: %w", err)
+		}
+
+		// Use the processed message
+		if processedMsg != nil {
+			msg = *processedMsg
+		}
+	}
+
 	o.mu.Lock()
 	o.messages = append(o.messages, msg)
+	o.currentTurnNumber++
 	o.mu.Unlock()
 
 	// Display the response
