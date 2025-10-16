@@ -77,6 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Comprehensive structured logging with timing and metrics
     - Proper error handling with specific error detection
   - Ensures reliable, consistent behavior across all agent types
+- **Orchestrator Identification**: Changed orchestrator messages from "System" to "HOST" for clarity
+  - Initial conversation prompt now uses `AgentID="host"` and `AgentName="HOST"`
+  - Distinguishes orchestrator messages from system announcements (agent joins, etc.)
+  - All 7 adapters updated to recognize both "system"/"System" and "host"/"HOST" for backwards compatibility
+  - Makes it clear who is presenting the initial task vs. system notifications
 
 ## [v0.0.16] - 2025-10-15
 

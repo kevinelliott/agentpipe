@@ -244,10 +244,10 @@ func (c *ClaudeAgent) buildPrompt(messages []agent.Message, isInitialSession boo
 		var initialPrompt string
 		var otherMessages []agent.Message
 
-		// IMPORTANT: Find the orchestrator's initial prompt (AgentID/AgentName = "system")
+		// IMPORTANT: Find the orchestrator's initial prompt (AgentID/AgentName = "host" or "system")
 		// Agent announcements are also system messages, but they come from specific agents
 		for _, msg := range messages {
-			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentID == "host" || msg.AgentName == "System" || msg.AgentName == "HOST") && initialPrompt == "" {
 				// This is the orchestrator's initial prompt - show it prominently
 				initialPrompt = msg.Content
 			} else {

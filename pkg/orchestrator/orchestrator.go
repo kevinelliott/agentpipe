@@ -228,8 +228,8 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 
 	if o.config.InitialPrompt != "" {
 		initialMsg := agent.Message{
-			AgentID:   "system",
-			AgentName: "System",
+			AgentID:   "host",
+			AgentName: "HOST",
 			Content:   o.config.InitialPrompt,
 			Timestamp: time.Now().Unix(),
 			Role:      "system",
@@ -244,7 +244,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		}
 		// Always write to writer if available (for TUI)
 		if o.writer != nil {
-			fmt.Fprintf(o.writer, "\n[System] %s\n", initialMsg.Content)
+			fmt.Fprintf(o.writer, "\n[HOST] %s\n", initialMsg.Content)
 		}
 	}
 

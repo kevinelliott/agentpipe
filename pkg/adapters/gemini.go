@@ -289,10 +289,10 @@ func (g *GeminiAgent) buildPrompt(messages []agent.Message, isInitialSession boo
 		var initialPrompt string
 		var otherMessages []agent.Message
 
-		// Find the orchestrator's initial prompt (AgentID="system")
+		// Find the orchestrator's initial prompt (AgentID="system" or "host")
 		// vs agent announcements (system messages from specific agents)
 		for _, msg := range messages {
-			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+			if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentID == "host" || msg.AgentName == "System" || msg.AgentName == "HOST") && initialPrompt == "" {
 				// This is the orchestrator's initial prompt - show it prominently
 				initialPrompt = msg.Content
 			} else {
