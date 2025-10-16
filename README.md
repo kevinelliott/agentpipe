@@ -74,7 +74,7 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 
 ## What's New 🎉
 
-### Latest Updates (v0.0.16-dev - In Development)
+### Latest Updates (v0.0.16)
 
 Major production-ready improvements since v0.0.15:
 
