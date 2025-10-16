@@ -173,7 +173,7 @@ Production-ready containerization ([6cced13](https://github.com/kevinelliott/age
 - Thread-safe implementations throughout
 - Proper resource cleanup and leak prevention
 
-### v0.0.15 (December 2024)
+### v0.0.15 (October 14th, 2025)
 
 #### New Agent Support
 - **GitHub Copilot CLI Integration**: Full support for GitHub's Copilot terminal agent (`copilot`)
