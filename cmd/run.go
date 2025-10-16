@@ -382,18 +382,20 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		}
 	}
 
+	// Always print session summary (whether interrupted or completed normally)
 	if gracefulShutdown {
-		fmt.Println("📊 Session Summary")
-		fmt.Println(strings.Repeat("=", 60))
-		printSessionSummary(orch, cfg)
-		return nil
+		fmt.Println("📊 Session Summary (Interrupted)")
+	} else if err != nil {
+		fmt.Println("📊 Session Summary (Ended with Error)")
+	} else {
+		fmt.Println("📊 Session Summary (Completed)")
 	}
+	fmt.Println(strings.Repeat("=", 60))
+	printSessionSummary(orch, cfg)
 
 	if err != nil {
 		return fmt.Errorf("orchestrator error: %w", err)
 	}
-
-	fmt.Println("Conversation ended.")
 
 	return nil
 }

@@ -48,11 +48,23 @@ logging:
 
 # Amp CLI Features:
 #
-# The Amp agent adapter uses the Amp CLI's execute mode:
-#   amp -x "your prompt here"
+# The Amp agent adapter uses thread management for efficient conversations:
+#   amp thread new          - Creates a new conversation thread
+#   amp thread continue {id} - Continues an existing thread
+#
+# Smart message filtering:
+# - AgentPipe only sends NEW messages from OTHER agents to Amp
+# - Amp's own responses are NOT sent back to it (it already knows what it said)
+# - Only messages from other agents and system messages are forwarded
+#
+# Benefits:
+# - Faster response times (minimal data transfer)
+# - Lower API costs (no redundant token usage)
+# - Better conversation context management (Amp maintains state server-side)
 #
 # For streaming output, it uses:
-#   amp --stream-json -x "your prompt"
+#   amp thread new --stream-json
+#   amp thread continue {id} --stream-json
 #
 # Amp provides:
 # - Advanced code generation and editing

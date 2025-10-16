@@ -24,7 +24,9 @@ const (
 // AmpAgent represents the Amp coding agent adapter
 type AmpAgent struct {
 	agent.BaseAgent
-	execPath string
+	execPath        string
+	threadID        string // Current Amp thread ID for conversation continuity
+	lastMessageIdx  int    // Index of last message sent to Amp (for incremental updates)
 }
 
 // NewAmpAgent creates a new Amp agent instance
@@ -119,39 +121,184 @@ func (a *AmpAgent) SendMessage(ctx context.Context, messages []agent.Message) (s
 	log.WithFields(map[string]interface{}{
 		"agent_name":    a.Name,
 		"message_count": len(messages),
+		"thread_id":     a.threadID,
+		"last_msg_idx":  a.lastMessageIdx,
 	}).Debug("sending message to amp CLI")
 
-	conversation := a.formatConversation(messages)
-	prompt := a.buildPrompt(conversation)
+	// Get only new messages that haven't been sent to Amp yet
+	// IMPORTANT: Filter out this agent's own messages since Amp maintains them in the thread
+	newMessages := a.filterRelevantMessages(messages[a.lastMessageIdx:])
+	if len(newMessages) == 0 {
+		log.WithField("agent_name", a.Name).Debug("no new messages to send (all filtered)")
+		return "", nil
+	}
 
-	// Use -x flag for execute mode
-	cmd := exec.CommandContext(ctx, a.execPath, "-x", prompt)
-
+	var output string
+	var err error
 	startTime := time.Now()
-	output, err := cmd.CombinedOutput()
+
+	if a.threadID == "" {
+		// Create a new thread with the initial conversation context
+		// For initial thread, send ALL messages except this agent's own
+		allRelevantMessages := a.filterRelevantMessages(messages)
+		output, err = a.createThread(ctx, allRelevantMessages, newMessages)
+	} else {
+		// Continue existing thread with just the new messages from OTHER agents
+		output, err = a.continueThread(ctx, newMessages)
+	}
+
 	duration := time.Since(startTime)
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			log.WithFields(map[string]interface{}{
-				"agent_name": a.Name,
-				"exit_code":  exitErr.ExitCode(),
-				"duration":   duration.String(),
-			}).WithError(err).Error("amp execution failed with exit code")
-			return "", fmt.Errorf("amp execution failed (exit code %d): %s", exitErr.ExitCode(), string(output))
-		}
 		log.WithFields(map[string]interface{}{
 			"agent_name": a.Name,
 			"duration":   duration.String(),
-		}).WithError(err).Error("amp execution failed")
-		return "", fmt.Errorf("amp execution failed: %w\nOutput: %s", err, string(output))
+			"thread_id":  a.threadID,
+		}).WithError(err).Error("amp message failed")
+		return "", err
 	}
+
+	// Update the index of last sent message
+	a.lastMessageIdx = len(messages)
 
 	log.WithFields(map[string]interface{}{
 		"agent_name":    a.Name,
 		"duration":      duration.String(),
 		"response_size": len(output),
+		"thread_id":     a.threadID,
 	}).Info("amp message sent successfully")
+
+	return output, nil
+}
+
+// filterRelevantMessages filters out this agent's own messages
+// Since Amp maintains thread context server-side, we should NOT send:
+// 1. This agent's own responses (Amp already knows what it said)
+// 2. Only send messages from OTHER agents and system messages
+func (a *AmpAgent) filterRelevantMessages(messages []agent.Message) []agent.Message {
+	relevant := make([]agent.Message, 0, len(messages))
+
+	for _, msg := range messages {
+		// Skip this agent's own messages - Amp already has them in the thread
+		if msg.AgentName == a.Name || msg.AgentID == a.ID {
+			continue
+		}
+		// Include messages from other agents and system messages
+		relevant = append(relevant, msg)
+	}
+
+	return relevant
+}
+
+// createThread creates a new Amp thread with initial context
+func (a *AmpAgent) createThread(ctx context.Context, allMessages, newMessages []agent.Message) (string, error) {
+	// Count system messages to verify initial prompt is included
+	systemMsgCount := 0
+	for _, msg := range allMessages {
+		if msg.Role == "system" || strings.ToLower(msg.AgentName) == "system" {
+			systemMsgCount++
+		}
+	}
+
+	log.WithFields(map[string]interface{}{
+		"agent_name":        a.Name,
+		"filtered_messages": len(allMessages),
+		"system_messages":   systemMsgCount,
+		"has_custom_prompt": a.Config.Prompt != "",
+		"custom_prompt_len": len(a.Config.Prompt),
+	}).Info("creating new amp thread with relevant conversation context")
+
+	// IMPORTANT: Build the prompt with proper structure
+	// This includes:
+	// 1. Agent's custom system prompt (a.Config.Prompt) - sent FIRST
+	// 2. Initial orchestrator prompt - highlighted prominently
+	// 3. Messages from OTHER agents (excluding this agent's own responses)
+	// NOTE: allMessages is already filtered by caller to exclude this agent's messages
+	prompt := a.buildPrompt(allMessages, true) // isInitialThread = true
+
+	log.WithFields(map[string]interface{}{
+		"agent_name":      a.Name,
+		"message_count":   len(allMessages),
+		"full_prompt_len": len(prompt),
+	}).Debug("amp thread context prepared")
+
+	// Log a preview of what we're sending for debugging
+	if len(prompt) > 0 {
+		previewLen := 300
+		if len(prompt) < previewLen {
+			previewLen = len(prompt)
+		}
+		log.WithFields(map[string]interface{}{
+			"agent_name":    a.Name,
+			"prompt_start": prompt[:previewLen],
+		}).Debug("amp initial prompt preview")
+	}
+
+	// Create new thread: amp thread new
+	cmd := exec.CommandContext(ctx, a.execPath, "thread", "new")
+	cmd.Stdin = strings.NewReader(prompt)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			log.WithFields(map[string]interface{}{
+				"agent_name": a.Name,
+				"exit_code":  exitErr.ExitCode(),
+			}).WithError(err).Error("amp thread new failed")
+			return "", fmt.Errorf("amp thread new failed (exit code %d): %s", exitErr.ExitCode(), string(output))
+		}
+		return "", fmt.Errorf("amp thread new failed: %w\nOutput: %s", err, string(output))
+	}
+
+	// Parse output to extract thread ID and response
+	// Expected format: thread ID on first line, then response
+	outputStr := string(output)
+	lines := strings.Split(outputStr, "\n")
+	if len(lines) > 0 {
+		a.threadID = strings.TrimSpace(lines[0])
+		log.WithFields(map[string]interface{}{
+			"agent_name": a.Name,
+			"thread_id":  a.threadID,
+		}).Info("amp thread created")
+
+		// Return the response (everything after the thread ID line)
+		if len(lines) > 1 {
+			return strings.Join(lines[1:], "\n"), nil
+		}
+	}
+
+	return outputStr, nil
+}
+
+// continueThread continues an existing Amp thread with new messages
+func (a *AmpAgent) continueThread(ctx context.Context, newMessages []agent.Message) (string, error) {
+	log.WithFields(map[string]interface{}{
+		"agent_name":        a.Name,
+		"thread_id":         a.threadID,
+		"new_message_count": len(newMessages),
+	}).Info("continuing amp thread with incremental messages only")
+
+	// IMPORTANT: Only send NEW messages that haven't been sent yet
+	// Amp maintains the full conversation context server-side in the thread
+	// We only need to send the delta (new messages since last interaction)
+	prompt := a.buildPrompt(newMessages, false) // isInitialThread = false
+
+	// Continue thread: amp thread continue {thread_id}
+	cmd := exec.CommandContext(ctx, a.execPath, "thread", "continue", a.threadID)
+	cmd.Stdin = strings.NewReader(prompt)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			log.WithFields(map[string]interface{}{
+				"agent_name": a.Name,
+				"thread_id":  a.threadID,
+				"exit_code":  exitErr.ExitCode(),
+			}).WithError(err).Error("amp thread continue failed")
+			return "", fmt.Errorf("amp thread continue failed (exit code %d): %s", exitErr.ExitCode(), string(output))
+		}
+		return "", fmt.Errorf("amp thread continue failed: %w\nOutput: %s", err, string(output))
+	}
 
 	return string(output), nil
 }
@@ -165,18 +312,86 @@ func (a *AmpAgent) StreamMessage(ctx context.Context, messages []agent.Message, 
 	log.WithFields(map[string]interface{}{
 		"agent_name":    a.Name,
 		"message_count": len(messages),
+		"thread_id":     a.threadID,
+		"last_msg_idx":  a.lastMessageIdx,
 		"timeout":       ampStreamTimeout.String(),
 	}).Debug("starting amp streaming message")
 
-	conversation := a.formatConversation(messages)
-	prompt := a.buildPrompt(conversation)
+	// Get only new messages that haven't been sent to Amp yet
+	// IMPORTANT: Filter out this agent's own messages since Amp maintains them in the thread
+	newMessages := a.filterRelevantMessages(messages[a.lastMessageIdx:])
+	if len(newMessages) == 0 {
+		log.WithField("agent_name", a.Name).Debug("no new messages to stream (all filtered)")
+		return nil
+	}
 
 	// Create a context with timeout for streaming
 	streamCtx, cancel := context.WithTimeout(ctx, ampStreamTimeout)
 	defer cancel()
 
-	// Use --stream-json and -x flags for streaming JSON output
-	cmd := exec.CommandContext(streamCtx, a.execPath, "--stream-json", "-x", prompt)
+	var cmd *exec.Cmd
+	var prompt string
+
+	if a.threadID == "" {
+		// For initial thread, send ALL messages except this agent's own
+		allRelevantMessages := a.filterRelevantMessages(messages)
+
+		// Count system messages to verify initial prompt is included
+		systemMsgCount := 0
+		for _, msg := range allRelevantMessages {
+			if msg.Role == "system" || strings.ToLower(msg.AgentName) == "system" {
+				systemMsgCount++
+			}
+		}
+
+		log.WithFields(map[string]interface{}{
+			"agent_name":         a.Name,
+			"total_messages":     len(messages),
+			"filtered_messages":  len(allRelevantMessages),
+			"system_messages":    systemMsgCount,
+			"has_custom_prompt":  a.Config.Prompt != "",
+			"mode":               "streaming",
+		}).Info("creating new amp thread (streaming) with relevant conversation context")
+
+		// IMPORTANT: Build prompt with proper structure
+		// Agent setup and role come FIRST, then conversation context
+		prompt = a.buildPrompt(allRelevantMessages, true) // isInitialThread = true
+
+		log.WithFields(map[string]interface{}{
+			"agent_name":      a.Name,
+			"message_count":   len(allRelevantMessages),
+			"full_prompt_len": len(prompt),
+		}).Debug("amp streaming thread context prepared")
+
+		// Log a preview of what we're sending for debugging
+		if len(prompt) > 0 {
+			previewLen := 300
+			if len(prompt) < previewLen {
+				previewLen = len(prompt)
+			}
+			log.WithFields(map[string]interface{}{
+				"agent_name":  a.Name,
+				"prompt_start": prompt[:previewLen],
+			}).Debug("amp initial streaming prompt preview")
+		}
+
+		// Use --stream-json with thread new
+		cmd = exec.CommandContext(streamCtx, a.execPath, "thread", "new", "--stream-json")
+	} else {
+		// Continue existing thread with just new messages
+		log.WithFields(map[string]interface{}{
+			"agent_name":        a.Name,
+			"thread_id":         a.threadID,
+			"new_message_count": len(newMessages),
+			"mode":              "streaming-continue",
+		}).Debug("continuing amp thread with new messages only")
+
+		prompt = a.buildPrompt(newMessages, false) // isInitialThread = false
+		// Use --stream-json with thread continue
+		cmd = exec.CommandContext(streamCtx, a.execPath, "thread", "continue", a.threadID, "--stream-json")
+	}
+
+	cmd.Stdin = strings.NewReader(prompt)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -216,6 +431,7 @@ func (a *AmpAgent) StreamMessage(ctx context.Context, messages []agent.Message, 
 	hasOutput := false
 	scanner := bufio.NewScanner(stdout)
 	var streamedContent strings.Builder
+	isFirstLine := a.threadID == "" // Track if we need to extract thread ID from first line
 
 	// Set a deadline for reading
 	readTimer := time.NewTimer(ampReadDeadline)
@@ -232,6 +448,33 @@ scanLoop:
 			break scanLoop
 		default:
 			line := scanner.Text()
+
+			// If this is a new thread, first line should be the thread ID
+			if isFirstLine {
+				// Try to extract thread ID from first line
+				var threadInfo struct {
+					ThreadID string `json:"thread_id"`
+					ID       string `json:"id"`
+				}
+				if err := json.Unmarshal([]byte(line), &threadInfo); err == nil {
+					if threadInfo.ThreadID != "" {
+						a.threadID = threadInfo.ThreadID
+						log.WithFields(map[string]interface{}{
+							"agent_name": a.Name,
+							"thread_id":  a.threadID,
+						}).Info("amp thread created from streaming")
+					} else if threadInfo.ID != "" {
+						a.threadID = threadInfo.ID
+						log.WithFields(map[string]interface{}{
+							"agent_name": a.Name,
+							"thread_id":  a.threadID,
+						}).Info("amp thread created from streaming")
+					}
+				}
+				isFirstLine = false
+				// Don't write thread ID line to output, continue to next line
+				continue
+			}
 
 			// Parse the JSON line and extract text content
 			if text := a.parseJSONLine(line); text != "" {
@@ -270,11 +513,15 @@ scanLoop:
 		return fmt.Errorf("amp produced no output")
 	}
 
+	// Update the index of last sent message
+	a.lastMessageIdx = len(messages)
+
 	duration := time.Since(startTime)
 	log.WithFields(map[string]interface{}{
 		"agent_name":     a.Name,
 		"duration":       duration.String(),
 		"content_length": streamedContent.Len(),
+		"thread_id":      a.threadID,
 	}).Info("amp streaming message completed")
 
 	return nil
@@ -292,9 +539,84 @@ func (a *AmpAgent) formatConversation(messages []agent.Message) string {
 	return strings.Join(parts, "\n")
 }
 
-// buildPrompt creates the final prompt for Amp
-func (a *AmpAgent) buildPrompt(conversation string) string {
-	return BuildAgentPrompt(a.Name, a.Config.Prompt, conversation)
+// buildPrompt creates the final prompt for Amp with explicit context
+// For initial threads, we need to send setup BEFORE conversation to avoid confusion
+func (a *AmpAgent) buildPrompt(messages []agent.Message, isInitialThread bool) string {
+	var prompt strings.Builder
+
+	// PART 1: IDENTITY AND ROLE (always first)
+	prompt.WriteString("AGENT SETUP:\n")
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n")
+	prompt.WriteString(fmt.Sprintf("You are '%s' participating in a multi-agent conversation.\n\n", a.Name))
+
+	// Include custom system prompt if provided
+	if a.Config.Prompt != "" {
+		prompt.WriteString("YOUR ROLE AND INSTRUCTIONS:\n")
+		prompt.WriteString(a.Config.Prompt)
+		prompt.WriteString("\n")
+	}
+	prompt.WriteString(strings.Repeat("=", 60))
+	prompt.WriteString("\n\n")
+
+	// PART 2: CONVERSATION CONTEXT (after role is established)
+	if isInitialThread && len(messages) > 0 {
+		// Find the initial system message (orchestrator prompt)
+		var initialPrompt string
+		var otherMessages []agent.Message
+
+		for _, msg := range messages {
+			if msg.Role == "system" && initialPrompt == "" {
+				// First system message is the orchestrator's initial prompt
+				initialPrompt = msg.Content
+			} else if msg.Role != "system" {
+				// Other agent messages
+				otherMessages = append(otherMessages, msg)
+			}
+		}
+
+		// Show the initial topic/prompt VERY prominently
+		if initialPrompt != "" {
+			prompt.WriteString("CONVERSATION TOPIC:\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n")
+			prompt.WriteString(initialPrompt)
+			prompt.WriteString("\n")
+			prompt.WriteString(strings.Repeat("=", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		// Then show any existing conversation
+		if len(otherMessages) > 0 {
+			prompt.WriteString("CONVERSATION SO FAR:\n")
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n")
+			for _, msg := range otherMessages {
+				timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+				prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+			}
+			prompt.WriteString(strings.Repeat("-", 60))
+			prompt.WriteString("\n\n")
+		}
+
+		prompt.WriteString(fmt.Sprintf("Now, as %s, respond to this conversation. Build on what was said without repeating previous points. Don't announce that you're joining - just respond directly.", a.Name))
+	} else if len(messages) > 0 {
+		// For continuation, simpler format - just show new messages
+		prompt.WriteString("NEW MESSAGES:\n")
+		prompt.WriteString(strings.Repeat("-", 60))
+		prompt.WriteString("\n")
+		for _, msg := range messages {
+			timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+			prompt.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, msg.AgentName, msg.Content))
+		}
+		prompt.WriteString(strings.Repeat("-", 60))
+		prompt.WriteString("\n\n")
+		prompt.WriteString(fmt.Sprintf("Continue the conversation as %s.", a.Name))
+	} else {
+		prompt.WriteString(fmt.Sprintf("Start the conversation as %s.", a.Name))
+	}
+
+	return prompt.String()
 }
 
 // parseJSONLine parses a single JSON line from amp --stream-json output

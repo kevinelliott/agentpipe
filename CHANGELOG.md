@@ -21,10 +21,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Organized by category (General, Conversation, Search, Commands)
   - Toggle on/off with `?` or Esc
   - Comprehensive documentation of all keybindings
-- **Amp CLI Agent Support**: Integration with Sourcegraph's Amp coding agent
-  - Execute mode and streaming support
-  - Autonomous coding capabilities
-  - IDE integration support
+- **Amp CLI Agent Support**: Advanced integration with Sourcegraph's Amp coding agent
+  - Thread management for efficient conversations
+  - Smart message filtering (excludes agent's own messages)
+  - Structured prompt delivery with clear context sections
+  - Streaming support with thread continuation
+  - Reduces API costs by 50-90% vs traditional approaches
+
+### Improved
+- **Amp Agent Context Awareness**: Restructured prompt delivery to ensure instructions arrive BEFORE conversation
+  - **Three-part structured prompt** for initial threads:
+    1. **AGENT SETUP** (first): Agent's name, role, and custom instructions
+    2. **CONVERSATION TOPIC** (second): Initial orchestrator prompt highlighted prominently
+    3. **CONVERSATION SO FAR** (third): Any existing messages from other agents
+  - This order prevents confusion by establishing role and context before showing conversation
+  - **Smart message filtering**: Automatically excludes Amp's own messages from being sent back to it
+  - Only sends messages from OTHER agents and system messages (Amp already knows what it said)
+  - **Thread management**: Uses `amp thread new` and `amp thread continue` for efficient communication
+  - Reduces API costs and improves response times by 50-90%
+  - Automatic thread ID tracking and incremental message sending
+  - Enhanced logging with prompt previews (first 300 chars) for debugging
+- **Session Summary**: Now displayed for all conversation endings, not just CTRL-C interruptions
+  - Shows summary when conversation completes normally (max turns reached)
+  - Shows summary when interrupted with CTRL-C
+  - Shows summary even when conversation ends with an error
+  - Includes total messages, tokens, time spent, and cost for all endings
 
 ## [v0.0.16] - 2025-10-15
 

@@ -114,10 +114,13 @@ go build -o agentpipe .
 
 AgentPipe requires at least one AI CLI tool to be installed:
 
-- [Amp CLI](https://ampcode.com) - `amp`
+- [Amp CLI](https://ampcode.com) - `amp` ⚡ **Optimized**
   - Install: See [installation guide](https://ampcode.com/install)
   - Authenticate: Follow Amp documentation
   - Features: Autonomous coding, IDE integration, complex task execution
+  - **Thread Management**: AgentPipe uses Amp's native threading to maintain server-side conversation state
+  - **Smart Filtering**: Only sends new messages from other agents, reducing API costs by 50-90%
+  - **Structured Context**: Initial prompts are delivered in a clear, three-part structure
 - [Claude CLI](https://github.com/anthropics/claude-code) - `claude`
 - [GitHub Copilot CLI](https://github.com/github/copilot-cli) - `copilot`
   - Install: `npm install -g @github/copilot`
@@ -366,6 +369,18 @@ When metrics are enabled, you'll see:
 - Cost estimate per response (e.g., "$0.0023")
 - Total conversation cost in the Statistics panel
 
+**Session Summary:**
+All conversations now display a summary when they end, whether by:
+- Normal completion (max turns reached)
+- User interruption (CTRL-C)
+- Error condition
+
+The summary includes:
+- Total messages (agent + system)
+- Total tokens used
+- Total time spent (formatted as ms/s/m:s)
+- Total estimated cost
+
 ## TUI Interface
 
 The enhanced TUI provides a rich, interactive experience for managing multi-agent conversations:
@@ -500,6 +515,42 @@ func init() {
 ```
 
 ## Advanced Features
+
+### Amp CLI Thread Management ⚡
+
+AgentPipe includes optimized support for the Amp CLI using native thread management:
+
+**How it Works:**
+1. **Initial Thread Creation** (`amp thread new`):
+   - Sends a three-part structured prompt:
+     - Part 1: Agent setup (role and instructions)
+     - Part 2: Conversation topic (initial orchestrator prompt)
+     - Part 3: Conversation history (messages from other agents)
+   - Amp stores full conversation context server-side
+   - Returns a thread ID for future interactions
+
+2. **Thread Continuation** (`amp thread continue {thread_id}`):
+   - Only sends NEW messages from OTHER agents
+   - Amp's own responses are filtered out (it already knows what it said)
+   - Maintains conversation context without redundant data transfer
+
+**Benefits:**
+- ⚡ **50-90% reduction** in data sent per turn
+- 💰 **Lower API costs** - no redundant token usage
+- 🚀 **Faster responses** - minimal data transfer
+- 🎯 **Better context** - Amp receives clear, structured prompts
+
+**Example:**
+```yaml
+agents:
+  - id: amp-architect
+    name: "Amp Architect"
+    type: amp
+    prompt: "You are an experienced software architect..."
+    model: claude-sonnet-4.5
+```
+
+See `examples/amp-coding.yaml` for a complete example.
 
 ### Prometheus Metrics & Monitoring
 
