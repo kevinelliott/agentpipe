@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Structured prompt delivery with clear context sections
   - Streaming support with thread continuation
   - Reduces API costs by 50-90% vs traditional approaches
+- **Qoder CLI Agent Support**: Full integration with Qoder agentic coding platform
+  - Non-interactive print mode with `qodercli --print`
+  - Enhanced context engineering for comprehensive codebase understanding
+  - Intelligent agents for systematic software development tasks
+  - Built-in tools (Grep, Read, Write, Bash) for file operations
+  - MCP integration support for extended functionality
+  - Permission bypass with `--yolo` flag for automated execution
 
 ### Improved
 - **Standardized Agent Introduction**: All agents now receive complete conversation history when first coming online
@@ -70,8 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Parses JSON output to extract agent messages cleanly
   - Automatically bypasses approval prompts with safety flags
   - No more "stdout is not a terminal" errors in multi-agent conversations
-- **Standardized All Adapters**: Applied consistent interaction pattern across all 7 adapters
-  - All adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qwen) now use identical:
+- **Standardized All Adapters**: Applied consistent interaction pattern across all 8 adapters
+  - All adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qoder, Qwen) now use identical:
     - Three-part structured prompts (Setup → Task → History)
     - Message filtering to exclude agent's own messages
     - Comprehensive structured logging with timing and metrics
@@ -80,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Orchestrator Identification**: Changed orchestrator messages from "System" to "HOST" for clarity
   - Initial conversation prompt now uses `AgentID="host"` and `AgentName="HOST"`
   - Distinguishes orchestrator messages from system announcements (agent joins, etc.)
-  - All 7 adapters updated to recognize both "system"/"System" and "host"/"HOST" for backwards compatibility
+  - All 8 adapters updated to recognize both "system"/"System" and "host"/"HOST" for backwards compatibility
   - Makes it clear who is presenting the initial task vs. system notifications
 
 ## [v0.0.16] - 2025-10-15

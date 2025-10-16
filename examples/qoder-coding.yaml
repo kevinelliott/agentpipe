@@ -1,0 +1,62 @@
+# AgentPipe Configuration - Qoder CLI Example
+#
+# This example demonstrates how to use the Qoder CLI for
+# agentic software development conversations with intelligent
+# context engineering and systematic task handling.
+#
+# Prerequisites:
+# - Install Qoder CLI: https://qoder.com/cli
+# - Authenticate: Run `qodercli` and use `/login` command
+#
+# Usage:
+#   agentpipe run -c examples/qoder-coding.yaml
+
+version: "1.0"
+
+orchestrator:
+  mode: round-robin
+  max_turns: 20
+  turn_timeout: 60s
+  response_delay: 2s
+  initial_prompt: "Let's design a modular authentication system for a web application. What are the key components?"
+
+agents:
+  - id: qoder-architect
+    name: "Qoder Architect"
+    type: qoder
+    prompt: |
+      You are an experienced software architect specializing in system design.
+      Focus on modular architecture, design patterns, and scalable solutions.
+      Consider security, maintainability, and extensibility in your designs.
+    announcement: "🏗️ Qoder Architect has joined the conversation"
+
+  - id: qoder-developer
+    name: "Qoder Developer"
+    type: qoder
+    prompt: |
+      You are a skilled software developer who writes clean, maintainable code.
+      Focus on implementation details, code quality, and testing.
+      Provide concrete examples and discuss trade-offs between approaches.
+    announcement: "💻 Qoder Developer is ready to implement"
+
+logging:
+  enabled: true
+  chat_log_dir: ~/.agentpipe/chats
+  console_output: true
+  log_format: text
+
+# Qoder CLI Features:
+#
+# Smart message filtering:
+# - AgentPipe filters out Qoder's own messages to avoid repetition
+# - Only messages from other agents and system messages are sent
+# - Structured prompt delivery (setup → topic → conversation)
+#
+# Qoder provides:
+# - Enhanced context engineering for comprehensive codebase understanding
+# - Intelligent agents for systematic software development tasks
+# - Built-in tools (Grep, Read, Write, Bash) for file operations
+# - MCP integration for extended functionality
+# - Memory files (AGENTS.md) for persistent context
+#
+# Learn more: https://docs.qoder.com/cli/using-cli

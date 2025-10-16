@@ -1,5 +1,7 @@
 # AgentPipe 🚀
 
+![AgentPipe Logo](screenshots/agentpipe-logo.png)
+
 [![CI](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml/badge.svg)](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/github/license/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/blob/main/LICENSE)
@@ -24,6 +26,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Gemini** (Google) - Multimodal understanding
+- ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
 - ✅ **Ollama** - Local LLM support (planned)
 
@@ -135,6 +138,10 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - Install: `curl https://cursor.com/install -fsS | bash`
   - Authenticate: `cursor-agent login`
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
+- [Qoder CLI](https://qoder.com/cli) - `qodercli`
+  - Install: See [installation guide](https://qoder.com/cli)
+  - Authenticate: Run `qodercli` and use `/login` command
+  - Features: Enhanced context engineering, intelligent agents, MCP integration, built-in tools
 - [Qwen CLI](https://github.com/QwenLM/qwen-code) - `qwen`
 - [Codex CLI](https://github.com/openai/codex-cli) - `codex`
   - Uses `codex exec` subcommand for non-interactive mode
@@ -250,11 +257,91 @@ Start a conversation between agents.
 
 ### `agentpipe doctor`
 
-Check which AI CLI tools are installed and available.
+Comprehensive system health check to verify AgentPipe is properly configured and ready to use.
 
 ```bash
 agentpipe doctor
 ```
+
+The doctor command performs a complete diagnostic check of your system and provides detailed information about:
+
+**System Environment:**
+- Go runtime version and architecture
+- PATH environment validation
+- Home directory detection
+- AgentPipe directories (`~/.agentpipe/chats`, `~/.agentpipe/states`)
+
+**AI Agent CLIs:**
+- Detection of all 9 supported agent CLIs
+- Installation paths
+- Version information
+- **Upgrade instructions** for keeping agents up-to-date
+- Authentication status for agents that require it
+- Installation commands for missing agents
+- Documentation links
+
+**Configuration:**
+- Example configuration files detection
+- User configuration file validation (`~/.agentpipe/config.yaml`)
+- Helpful suggestions for setup
+
+**Output includes:**
+- Visual status indicators (✅ available, ❌ missing, ⚠️ warning, ℹ️ info)
+- Organized sections for easy scanning
+- Summary with total available agents
+- Ready-to-use upgrade commands for npm-based CLIs
+
+**Example Output:**
+```
+🔍 AgentPipe Doctor - System Health Check
+=============================================================
+
+📋 SYSTEM ENVIRONMENT
+------------------------------------------------------------
+✅ Go Runtime: go1.25.3 (darwin/arm64)
+✅ PATH: 40 directories in PATH
+✅ Home Directory: /Users/username
+✅ Chat Logs Directory: /Users/username/.agentpipe/chats
+
+🤖 AI AGENT CLIS
+------------------------------------------------------------
+
+✅ Claude
+   Command:  claude
+   Path:     /usr/local/bin/claude
+   Version:  2.0.19 (Claude Code)
+   Upgrade:  See https://docs.claude.com/en/docs/claude-code/installation
+   Auth:     ✅ Authenticated
+   Docs:     https://github.com/anthropics/claude-code
+
+✅ Gemini
+   Command:  gemini
+   Path:     /usr/local/bin/gemini
+   Version:  0.9.0
+   Upgrade:  npm update -g @google/generative-ai-cli
+   Auth:     ✅ Authenticated
+   Docs:     https://github.com/google/generative-ai-cli
+
+⚙️  CONFIGURATION
+------------------------------------------------------------
+✅ Example Configs: 2 example configurations found
+ℹ️ User Config: No user config (use 'agentpipe init' to create one)
+
+============================================================
+
+📊 SUMMARY
+   Available Agents: 9/9
+
+✨ AgentPipe is ready! You can use 9 agent(s).
+   Run 'agentpipe run --help' to start a conversation.
+```
+
+Use this command to:
+- Verify your AgentPipe installation is complete
+- Check which AI agents are available
+- Find upgrade instructions for installed agents
+- Troubleshoot missing dependencies
+- Validate authentication status before starting conversations
 
 ### `agentpipe export`
 
@@ -725,6 +812,7 @@ func init() {
 - `codex.go` - Non-interactive exec mode with flags
 - `amp.go` - Advanced thread management pattern
 - `cursor.go` - JSON stream parsing pattern
+- `qoder.go` - Non-interactive print mode with yolo flag
 
 ## Advanced Features
 
@@ -805,7 +893,7 @@ Now respond to the task above as AgentName. Provide a direct, thoughtful answer.
 1. **Message Filtering**: Each agent automatically filters out its own previous messages to avoid redundancy
 2. **Directive Instructions**: Clear "YOUR TASK - PLEASE RESPOND TO THIS" header ensures agents understand what to do
 3. **Context Separation**: System messages are clearly labeled and separated from agent messages
-4. **Consistent Structure**: All 7 adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qwen) use identical patterns
+4. **Consistent Structure**: All 8 adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qoder, Qwen) use identical patterns
 5. **Structured Logging**: Comprehensive debug logging with timing, message counts, and prompt previews
 6. **HOST vs SYSTEM Distinction**: Clear separation between orchestrator messages (HOST) and system notifications (SYSTEM)
    - **HOST**: The orchestrator presenting the initial conversation task/prompt
@@ -1009,6 +1097,15 @@ The Codex CLI requires non-interactive exec mode for multi-agent conversations:
 - **Important**: This is designed for development/testing environments only
 - **Security Note**: Never use with untrusted prompts or in production without proper sandboxing
 - Check status: `codex --help` to verify installation and available commands
+
+### Qoder CLI Specific Issues
+The Qoder CLI requires authentication and uses non-interactive mode:
+- **Authentication Required**: Run `qodercli` in interactive mode and use `/login` command
+- **Non-Interactive Mode**: AgentPipe uses `qodercli --print` automatically for non-interactive execution
+- **Permission Handling**: Uses `--yolo` flag to skip permission prompts for automated execution
+- **Output Formats**: Supports text, json, and stream-json formats
+- **Check Status**: Run `qodercli --help` to verify installation and available commands
+- Full documentation: https://docs.qoder.com/cli/using-cli
 
 ### Qwen Code CLI Issues
 The Qwen Code CLI uses a different interface than other agents:
