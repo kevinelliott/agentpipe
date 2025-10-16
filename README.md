@@ -524,15 +524,19 @@ func init() {
 AgentPipe includes optimized support for the Amp CLI using native thread management:
 
 **How it Works:**
-1. **Initial Thread Creation** (`amp thread new`):
-   - Sends a three-part structured prompt:
-     - Part 1: Agent setup (role and instructions)
-     - Part 2: Conversation topic (initial orchestrator prompt)
-     - Part 3: Conversation history (messages from other agents)
-   - Amp stores full conversation context server-side
-   - Returns a thread ID for future interactions
+1. **Thread Creation** (`amp thread new`):
+   - Creates an empty thread and returns a thread ID
+   - AgentPipe immediately follows with `amp thread continue` to send the initial task
 
-2. **Thread Continuation** (`amp thread continue {thread_id}`):
+2. **Initial Task Delivery** (`amp thread continue {thread_id}`):
+   - Sends a structured three-part prompt:
+     - Part 1: Agent setup (role and instructions)
+     - Part 2: Direct task instruction (orchestrator's initial prompt)
+     - Part 3: Conversation history (messages from other agents)
+   - Amp processes the task and returns its response
+   - Thread state is maintained server-side for future interactions
+
+3. **Conversation Continuation** (`amp thread continue {thread_id}`):
    - Only sends NEW messages from OTHER agents
    - Amp's own responses are filtered out (it already knows what it said)
    - Maintains conversation context without redundant data transfer
@@ -541,7 +545,7 @@ AgentPipe includes optimized support for the Amp CLI using native thread managem
 - ⚡ **50-90% reduction** in data sent per turn
 - 💰 **Lower API costs** - no redundant token usage
 - 🚀 **Faster responses** - minimal data transfer
-- 🎯 **Better context** - Amp receives clear, structured prompts
+- 🎯 **Direct engagement** - Agents receive clear, actionable instructions
 
 **Example:**
 ```yaml
