@@ -1,0 +1,216 @@
+# AgentPipe Prometheus Metrics Example
+#
+# This example demonstrates how to enable and use Prometheus metrics
+# for monitoring AgentPipe conversations.
+#
+# Metrics Server:
+# - Default port: :9090
+# - Metrics endpoint: http://localhost:9090/metrics
+# - Health endpoint: http://localhost:9090/health
+# - Index page: http://localhost:9090/
+
+orchestrator:
+  mode: round-robin
+  max_turns: 50
+  turn_timeout: 30s
+  response_delay: 1s
+
+agents:
+  - id: claude
+    name: Claude
+    type: claude
+    prompt: You are Claude, a helpful AI assistant.
+    rate_limit: 10  # 10 requests per second
+    rate_limit_burst: 5
+
+  - id: gemini
+    name: Gemini
+    type: gemini
+    prompt: You are Gemini, a knowledgeable AI assistant.
+    rate_limit: 10
+    rate_limit_burst: 5
+
+# Programmatic Metrics Configuration
+#
+# To enable metrics in your code:
+#
+# ```go
+# package main
+#
+# import (
+#     "context"
+#     "github.com/kevinelliott/agentpipe/pkg/metrics"
+#     "github.com/kevinelliott/agentpipe/pkg/orchestrator"
+# )
+#
+# func main() {
+#     // Option 1: Use default metrics (global instance)
+#     orch := orchestrator.NewOrchestrator(config, os.Stdout)
+#     orch.SetMetrics(metrics.DefaultMetrics)
+#
+#     // Start metrics server
+#     metricsServer := metrics.NewServer(metrics.ServerConfig{
+#         Addr: ":9090",
+#     })
+#     go metricsServer.Start()
+#     defer metricsServer.Stop(context.Background())
+#
+#     // Run conversation - metrics will be automatically recorded
+#     orch.Start(context.Background())
+#
+#     // Option 2: Use custom metrics registry
+#     registry := prometheus.NewRegistry()
+#     customMetrics := metrics.NewMetrics(registry)
+#     orch.SetMetrics(customMetrics)
+#
+#     metricsServer := metrics.NewServer(metrics.ServerConfig{
+#         Addr:     ":9090",
+#         Registry: registry,
+#     })
+#     go metricsServer.Start()
+# }
+# ```
+#
+# Available Metrics:
+#
+# 1. agentpipe_agent_requests_total
+#    Counter - Total agent requests by name, type, and status (success/error)
+#    Labels: agent_name, agent_type, status
+#
+# 2. agentpipe_agent_request_duration_seconds
+#    Histogram - Agent request duration distribution
+#    Labels: agent_name, agent_type
+#    Buckets: .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60
+#
+# 3. agentpipe_agent_tokens_total
+#    Counter - Total tokens consumed
+#    Labels: agent_name, agent_type, token_type (input/output)
+#
+# 4. agentpipe_agent_cost_usd_total
+#    Counter - Total estimated cost in USD
+#    Labels: agent_name, agent_type, model
+#
+# 5. agentpipe_agent_errors_total
+#    Counter - Total errors by agent and error type
+#    Labels: agent_name, agent_type, error_type
+#
+# 6. agentpipe_active_conversations
+#    Gauge - Current number of active conversations
+#
+# 7. agentpipe_conversation_turns_total
+#    Counter - Total conversation turns by mode
+#    Labels: mode (round-robin/reactive/free-form)
+#
+# 8. agentpipe_message_size_bytes
+#    Histogram - Message size distribution
+#    Labels: agent_name, direction (input/output)
+#    Buckets: 100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000
+#
+# 9. agentpipe_retry_attempts_total
+#    Counter - Total retry attempts by agent
+#    Labels: agent_name, agent_type
+#
+# 10. agentpipe_rate_limit_hits_total
+#     Counter - Total rate limit hits
+#     Labels: agent_name
+#
+# Prometheus Configuration:
+#
+# Add this to your prometheus.yml:
+#
+# ```yaml
+# scrape_configs:
+#   - job_name: 'agentpipe'
+#     static_configs:
+#       - targets: ['localhost:9090']
+#     scrape_interval: 15s
+#     scrape_timeout: 10s
+# ```
+#
+# Example Prometheus Queries:
+#
+# # Request rate per agent
+# rate(agentpipe_agent_requests_total[5m])
+#
+# # Error rate
+# rate(agentpipe_agent_requests_total{status="error"}[5m])
+#
+# # Average request duration
+# rate(agentpipe_agent_request_duration_seconds_sum[5m]) /
+# rate(agentpipe_agent_request_duration_seconds_count[5m])
+#
+# # 95th percentile latency
+# histogram_quantile(0.95,
+#   rate(agentpipe_agent_request_duration_seconds_bucket[5m]))
+#
+# # Total cost per agent
+# sum by (agent_name) (agentpipe_agent_cost_usd_total)
+#
+# # Total tokens per agent
+# sum by (agent_name, token_type) (agentpipe_agent_tokens_total)
+#
+# # Retry rate
+# rate(agentpipe_retry_attempts_total[5m])
+#
+# # Active conversations
+# agentpipe_active_conversations
+#
+# Grafana Dashboard:
+#
+# Create a dashboard with panels for:
+# - Request rate (line graph)
+# - Error rate (line graph)
+# - Request duration (heatmap)
+# - Active conversations (gauge)
+# - Total cost (stat)
+# - Token usage (bar chart)
+# - Retry attempts (line graph)
+#
+# Example Panel JSON:
+# ```json
+# {
+#   "targets": [
+#     {
+#       "expr": "rate(agentpipe_agent_requests_total[5m])",
+#       "legendFormat": "{{agent_name}} - {{status}}"
+#     }
+#   ],
+#   "title": "Request Rate",
+#   "type": "graph"
+# }
+# ```
+#
+# Alerting Rules:
+#
+# ```yaml
+# groups:
+#   - name: agentpipe
+#     rules:
+#       - alert: HighErrorRate
+#         expr: |
+#           rate(agentpipe_agent_requests_total{status="error"}[5m]) > 0.1
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High error rate for {{ $labels.agent_name }}"
+#
+#       - alert: HighLatency
+#         expr: |
+#           histogram_quantile(0.95,
+#             rate(agentpipe_agent_request_duration_seconds_bucket[5m])) > 10
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High latency for {{ $labels.agent_name }}"
+#
+#       - alert: HighCost
+#         expr: |
+#           rate(agentpipe_agent_cost_usd_total[1h]) > 1.0
+#         for: 1h
+#         labels:
+#           severity: critical
+#         annotations:
+#           summary: "High cost: ${{ $value | humanize }}/hour"
+# ```

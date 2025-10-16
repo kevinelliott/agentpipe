@@ -15,6 +15,7 @@ import (
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
+	"github.com/kevinelliott/agentpipe/pkg/metrics"
 	"github.com/kevinelliott/agentpipe/pkg/middleware"
 	"github.com/kevinelliott/agentpipe/pkg/ratelimit"
 	"github.com/kevinelliott/agentpipe/pkg/utils"
@@ -58,15 +59,16 @@ type OrchestratorConfig struct {
 // It manages agent registration, turn-taking, message history, and logging.
 // All methods are safe for concurrent use.
 type Orchestrator struct {
-	config           OrchestratorConfig
-	agents           []agent.Agent
-	messages         []agent.Message
-	rateLimiters     map[string]*ratelimit.Limiter // per-agent rate limiters
-	middlewareChain  *middleware.Chain             // message processing middleware
-	mu               sync.RWMutex
-	writer           io.Writer
-	logger           *logger.ChatLogger
+	config            OrchestratorConfig
+	agents            []agent.Agent
+	messages          []agent.Message
+	rateLimiters      map[string]*ratelimit.Limiter // per-agent rate limiters
+	middlewareChain   *middleware.Chain             // message processing middleware
+	mu                sync.RWMutex
+	writer            io.Writer
+	logger            *logger.ChatLogger
 	currentTurnNumber int // tracks the current turn number for middleware context
+	metrics           *metrics.Metrics // Prometheus metrics for monitoring
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -119,6 +121,24 @@ func NewOrchestrator(config OrchestratorConfig, writer io.Writer) *Orchestrator 
 // The logger receives all conversation messages for persistence.
 func (o *Orchestrator) SetLogger(logger *logger.ChatLogger) {
 	o.logger = logger
+}
+
+// SetMetrics sets the Prometheus metrics for the orchestrator.
+// If metrics are set, the orchestrator will record metrics for all operations.
+// This method is thread-safe.
+func (o *Orchestrator) SetMetrics(m *metrics.Metrics) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.metrics = m
+}
+
+// GetMetrics returns the current metrics instance.
+// Returns nil if metrics are not enabled.
+// This method is thread-safe.
+func (o *Orchestrator) GetMetrics() *metrics.Metrics {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.metrics
 }
 
 // AddMiddleware adds a middleware to the orchestrator's processing chain.
@@ -191,6 +211,12 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	if len(o.agents) == 0 {
 		log.Error("conversation start failed: no agents configured")
 		return fmt.Errorf("no agents configured")
+	}
+
+	// Increment active conversations metric
+	if o.metrics != nil {
+		o.metrics.IncrementActiveConversations()
+		defer o.metrics.DecrementActiveConversations()
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -370,6 +396,11 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 	if limiter != nil {
 		if err := limiter.Wait(ctx); err != nil {
+			// Record rate limit hit metric
+			if o.metrics != nil {
+				o.metrics.RecordRateLimitHit(a.GetName())
+			}
+
 			log.WithFields(map[string]interface{}{
 				"agent_id":   a.GetID(),
 				"agent_name": a.GetName(),
@@ -403,6 +434,11 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	for attempt := 0; attempt <= o.config.MaxRetries; attempt++ {
 		// Apply exponential backoff delay before retry (skip on first attempt)
 		if attempt > 0 {
+			// Record retry attempt metric
+			if o.metrics != nil {
+				o.metrics.RecordRetryAttempt(a.GetName(), a.GetType())
+			}
+
 			delay := o.calculateBackoffDelay(attempt)
 			log.WithFields(map[string]interface{}{
 				"agent_name": a.GetName(),
@@ -460,6 +496,19 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 			"agent_name": a.GetName(),
 			"attempts":   o.config.MaxRetries + 1,
 		}).WithError(lastErr).Error("all agent request attempts failed")
+
+		// Record error metric
+		if o.metrics != nil {
+			errorType := "unknown"
+			if strings.Contains(lastErr.Error(), "timeout") || strings.Contains(lastErr.Error(), "deadline") {
+				errorType = "timeout"
+			} else if strings.Contains(lastErr.Error(), "rate limit") {
+				errorType = "rate_limit"
+			}
+			o.metrics.RecordAgentError(a.GetName(), a.GetType(), errorType)
+			o.metrics.RecordAgentRequest(a.GetName(), a.GetType(), "error")
+		}
+
 		return lastErr
 	}
 
@@ -483,6 +532,18 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 		"total_tokens":  totalTokens,
 		"cost":          cost,
 	}).Info("agent response successful")
+
+	// Record metrics
+	if o.metrics != nil {
+		o.metrics.RecordAgentRequest(a.GetName(), a.GetType(), "success")
+		o.metrics.RecordAgentDuration(a.GetName(), a.GetType(), duration.Seconds())
+		o.metrics.RecordAgentTokens(a.GetName(), a.GetType(), "input", inputTokens)
+		o.metrics.RecordAgentTokens(a.GetName(), a.GetType(), "output", outputTokens)
+		o.metrics.RecordAgentCost(a.GetName(), a.GetType(), model, cost)
+		o.metrics.RecordMessageSize(a.GetName(), "input", len(inputBuilder.String()))
+		o.metrics.RecordMessageSize(a.GetName(), "output", len(response))
+		o.metrics.RecordConversationTurn(string(o.config.Mode))
+	}
 
 	// Store the message in history with metrics
 	msg := agent.Message{
