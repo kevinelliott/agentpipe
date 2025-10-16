@@ -621,9 +621,11 @@ func (m *MyAgent) buildPrompt(messages []agent.Message, isInitialSession bool) s
         var initialPrompt string
         var otherMessages []agent.Message
 
-        // Find orchestrator's initial prompt vs agent announcements
+        // Find orchestrator's initial prompt (HOST) vs agent announcements (SYSTEM)
+        // HOST = orchestrator's initial task/prompt (AgentID="host", AgentName="HOST")
+        // SYSTEM = agent join announcements and other system messages
         for _, msg := range messages {
-            if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentName == "System") && initialPrompt == "" {
+            if msg.Role == "system" && (msg.AgentID == "system" || msg.AgentID == "host" || msg.AgentName == "System" || msg.AgentName == "HOST") && initialPrompt == "" {
                 initialPrompt = msg.Content
             } else {
                 otherMessages = append(otherMessages, msg)
@@ -805,6 +807,9 @@ Now respond to the task above as AgentName. Provide a direct, thoughtful answer.
 3. **Context Separation**: System messages are clearly labeled and separated from agent messages
 4. **Consistent Structure**: All 7 adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qwen) use identical patterns
 5. **Structured Logging**: Comprehensive debug logging with timing, message counts, and prompt previews
+6. **HOST vs SYSTEM Distinction**: Clear separation between orchestrator messages (HOST) and system notifications (SYSTEM)
+   - **HOST**: The orchestrator presenting the initial conversation task/prompt
+   - **SYSTEM**: Agent join announcements and other system notifications
 
 **Benefits:**
 
