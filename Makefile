@@ -10,10 +10,10 @@ DOCKER_TAG?=latest
 DOCKER_REGISTRY?=docker.io/kevinelliott
 
 # Go build flags
-LDFLAGS=-ldflags="-w -s \
+LDFLAGS=-ldflags "-w -s \
 	-X github.com/kevinelliott/agentpipe/internal/version.Version=$(VERSION) \
-	-X github.com/kevinelliott/agentpipe/internal/version.Commit=$(COMMIT) \
-	-X github.com/kevinelliott/agentpipe/internal/version.Date=$(DATE)"
+	-X github.com/kevinelliott/agentpipe/internal/version.CommitHash=$(COMMIT) \
+	-X github.com/kevinelliott/agentpipe/internal/version.BuildDate=$(DATE)"
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

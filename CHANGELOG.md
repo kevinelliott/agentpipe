@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Agent Type Indicators**: Message badges now show agent type in parentheses (e.g., "Alice (qoder)")
+  - Helps users quickly identify which agent type is responding
+  - Displayed in all message badges in both TUI and CLI output
+  - Agent type automatically populated from agent configuration
+- **Branded TUI Logo**: Enhanced TUI with colored ASCII sunset gradient logo
+  - Consistent branding across CLI and TUI modes
+  - Shared branding package for code reuse
+  - Beautiful sunset gradient colors using ANSI 24-bit color codes
 - **TUI Search Feature**: Press Ctrl+F to search through conversation messages
   - Case-insensitive search through message content and agent names
   - n/N navigation between search results
@@ -36,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Permission bypass with `--yolo` flag for automated execution
 
 ### Improved
+- **Enhanced HOST vs SYSTEM Distinction**: Clearer visual separation in message display
+  - HOST messages now formatted like agent messages with badge, newline, and indented content
+  - SYSTEM messages remain inline format for announcements
+  - HOST badge uses distinctive purple color (#99)
+  - Makes conversation context clearer by distinguishing orchestrator prompts from system notifications
+- **Gemini Adapter Reliability**: Improved error handling for process exit issues
+  - Now accepts valid output even when Gemini CLI doesn't exit cleanly
+  - Distinguishes between real API errors (404, 401) and harmless process termination
+  - Enhanced output cleaning to filter error traces and stack dumps
+  - Significantly reduces false failures in multi-agent conversations
 - **Standardized Agent Introduction**: All agents now receive complete conversation history when first coming online
   - **Complete message delivery**: Agents receive ALL existing messages (system prompts + agent messages)
   - **No message loss**: Correctly identifies orchestrator's initial prompt vs. agent announcements
@@ -59,6 +77,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Includes total messages, tokens, time spent, and cost for all endings
 
 ### Fixed
+- **Inconsistent Agent Badge Colors**: Fixed race condition causing first message to have grey badge
+  - Now ensures agent color is assigned before badge style is retrieved
+  - Agent name badges now consistently show the assigned color from first message onward
+  - Improved visual consistency in both TUI and CLI output
+- **TUI Display Corruption**: Fixed stderr output interfering with TUI rendering
+  - Removed all `fmt.Fprintf(os.Stderr, ...)` calls from TUI code
+  - Metrics and logging no longer corrupt the TUI alt-screen display
+  - Silent error handling in TUI mode while maintaining conversation panel visibility
 - **Agent Prompt Response**: Fixed critical bug where agents weren't properly responding to orchestrator's initial prompt
   - Changed prompt header from passive "CONVERSATION TOPIC" to directive "YOUR TASK - PLEASE RESPOND TO THIS"
   - Makes it clear the initial prompt is a direct instruction, not passive context

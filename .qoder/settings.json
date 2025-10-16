@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "ask": [
+      "Read(!/Users/kevin/work/ai/agentpipe/**)",
+      "Edit(!/Users/kevin/work/ai/agentpipe/**)"
+    ],
+    "allow": [
+      "Read(/Users/kevin/work/ai/agentpipe/**)",
+      "Edit(/Users/kevin/work/ai/agentpipe/**)"
+    ]
+  },
+  "memoryImport": {},
+  "monitoring": {}
+}

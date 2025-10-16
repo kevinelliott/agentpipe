@@ -187,6 +187,7 @@ func (o *Orchestrator) AddAgent(a agent.Agent) {
 	announcement := agent.Message{
 		AgentID:   a.GetID(),
 		AgentName: a.GetName(),
+		AgentType: a.GetType(),
 		Content:   a.Announce(),
 		Timestamp: time.Now().Unix(),
 		Role:      "system",
@@ -549,6 +550,7 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	msg := agent.Message{
 		AgentID:   a.GetID(),
 		AgentName: a.GetName(),
+		AgentType: a.GetType(),
 		Content:   response,
 		Timestamp: time.Now().Unix(),
 		Role:      "agent",

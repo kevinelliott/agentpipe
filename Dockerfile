@@ -19,8 +19,8 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s -X github.com/kevinelliott/agentpipe/internal/version.Version=${VERSION:-dev} \
-              -X github.com/kevinelliott/agentpipe/internal/version.Commit=${COMMIT:-unknown} \
-              -X github.com/kevinelliott/agentpipe/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/kevinelliott/agentpipe/internal/version.CommitHash=${COMMIT:-unknown} \
+              -X github.com/kevinelliott/agentpipe/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o agentpipe .
 
 # Runtime stage

@@ -130,61 +130,80 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 	output, err := cmd.CombinedOutput()
 	duration := time.Since(startTime)
 
-	if err != nil {
-		// Check for specific error patterns
-		outputStr := string(output)
-		if strings.Contains(outputStr, "404") || strings.Contains(outputStr, "NOT_FOUND") {
-			log.WithFields(map[string]interface{}{
-				"agent_name": g.Name,
-				"model":      g.Config.Model,
-				"duration":   duration.String(),
-			}).WithError(err).Error("gemini model not found")
-			return "", fmt.Errorf("gemini model not found - check model name in config: %s", g.Config.Model)
-		}
-		if strings.Contains(outputStr, "401") || strings.Contains(outputStr, "UNAUTHENTICATED") {
-			log.WithFields(map[string]interface{}{
-				"agent_name": g.Name,
-				"duration":   duration.String(),
-			}).WithError(err).Error("gemini authentication failed")
-			return "", fmt.Errorf("gemini authentication failed - check API keys")
-		}
+	// Convert output to string for analysis
+	outputStr := string(output)
 
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			// Try to extract a meaningful error message
-			if strings.Contains(outputStr, "error") {
-				// Extract JSON error if present
-				if start := strings.Index(outputStr, `"message":`); start != -1 {
-					if end := strings.Index(outputStr[start:], `",`); end != -1 {
-						errMsg := outputStr[start+11 : start+end-1]
-						log.WithFields(map[string]interface{}{
-							"agent_name": g.Name,
-							"duration":   duration.String(),
-							"error_msg":  errMsg,
-						}).Error("gemini API error")
-						return "", fmt.Errorf("gemini API error: %s", errMsg)
+	// Check if we have valid output even if there was an error
+	// Gemini CLI sometimes produces output but doesn't exit cleanly
+	hasValidOutput := len(outputStr) > 0 && !strings.Contains(outputStr, "404") &&
+		!strings.Contains(outputStr, "NOT_FOUND") && !strings.Contains(outputStr, "401") &&
+		!strings.Contains(outputStr, "UNAUTHENTICATED")
+
+	if err != nil {
+		// If we have valid output, accept it even with process errors
+		// This handles cases where Gemini CLI doesn't exit cleanly but produces valid responses
+		if hasValidOutput {
+			log.WithFields(map[string]interface{}{
+				"agent_name": g.Name,
+				"duration":   duration.String(),
+				"exit_error": err.Error(),
+			}).Debug("gemini had exit error but produced valid output, accepting response")
+			// Continue to output processing below
+		} else {
+			// No valid output, treat as real error
+			if strings.Contains(outputStr, "404") || strings.Contains(outputStr, "NOT_FOUND") {
+				log.WithFields(map[string]interface{}{
+					"agent_name": g.Name,
+					"model":      g.Config.Model,
+					"duration":   duration.String(),
+				}).WithError(err).Error("gemini model not found")
+				return "", fmt.Errorf("gemini model not found - check model name in config: %s", g.Config.Model)
+			}
+			if strings.Contains(outputStr, "401") || strings.Contains(outputStr, "UNAUTHENTICATED") {
+				log.WithFields(map[string]interface{}{
+					"agent_name": g.Name,
+					"duration":   duration.String(),
+				}).WithError(err).Error("gemini authentication failed")
+				return "", fmt.Errorf("gemini authentication failed - check API keys")
+			}
+
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				// Try to extract a meaningful error message
+				if strings.Contains(outputStr, "error") {
+					// Extract JSON error if present
+					if start := strings.Index(outputStr, `"message":`); start != -1 {
+						if end := strings.Index(outputStr[start:], `",`); end != -1 {
+							errMsg := outputStr[start+11 : start+end-1]
+							log.WithFields(map[string]interface{}{
+								"agent_name": g.Name,
+								"duration":   duration.String(),
+								"error_msg":  errMsg,
+							}).Error("gemini API error")
+							return "", fmt.Errorf("gemini API error: %s", errMsg)
+						}
 					}
 				}
+				log.WithFields(map[string]interface{}{
+					"agent_name": g.Name,
+					"exit_code":  exitErr.ExitCode(),
+					"duration":   duration.String(),
+				}).WithError(err).Error("gemini execution failed with exit code")
+				return "", fmt.Errorf("gemini execution failed (exit code %d): %s", exitErr.ExitCode(), outputStr)
 			}
 			log.WithFields(map[string]interface{}{
 				"agent_name": g.Name,
-				"exit_code":  exitErr.ExitCode(),
 				"duration":   duration.String(),
-			}).WithError(err).Error("gemini execution failed with exit code")
-			return "", fmt.Errorf("gemini execution failed (exit code %d): %s", exitErr.ExitCode(), outputStr)
+			}).WithError(err).Error("gemini execution failed")
+			return "", fmt.Errorf("gemini execution failed: %w\nOutput: %s", err, outputStr)
 		}
-		log.WithFields(map[string]interface{}{
-			"agent_name": g.Name,
-			"duration":   duration.String(),
-		}).WithError(err).Error("gemini execution failed")
-		return "", fmt.Errorf("gemini execution failed: %w\nOutput: %s", err, outputStr)
 	}
 
-	// Clean up output
-	outputStr := string(output)
-
-	// Remove common prefixes
+	// Clean up output (outputStr already defined above)
+	// Remove common prefixes and error traces
 	lines := strings.Split(outputStr, "\n")
 	cleanedLines := []string{}
+	inErrorTrace := false
+
 	for _, line := range lines {
 		// Skip system messages
 		if strings.Contains(line, "Loaded cached credentials") ||
@@ -192,6 +211,45 @@ func (g *GeminiAgent) SendMessage(ctx context.Context, messages []agent.Message)
 			strings.HasPrefix(line, "Gemini CLI") {
 			continue
 		}
+
+		// Detect start of error trace or stack trace
+		if strings.Contains(line, "Attempt") && strings.Contains(line, "failed with status") {
+			inErrorTrace = true
+			continue
+		}
+		if strings.Contains(line, "GaxiosError:") || strings.Contains(line, "at Gaxios._request") {
+			inErrorTrace = true
+			continue
+		}
+		if strings.HasPrefix(strings.TrimSpace(line), "at ") || strings.HasPrefix(strings.TrimSpace(line), "at async") {
+			inErrorTrace = true
+			continue
+		}
+
+		// Skip lines that are part of error objects or config dumps
+		if inErrorTrace {
+			// Check if we've reached the end of the error trace
+			// Error traces typically end with empty lines or actual content
+			if strings.TrimSpace(line) == "" {
+				continue // Skip empty lines within trace
+			}
+			// Check if this looks like actual response content (not trace)
+			// Real content typically doesn't start with special chars like '{', '[', or indentation
+			if !strings.HasPrefix(strings.TrimSpace(line), "{") &&
+				!strings.HasPrefix(strings.TrimSpace(line), "[") &&
+				!strings.HasPrefix(strings.TrimSpace(line), "}") &&
+				!strings.HasPrefix(strings.TrimSpace(line), "]") &&
+				!strings.Contains(line, "config:") &&
+				!strings.Contains(line, "response:") &&
+				!strings.Contains(line, "Symbol(") &&
+				len(strings.TrimSpace(line)) > 20 { // Real content is typically longer
+				// This looks like actual content, exit error trace mode
+				inErrorTrace = false
+			} else {
+				continue // Still in error trace, skip
+			}
+		}
+
 		cleanedLines = append(cleanedLines, line)
 	}
 

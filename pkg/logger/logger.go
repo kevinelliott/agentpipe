@@ -187,13 +187,43 @@ func (l *ChatLogger) LogMessage(msg agent.Message) {
 		output.WriteString(timestampStyle.Render("🕐 " + timestamp + " "))
 
 		// Format agent name with badge
-		if msg.Role == "system" {
+		isHost := msg.Role == "system" && (msg.AgentID == "host" || msg.AgentName == "HOST")
+		isSystemMsg := msg.Role == "system" && !isHost
+
+		if isSystemMsg {
+			// Regular SYSTEM messages (agent join announcements, etc.)
 			output.WriteString(systemBadgeStyle.Render(" SYSTEM "))
 			output.WriteString(systemStyle.Render(msg.Content))
 		} else {
-			// Use colored badge for agents
-			badgeStyle := l.getAgentBadgeStyle(msg.AgentName)
-			output.WriteString(badgeStyle.Render(" " + msg.AgentName + " "))
+			// Agent messages or HOST message (format the same way)
+			var badgeStyle lipgloss.Style
+			var contentStyle lipgloss.Style
+
+			if isHost {
+				// HOST message (orchestrator's initial prompt)
+				badgeStyle = lipgloss.NewStyle().
+					Background(lipgloss.Color("99")). // Purple
+					Foreground(lipgloss.Color("0")).
+					Bold(true).
+					Padding(0, 1).
+					MarginRight(1)
+				contentStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("99")).
+					Bold(true)
+				output.WriteString(badgeStyle.Render(" HOST "))
+			} else {
+				// Regular agent message
+				// Ensure agent color is assigned first (this populates l.agentColors)
+				contentStyle = l.getAgentColor(msg.AgentName)
+				badgeStyle = l.getAgentBadgeStyle(msg.AgentName)
+
+				// Include agent type in parentheses if available
+				displayName := msg.AgentName
+				if msg.AgentType != "" {
+					displayName = fmt.Sprintf("%s (%s)", msg.AgentName, msg.AgentType)
+				}
+				output.WriteString(badgeStyle.Render(" " + displayName + " "))
+			}
 
 			// Add metrics if enabled and available
 			if l.showMetrics && msg.Metrics != nil {
@@ -214,12 +244,11 @@ func (l *ChatLogger) LogMessage(msg agent.Message) {
 
 			// Format and wrap message content with nice indentation
 			wrappedContent := l.wrapText(msg.Content, 2)
-			agentStyle := l.getAgentColor(msg.AgentName)
 
 			// Apply color to each line
 			lines := strings.Split(wrappedContent, "\n")
 			for _, line := range lines {
-				output.WriteString(agentStyle.Render(line))
+				output.WriteString(contentStyle.Render(line))
 				output.WriteString("\n")
 			}
 		}

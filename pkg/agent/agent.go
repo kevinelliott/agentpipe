@@ -17,6 +17,8 @@ type Message struct {
 	AgentID string
 	// AgentName is the display name of the agent
 	AgentName string
+	// AgentType is the type of agent (e.g., "claude", "gemini", "qoder")
+	AgentType string
 	// Content is the actual message text
 	Content string
 	// Timestamp is the Unix timestamp when the message was created

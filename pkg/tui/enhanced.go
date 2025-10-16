@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/kevinelliott/agentpipe/internal/branding"
 	"github.com/kevinelliott/agentpipe/internal/version"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
@@ -233,8 +233,8 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 		var err error
 		chatLogger, err = logger.NewChatLogger(cfg.Logging.ChatLogDir, cfg.Logging.LogFormat, nil, cfg.Logging.ShowMetrics)
 		if err != nil {
-			// Log error but continue without logging
-			fmt.Fprintf(os.Stderr, "Warning: Failed to create chat logger: %v\n", err)
+			// Silently continue without logging in TUI mode to avoid stderr interference
+			chatLogger = nil
 		} else {
 			orch.SetLogger(chatLogger)
 		}
@@ -1095,16 +1095,13 @@ func wrapText(text string, width int) string {
 }
 
 func (m *EnhancedModel) renderLogo() string {
-	logo := `    _    ____ _____ _   _ _____ ____ ___ ____  _____ 
-   / \  / ___| ____| \ | |_   _|  _ \_ _|  _ \| ____|
-  / _ \| |  _|  _| |  \| | | | | |_) | || |_) |  _|  
- / ___ \ |_| | |___| |\  | | | |  __/| ||  __/| |___ 
-/_/   \_\____|_____|_| \_| |_| |_|  |___|_|   |_____|`
+	// Use the colored ASCII logo from branding package
+	logo := branding.ASCIILogo
 
 	versionInfo := fmt.Sprintf("%s // https://github.com/kevinelliott/agentpipe", version.Version)
 
 	content := lipgloss.JoinVertical(lipgloss.Center,
-		logoTextStyle.Render(logo),
+		logo, // Already has color, no need to style it
 		"", // Add blank line
 		logoInfoStyle.Render(versionInfo),
 	)
@@ -1295,9 +1292,8 @@ func (w *messageWriter) Write(p []byte) (n int, err error) {
 						select {
 						case w.msgChan <- msg:
 						default:
-							// Channel full, drop message
+							// Channel full, drop message silently to avoid stderr interference with TUI
 							w.droppedCount++
-							fmt.Fprintf(os.Stderr, "Warning: Message channel full, dropped message (total dropped: %d)\n", w.droppedCount)
 						}
 					}
 				} else {
@@ -1363,9 +1359,8 @@ func (w *messageWriter) flushCurrentMessage() {
 		select {
 		case w.msgChan <- msg:
 		default:
-			// Channel full, drop message
+			// Channel full, drop message silently to avoid stderr interference with TUI
 			w.droppedCount++
-			fmt.Fprintf(os.Stderr, "Warning: Message channel full, dropped message (total dropped: %d)\n", w.droppedCount)
 		}
 
 		w.currentAgent = ""
@@ -1402,8 +1397,8 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 			defer cancel()
 
 			if err := m.orch.Start(orchCtx); err != nil {
-				// Log error to stderr for debugging
-				fmt.Fprintf(os.Stderr, "Orchestrator error: %v\n", err)
+				// Silently handle error to avoid stderr interference with TUI
+				// Errors will be visible in the TUI conversation panel
 			}
 			// Mark as not running when done
 			m.running = false
@@ -1422,7 +1417,7 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 					// Orchestrator finished during grace period
 				case <-time.After(2 * time.Second):
 					// Grace period expired, orchestrator will be canceled by its own context
-					fmt.Fprintf(os.Stderr, "Warning: Orchestrator did not finish within grace period\n")
+					// Silently continue to avoid stderr interference with TUI
 				}
 			}
 		}()

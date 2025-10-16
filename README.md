@@ -16,6 +16,10 @@ AgentPipe is a powerful CLI and TUI application that orchestrates conversations 
 ![AgentPipe TUI](screenshots/tui/tui1.png)
 *Enhanced TUI with multi-panel layout: agent list with status indicators, conversation view with metrics, statistics panel showing turns and total cost, configuration panel, and user input area*
 
+### Console/CLI Interface
+![AgentPipe Console](screenshots/console/console1.png)
+*CLI output showing color-coded agent messages with agent type indicators (e.g., "Alice (qoder)"), HOST vs SYSTEM distinction, and inline metrics display*
+
 ## Supported AI Agents
 
 All agents now use a **standardized interaction pattern** with structured three-part prompts, message filtering, and comprehensive logging for reliable multi-agent conversations.
@@ -43,6 +47,8 @@ All agents now use a **standardized interaction pattern** with structured three-
 ### Enhanced TUI Interface
 - Multi-panel layout with dedicated sections for agents, chat, stats, and config
 - Color-coded agent messages with unique colors per agent
+- **Agent type indicators** showing agent type in parentheses (e.g., "Alice (qoder)")
+- **Branded sunset logo** with gradient colors
 - Real-time agent activity indicators (🟢 active/responding, ⚫ idle)
 - Inline metrics display (response time in seconds, token count, cost)
 - **Conversation search** (Ctrl+F) with n/N navigation through results
@@ -85,6 +91,14 @@ All agents now use a **standardized interaction pattern** with structured three-
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
 **Latest Release**: v0.0.16 - Production-ready features including Prometheus metrics, middleware pipeline, conversation state management, rate limiting, retry logic, Docker support, and comprehensive test coverage.
+
+**Recent Improvements**:
+- Enhanced TUI with colored sunset gradient logo
+- Agent type indicators in message badges (e.g., "Alice (qoder)")
+- HOST vs SYSTEM message distinction for clearer conversation context
+- Improved Gemini adapter reliability with better error handling
+- Fixed TUI display corruption when metrics/logging enabled
+- Consistent agent badge colors across all messages
 
 ## Installation
 
@@ -336,6 +350,11 @@ The doctor command performs a complete diagnostic check of your system and provi
    Run 'agentpipe run --help' to start a conversation.
 ```
 
+**Screenshot:**
+
+![AgentPipe Doctor Output](screenshots/agentpipe-doctor.png)
+*Doctor command showing comprehensive system diagnostics, agent detection with versions and upgrade instructions, and authentication status*
+
 Use this command to:
 - Verify your AgentPipe installation is complete
 - Check which AI agents are available
@@ -491,7 +510,9 @@ The TUI is divided into multiple panels:
 
 ### Visual Features
 - **Agent Status Indicators**: Green dot (🟢) for active/responding, grey dot (⚫) for idle
-- **Color-Coded Messages**: Each agent gets a unique color for easy tracking
+- **Agent Type Badges**: Message badges show agent type in parentheses (e.g., "Alice (qoder)") for easy identification
+- **Color-Coded Messages**: Each agent gets a unique color for easy tracking with consistent badge colors
+- **HOST/SYSTEM Distinction**: Clear visual separation between orchestrator prompts (HOST) and system notifications (SYSTEM)
 - **Consolidated Headers**: Message headers only appear when the speaker changes
 - **Metrics Display**: Response time (seconds), token count, and cost shown inline when enabled
 - **Multi-Paragraph Support**: Properly formatted multi-line agent responses
