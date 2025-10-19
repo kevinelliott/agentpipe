@@ -91,24 +91,21 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.1.1 - Windows compatibility fixes, Go 1.24 support, and improved cross-platform testing.
+**Latest Release**: v0.1.3 - Factory CLI support, expanding to 10 AI agent CLIs.
 
-**What's New in v0.1.1**:
+**What's New in v0.1.3**:
 
-🐛 **Bug Fixes:**
-- **Windows Test Compatibility**: Fixed timer resolution issues causing test failures on Windows
-  - Increased mock agent delay to 20ms in metrics tests to ensure measurable durations
-  - All tests now pass reliably on Windows, macOS, and Linux
-- **Windows File Permission Tests**: Added OS detection to skip Unix-specific permission checks on Windows
+🎉 **New Features:**
+- **Factory CLI Agent Support**: Full integration with Factory.ai's Droid coding agent
+  - Non-interactive exec mode with autonomy levels
+  - Agent-native software development with Code Droid and Knowledge Droid
+  - Comprehensive logging and error handling
+  - Install: `curl -fsSL https://app.factory.ai/cli | sh`
 
-🔧 **Changes:**
-- **Go Version**: Downgraded from Go 1.25.3 to Go 1.24.0 for broader compatibility
-  - Maintains compatibility with golangci-lint v1.64.8
-  - All CI/CD workflows updated
-
-📚 **Documentation:**
-- Added comprehensive Windows testing documentation in CLAUDE.md
-- Documented timer resolution requirements for cross-platform test development
+📈 **Improvements:**
+- **Agent Count**: Now supporting 10 AI agent CLIs (Amp, Claude, Codex, Copilot, Cursor, Factory, Gemini, Qoder, Qwen, Ollama)
+- **Doctor Command**: Added Factory CLI detection with installation instructions
+- **Documentation**: Updated README, architecture docs, and troubleshooting guides
 
 ## Installation
 

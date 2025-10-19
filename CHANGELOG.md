@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.3] - 2025-10-19
+
+### Added
+- **Factory CLI Agent Support**: Full integration with Factory.ai's Droid coding agent
+  - Non-interactive exec mode with `droid exec` command
+  - Autonomy level configuration (`--auto high`) for multi-agent conversations
+  - Structured prompt delivery with clear context sections
+  - Smart message filtering (excludes agent's own messages)
+  - Comprehensive logging and error handling
+  - Optional model specification via config
+  - Agent-native software development with Code Droid and Knowledge Droid
+  - Installation: `curl -fsSL https://app.factory.ai/cli | sh`
+  - Documentation: https://docs.factory.ai/cli
+
+### Improved
+- **Doctor Command**: Added Factory CLI detection with installation and upgrade instructions
+- **README**: Updated with Factory CLI support and troubleshooting section
+- **Architecture Documentation**: Added Factory to supported agents list and visual diagrams
+- **Agent Count**: Now supporting 10 AI agent CLIs (up from 9)
+
 ## [v0.1.1] - 2025-10-19
 
 ### Fixed
@@ -300,7 +320,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...HEAD
+[v0.1.3]: https://github.com/kevinelliott/agentpipe/compare/v0.1.1...v0.1.3
+[v0.1.1]: https://github.com/kevinelliott/agentpipe/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/kevinelliott/agentpipe/compare/v0.0.16...v0.1.0
 [v0.0.16]: https://github.com/kevinelliott/agentpipe/compare/v0.0.15...v0.0.16
 [v0.0.15]: https://github.com/kevinelliott/agentpipe/compare/v0.0.9...v0.0.15
