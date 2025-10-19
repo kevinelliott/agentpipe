@@ -78,9 +78,22 @@ issues:
       linters:
         - gocyclo
         - gocognit
+        - dupl  # Intentional code duplication - each adapter follows same pattern
 
     # Allow complex orchestrator functions (retry logic, rate limiting)
     - path: 'pkg/orchestrator/'
+      linters:
+        - gocyclo
+        - gocognit
+
+    # Allow complex middleware functions
+    - path: 'pkg/middleware/'
+      linters:
+        - gocyclo
+        - gocognit
+
+    # Allow complex integration test functions
+    - path: 'test/integration/'
       linters:
         - gocyclo
         - gocognit
