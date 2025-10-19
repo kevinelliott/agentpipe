@@ -3,6 +3,7 @@ package conversation
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -71,16 +72,18 @@ func TestState_Save(t *testing.T) {
 		t.Error("State file was not created")
 	}
 
-	// Verify file permissions
-	info, err := os.Stat(statePath)
-	if err != nil {
-		t.Fatalf("Failed to stat state file: %v", err)
-	}
+	// Verify file permissions (Unix-like systems only)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(statePath)
+		if err != nil {
+			t.Fatalf("Failed to stat state file: %v", err)
+		}
 
-	// Check permissions are 0600
-	mode := info.Mode()
-	if mode.Perm() != 0600 {
-		t.Errorf("Expected file permissions 0600, got %o", mode.Perm())
+		// Check permissions are 0600
+		mode := info.Mode()
+		if mode.Perm() != 0600 {
+			t.Errorf("Expected file permissions 0600, got %o", mode.Perm())
+		}
 	}
 }
 
