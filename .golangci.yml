@@ -1,19 +1,6 @@
-version: 2
-
 run:
   timeout: 5m
   tests: true
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  settings:
-    gofmt:
-      simplify: true
-    goimports:
-      local-prefixes:
-        - github.com/kevinelliott/agentpipe
 
 linters:
   enable:
@@ -30,124 +17,126 @@ linters:
     - gocyclo
     - gocognit
     - unused
-  settings:
-    govet:
-      enable:
-        - shadow
-    errcheck:
-      check-type-assertions: true
-      check-blank: false
-    dupl:
-      threshold: 100
-    gocyclo:
-      min-complexity: 15
-    gocognit:
-      min-complexity: 30
-    misspell:
-      locale: US
-    gosec:
-      excludes:
-        - G104 # Errors unhandled (we use errcheck for this)
-        - G204 # Subprocess launched with variable
-        - G304 # File path provided as taint input
-        - G301 # Expect directory permissions
-  exclusions:
-    rules:
-      # Exclude some linters from running on test files
-      - path: '_test\.go'
-        linters:
-          - gosec
-          - dupl
-          - errcheck
+    - gofmt
+    - goimports
 
-      # Exclude exec.Command usage in adapters (G204)
-      - path: 'pkg/adapters/'
-        linters:
-          - gosec
-        text: "G204:"
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+  dupl:
+    threshold: 100
+  gocyclo:
+    min-complexity: 15
+  gocognit:
+    min-complexity: 30
+  misspell:
+    locale: US
+  gosec:
+    excludes:
+      - G104 # Errors unhandled (we use errcheck for this)
+      - G204 # Subprocess launched with variable
+      - G304 # File path provided as taint input
+      - G301 # Expect directory permissions
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/kevinelliott/agentpipe
 
-      # Allow larger functions in main and cmd
-      - path: '(cmd/|main\.go)'
-        linters:
-          - gocyclo
-          - gocognit
+issues:
+  exclude-rules:
+    # Exclude some linters from running on test files
+    - path: '_test\.go'
+      linters:
+        - gosec
+        - dupl
+        - errcheck
 
-      # Allow complex TUI update functions
-      - path: 'pkg/tui/'
-        linters:
-          - gocognit
-          - gocyclo
+    # Exclude exec.Command usage in adapters (G204)
+    - path: 'pkg/adapters/'
+      linters:
+        - gosec
+      text: "G204:"
 
-      # Allow complex message processing in adapters
-      - path: 'pkg/adapters/'
-        linters:
-          - gocyclo
-          - gocognit
+    # Allow larger functions in main and cmd
+    - path: '(cmd/|main\.go)'
+      linters:
+        - gocyclo
+        - gocognit
 
-      # Allow complex orchestrator functions (retry logic, rate limiting)
-      - path: 'pkg/orchestrator/'
-        linters:
-          - gocyclo
-          - gocognit
+    # Allow complex TUI update functions
+    - path: 'pkg/tui/'
+      linters:
+        - gocognit
+        - gocyclo
 
-      # Allow weak random number generator for agent selection (not security-sensitive)
-      - path: 'pkg/orchestrator/'
-        linters:
-          - gosec
-        text: "G404:"
+    # Allow complex message processing in adapters
+    - path: 'pkg/adapters/'
+      linters:
+        - gocyclo
+        - gocognit
 
-      # Allow 0644 permissions for config files in init command
-      - path: 'cmd/init.go'
-        linters:
-          - gosec
-        text: "G306:"
+    # Allow complex orchestrator functions (retry logic, rate limiting)
+    - path: 'pkg/orchestrator/'
+      linters:
+        - gocyclo
+        - gocognit
 
-      # Exclude specific errcheck/gosec cases where error handling is intentionally omitted
-      - path: 'internal/version/version.go'
-        linters:
-          - errcheck
-          - gosec
-        text: "fmt.Sscanf"
+    # Allow weak random number generator for agent selection (not security-sensitive)
+    - path: 'pkg/orchestrator/'
+      linters:
+        - gosec
+      text: "G404:"
 
-      - path: 'cmd/root.go'
-        linters:
-          - errcheck
-          - gosec
-        text: "cmd.Help"
+    # Allow 0644 permissions for config files in init command
+    - path: 'cmd/init.go'
+      linters:
+        - gosec
+      text: "G306:"
 
-      - path: 'internal/version/version.go'
-        linters:
-          - errcheck
-        text: "resp.Body.Close"
+    # Exclude specific errcheck/gosec cases where error handling is intentionally omitted
+    - path: 'internal/version/version.go'
+      linters:
+        - errcheck
+        - gosec
+      text: "fmt.Sscanf"
 
-      - path: 'pkg/logger/logger.go'
-        linters:
-          - errcheck
-        text: "logFile.Close"
+    - path: 'cmd/root.go'
+      linters:
+        - errcheck
+        - gosec
+      text: "cmd.Help"
 
-      # Allow intentional error ignoring in fmt.Fprint* calls
-      - linters:
-          - errcheck
-        text: "fmt.Fprint"
+    - path: 'internal/version/version.go'
+      linters:
+        - errcheck
+      text: "resp.Body.Close"
 
-      # Exclude file operation security warnings (G304, G301)
-      - path: 'pkg/config/config.go'
-        linters:
-          - gosec
-        text: "G304"
+    - path: 'pkg/logger/logger.go'
+      linters:
+        - errcheck
+      text: "logFile.Close"
 
-      - path: 'pkg/logger/'
-        linters:
-          - gosec
-        text: "(G304|G301)"
+    # Allow intentional error ignoring in fmt.Fprint* calls
+    - linters:
+        - errcheck
+      text: "fmt.Fprint"
 
-      # Exclude staticcheck QF1003 suggestions (tagged switch)
-      - linters:
-          - staticcheck
-        text: "QF1003"
+    # Exclude file operation security warnings (G304, G301)
+    - path: 'pkg/config/config.go'
+      linters:
+        - gosec
+      text: "G304"
 
-output:
-  formats:
-    text:
-      path: stdout
-      colors: true
+    - path: 'pkg/logger/'
+      linters:
+        - gosec
+      text: "(G304|G301)"
+
+    # Exclude staticcheck QF1003 suggestions (tagged switch)
+    - linters:
+        - staticcheck
+      text: "QF1003"
