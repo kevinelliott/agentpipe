@@ -42,10 +42,10 @@ type DoctorOutput struct {
 }
 
 type DoctorSummary struct {
-	TotalAgents     int      `json:"total_agents"`
-	AvailableCount  int      `json:"available_count"`
-	MissingAgents   []string `json:"missing_agents,omitempty"`
-	Ready           bool     `json:"ready"`
+	TotalAgents    int      `json:"total_agents"`
+	AvailableCount int      `json:"available_count"`
+	MissingAgents  []string `json:"missing_agents,omitempty"`
+	Ready          bool     `json:"ready"`
 }
 
 var (
@@ -89,9 +89,9 @@ func runDoctor(cmd *cobra.Command, args []string) {
 	systemChecks := performSystemChecks()
 
 	// Check all agents
-	var supportedAgents []AgentCheck
-	var availableAgents []AgentCheck
-	var unavailableAgents []string
+	supportedAgents := make([]AgentCheck, 0, len(agents))
+	availableAgents := make([]AgentCheck, 0, len(agents))
+	unavailableAgents := make([]string, 0, len(agents))
 
 	for _, agent := range agents {
 		check := checkAgent(agent.command, agent.installCmd)
