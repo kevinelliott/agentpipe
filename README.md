@@ -91,21 +91,23 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.1.3 - Factory CLI support, expanding to 10 AI agent CLIs.
+**Latest Release**: v0.1.4 - JSON output for programmatic agent detection.
 
-**What's New in v0.1.3**:
+**What's New in v0.1.4**:
 
 🎉 **New Features:**
-- **Factory CLI Agent Support**: Full integration with Factory.ai's Droid coding agent
-  - Non-interactive exec mode with autonomy levels
-  - Agent-native software development with Code Droid and Knowledge Droid
-  - Comprehensive logging and error handling
-  - Install: `curl -fsSL https://app.factory.ai/cli | sh`
+- **Doctor Command JSON Output**: Programmatic agent detection for web interfaces
+  - `agentpipe doctor --json` for structured, machine-readable output
+  - Complete system diagnostics in JSON format
+  - Perfect for dynamic UI generation (e.g., agentpipe-web)
+  - Agent detection with availability, authentication, version, install/upgrade commands
+  - Clean output with logo suppressed for `--json` mode
 
 📈 **Improvements:**
-- **Agent Count**: Now supporting 10 AI agent CLIs (Amp, Claude, Codex, Copilot, Cursor, Factory, Gemini, Qoder, Qwen, Ollama)
-- **Doctor Command**: Added Factory CLI detection with installation instructions
-- **Documentation**: Updated README, architecture docs, and troubleshooting guides
+- **Documentation**: Comprehensive JSON output format documentation
+  - Field-by-field structure explanation
+  - Usage examples for both human-readable and JSON modes
+  - Use cases for programmatic consumption
 
 ## Installation
 

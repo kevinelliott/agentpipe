@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.4] - 2025-10-19
+
+### Added
+- **Doctor Command JSON Output**: Programmatic agent detection for web interfaces
+  - `--json` flag for structured output in JSON format
+  - Complete system diagnostics in machine-readable format
+  - Agent detection with availability, authentication, and version info
+  - Perfect for dynamic UI generation (e.g., agentpipe-web)
+  - Outputs: `system_environment`, `supported_agents`, `available_agents`, `configuration`, `summary`
+  - Each agent includes: name, command, path, version, install/upgrade commands, docs, auth status
+  - Clean JSON output (logo suppressed when using `--json` flag)
+
+### Improved
+- **Documentation**: Added comprehensive JSON output format documentation to README
+  - Usage examples for both human-readable and JSON modes
+  - Field-by-field JSON structure explanation
+  - Use cases for programmatic consumption
+
 ## [v0.1.3] - 2025-10-19
 
 ### Added
@@ -320,7 +338,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...HEAD
+[v0.1.4]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/kevinelliott/agentpipe/compare/v0.1.1...v0.1.3
 [v0.1.1]: https://github.com/kevinelliott/agentpipe/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/kevinelliott/agentpipe/compare/v0.0.16...v0.1.0
