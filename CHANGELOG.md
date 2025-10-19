@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.5] - 2025-10-19
+
+### Fixed
+- **Linting Errors**: Fixed golangci-lint errors in doctor.go
+  - Fixed gofmt formatting (struct field alignment)
+  - Fixed prealloc warning (pre-allocated slices with known capacity)
+  - CI/CD pipeline now passes all quality checks
+
 ## [v0.1.4] - 2025-10-19
 
 ### Added
@@ -338,7 +346,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.5...HEAD
+[v0.1.5]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/kevinelliott/agentpipe/compare/v0.1.1...v0.1.3
 [v0.1.1]: https://github.com/kevinelliott/agentpipe/compare/v0.1.0...v0.1.1

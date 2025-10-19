@@ -91,23 +91,19 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.1.4 - JSON output for programmatic agent detection.
+**Latest Release**: v0.1.5 - Linting fixes for clean CI/CD builds.
 
-**What's New in v0.1.4**:
+**What's New in v0.1.5**:
 
-🎉 **New Features:**
-- **Doctor Command JSON Output**: Programmatic agent detection for web interfaces
-  - `agentpipe doctor --json` for structured, machine-readable output
-  - Complete system diagnostics in JSON format
-  - Perfect for dynamic UI generation (e.g., agentpipe-web)
-  - Agent detection with availability, authentication, version, install/upgrade commands
-  - Clean output with logo suppressed for `--json` mode
+🐛 **Bug Fixes:**
+- **Linting Errors**: Fixed golangci-lint errors in doctor.go
+  - Fixed gofmt formatting (struct field alignment)
+  - Fixed prealloc warning (pre-allocated slices with known capacity)
+  - CI/CD pipeline now passes all quality checks
 
-📈 **Improvements:**
-- **Documentation**: Comprehensive JSON output format documentation
-  - Field-by-field structure explanation
-  - Usage examples for both human-readable and JSON modes
-  - Use cases for programmatic consumption
+**Previous Release - v0.1.4**: JSON output for programmatic agent detection
+- `agentpipe doctor --json` for structured, machine-readable output
+- Perfect for dynamic UI generation (e.g., agentpipe-web)
 
 ## Installation
 
