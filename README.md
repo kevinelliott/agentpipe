@@ -286,6 +286,9 @@ Comprehensive system health check to verify AgentPipe is properly configured and
 
 ```bash
 agentpipe doctor
+
+# Output in JSON format for programmatic consumption
+agentpipe doctor --json
 ```
 
 The doctor command performs a complete diagnostic check of your system and provides detailed information about:
@@ -418,6 +421,33 @@ The doctor command performs a complete diagnostic check of your system and provi
 
 ![AgentPipe Doctor Output](screenshots/agentpipe-doctor.png)
 *Doctor command showing comprehensive system diagnostics, agent detection with versions and upgrade instructions, and authentication status*
+
+**JSON Output Format:**
+
+The `--json` flag outputs structured data perfect for programmatic consumption (e.g., web interfaces, automation scripts):
+
+```json
+{
+  "system_environment": [...],      // System checks (Go runtime, PATH, directories)
+  "supported_agents": [...],         // All agents AgentPipe supports
+  "available_agents": [...],         // Only agents installed and working
+  "configuration": [...],            // Config file status
+  "summary": {
+    "total_agents": 10,              // Total supported agents
+    "available_count": 10,           // Number of working agents
+    "missing_agents": [],            // Names of missing agents
+    "ready": true                    // Whether AgentPipe is ready to run
+  }
+}
+```
+
+Each agent entry includes:
+- `name`, `command`, `available`, `authenticated`
+- `path`, `version` (when available)
+- `install_cmd`, `upgrade_cmd`, `docs`
+- `error` (when not available)
+
+This format enables web interfaces like agentpipe-web to dynamically detect and display available agents.
 
 Use this command to:
 - Verify your AgentPipe installation is complete

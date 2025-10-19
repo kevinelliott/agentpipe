@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,22 +13,44 @@ import (
 )
 
 type AgentCheck struct {
-	Name          string
-	Command       string
-	Available     bool
-	Path          string
-	Version       string
-	Error         error
-	InstallCmd    string
-	Authenticated bool
+	Name          string `json:"name"`
+	Command       string `json:"command"`
+	Available     bool   `json:"available"`
+	Path          string `json:"path,omitempty"`
+	Version       string `json:"version,omitempty"`
+	Error         error  `json:"-"`
+	ErrorMessage  string `json:"error,omitempty"`
+	InstallCmd    string `json:"install_cmd,omitempty"`
+	UpgradeCmd    string `json:"upgrade_cmd,omitempty"`
+	Docs          string `json:"docs,omitempty"`
+	Authenticated bool   `json:"authenticated"`
 }
 
 type SystemCheck struct {
-	Name    string
-	Status  bool
-	Message string
-	Icon    string
+	Name    string `json:"name"`
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
+	Icon    string `json:"icon,omitempty"`
 }
+
+type DoctorOutput struct {
+	SystemEnvironment []SystemCheck `json:"system_environment"`
+	SupportedAgents   []AgentCheck  `json:"supported_agents"`
+	AvailableAgents   []AgentCheck  `json:"available_agents"`
+	Configuration     []SystemCheck `json:"configuration"`
+	Summary           DoctorSummary `json:"summary"`
+}
+
+type DoctorSummary struct {
+	TotalAgents     int      `json:"total_agents"`
+	AvailableCount  int      `json:"available_count"`
+	MissingAgents   []string `json:"missing_agents,omitempty"`
+	Ready           bool     `json:"ready"`
+}
+
+var (
+	doctorJSON bool
+)
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
@@ -38,25 +61,11 @@ var doctorCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(doctorCmd)
+	doctorCmd.Flags().BoolVar(&doctorJSON, "json", false, "Output results in JSON format")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) {
-	fmt.Println("\n🔍 AgentPipe Doctor - System Health Check")
-	fmt.Println(strings.Repeat("=", 61))
-
-	// System environment checks
-	fmt.Println("\n📋 SYSTEM ENVIRONMENT")
-	fmt.Println(strings.Repeat("-", 61))
-	systemChecks := performSystemChecks()
-	for _, check := range systemChecks {
-		fmt.Printf("  %s %s: %s\n", check.Icon, check.Name, check.Message)
-	}
-	fmt.Println()
-
-	// Agent checks
-	fmt.Println("\n🤖 AI AGENT CLIS")
-	fmt.Println(strings.Repeat("-", 61))
-
+	// Define all supported agents
 	agents := []struct {
 		name       string
 		command    string
@@ -76,18 +85,92 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		{"Ollama", "ollama", "See https://ollama.com/download", "See https://ollama.com/download for upgrade instructions", "https://ollama.com"},
 	}
 
+	// Perform system checks
+	systemChecks := performSystemChecks()
+
+	// Check all agents
+	var supportedAgents []AgentCheck
 	var availableAgents []AgentCheck
 	var unavailableAgents []string
 
-	for i, agent := range agents {
+	for _, agent := range agents {
 		check := checkAgent(agent.command, agent.installCmd)
+		check.Name = agent.name
+		check.UpgradeCmd = agent.upgradeCmd
+		check.Docs = agent.docs
 
-		statusIcon := "❌"
+		if check.Error != nil {
+			check.ErrorMessage = check.Error.Error()
+		}
+
+		supportedAgents = append(supportedAgents, check)
+
 		if check.Available {
-			statusIcon = "✅"
 			availableAgents = append(availableAgents, check)
 		} else {
 			unavailableAgents = append(unavailableAgents, agent.name)
+		}
+	}
+
+	// Configuration checks
+	configChecks := performConfigChecks()
+
+	// Build summary
+	summary := DoctorSummary{
+		TotalAgents:    len(agents),
+		AvailableCount: len(availableAgents),
+		MissingAgents:  unavailableAgents,
+		Ready:          len(availableAgents) > 0,
+	}
+
+	// Build complete output
+	output := DoctorOutput{
+		SystemEnvironment: systemChecks,
+		SupportedAgents:   supportedAgents,
+		AvailableAgents:   availableAgents,
+		Configuration:     configChecks,
+		Summary:           summary,
+	}
+
+	// Output in requested format
+	if doctorJSON {
+		jsonOutput, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating JSON output: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(jsonOutput))
+	} else {
+		printHumanReadableOutput(output, agents)
+	}
+}
+
+func printHumanReadableOutput(output DoctorOutput, agents []struct {
+	name       string
+	command    string
+	installCmd string
+	upgradeCmd string
+	docs       string
+}) {
+	fmt.Println("\n🔍 AgentPipe Doctor - System Health Check")
+	fmt.Println(strings.Repeat("=", 61))
+
+	// System environment checks
+	fmt.Println("\n📋 SYSTEM ENVIRONMENT")
+	fmt.Println(strings.Repeat("-", 61))
+	for _, check := range output.SystemEnvironment {
+		fmt.Printf("  %s %s: %s\n", check.Icon, check.Name, check.Message)
+	}
+	fmt.Println()
+
+	// Agent checks
+	fmt.Println("\n🤖 AI AGENT CLIS")
+	fmt.Println(strings.Repeat("-", 61))
+
+	for i, check := range output.SupportedAgents {
+		statusIcon := "❌"
+		if check.Available {
+			statusIcon = "✅"
 		}
 
 		// Add spacing between agents (but not before the first one)
@@ -95,38 +178,37 @@ func runDoctor(cmd *cobra.Command, args []string) {
 			fmt.Println()
 		}
 
-		fmt.Printf("\n  %s %s\n", statusIcon, agent.name)
-		fmt.Printf("     Command:  %s\n", agent.command)
+		fmt.Printf("\n  %s %s\n", statusIcon, check.Name)
+		fmt.Printf("     Command:  %s\n", check.Command)
 
 		if check.Available {
 			fmt.Printf("     Path:     %s\n", check.Path)
 			if check.Version != "" {
 				fmt.Printf("     Version:  %s\n", check.Version)
 			}
-			if agent.upgradeCmd != "" {
-				fmt.Printf("     Upgrade:  %s\n", agent.upgradeCmd)
+			if check.UpgradeCmd != "" {
+				fmt.Printf("     Upgrade:  %s\n", check.UpgradeCmd)
 			}
 			// Check authentication where applicable
 			if check.Authenticated {
 				fmt.Printf("     Auth:     ✅ Authenticated\n")
-			} else if agent.name == "Claude" || agent.name == "Cursor" || agent.name == "Qoder" || agent.name == "Factory" {
-				fmt.Printf("     Auth:     ⚠️  Not authenticated (run '%s' and authenticate)\n", agent.command)
+			} else if check.Name == "Claude" || check.Name == "Cursor" || check.Name == "Qoder" || check.Name == "Factory" {
+				fmt.Printf("     Auth:     ⚠️  Not authenticated (run '%s' and authenticate)\n", check.Command)
 			}
 		} else {
 			fmt.Printf("     Status:   Not installed\n")
-			if agent.installCmd != "" {
-				fmt.Printf("     Install:  %s\n", agent.installCmd)
+			if check.InstallCmd != "" {
+				fmt.Printf("     Install:  %s\n", check.InstallCmd)
 			}
 		}
-		fmt.Printf("     Docs:     %s\n", agent.docs)
+		fmt.Printf("     Docs:     %s\n", check.Docs)
 	}
 	fmt.Println()
 
 	// Configuration checks
 	fmt.Println("\n⚙️  CONFIGURATION")
 	fmt.Println(strings.Repeat("-", 61))
-	configChecks := performConfigChecks()
-	for _, check := range configChecks {
+	for _, check := range output.Configuration {
 		fmt.Printf("  %s %s: %s\n", check.Icon, check.Name, check.Message)
 	}
 	fmt.Println()
@@ -134,19 +216,19 @@ func runDoctor(cmd *cobra.Command, args []string) {
 	// Summary
 	fmt.Println("\n" + strings.Repeat("=", 61))
 	fmt.Printf("\n📊 SUMMARY\n")
-	fmt.Printf("   Available Agents: %d/%d\n", len(availableAgents), len(agents))
+	fmt.Printf("   Available Agents: %d/%d\n", output.Summary.AvailableCount, output.Summary.TotalAgents)
 
-	if len(unavailableAgents) > 0 {
-		fmt.Printf("   Missing Agents:   %s\n", strings.Join(unavailableAgents, ", "))
+	if len(output.Summary.MissingAgents) > 0 {
+		fmt.Printf("   Missing Agents:   %s\n", strings.Join(output.Summary.MissingAgents, ", "))
 	}
 
-	if len(availableAgents) == 0 {
+	if output.Summary.AvailableCount == 0 {
 		fmt.Println()
 		fmt.Println("⚠️  No AI agents found. Please install at least one agent CLI to use AgentPipe.")
 		fmt.Println("   Visit the respective documentation pages above for installation instructions.")
 	} else {
 		fmt.Println()
-		fmt.Printf("✨ AgentPipe is ready! You can use %d agent(s).\n", len(availableAgents))
+		fmt.Printf("✨ AgentPipe is ready! You can use %d agent(s).\n", output.Summary.AvailableCount)
 		fmt.Println("   Run 'agentpipe run --help' to start a conversation.")
 	}
 

@@ -40,7 +40,21 @@ Claude, Gemini, and Qwen, allowing them to communicate in a shared "room".`,
 }
 
 func Execute() {
-	PrintLogo()
+	// Skip logo for doctor --json command for clean JSON output
+	shouldSkipLogo := false
+	if len(os.Args) >= 2 && os.Args[1] == "doctor" {
+		for _, arg := range os.Args[2:] {
+			if arg == "--json" {
+				shouldSkipLogo = true
+				break
+			}
+		}
+	}
+
+	if !shouldSkipLogo {
+		PrintLogo()
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
