@@ -50,15 +50,20 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
    - Solution: Increased default timeout to 5 seconds
    - User can use `--health-check-timeout 10` for longer
 
-2. **Windows test failures**
+2. **Windows test failures - multiline commands**
    - Issue: Multiline commands break on Windows
    - Solution: Use single-line test command
 
-3. **Homebrew formula updates failing**
+3. **Windows test failures - timer resolution**
+   - Issue: `time.Since()` can return 0 for very fast operations due to Windows timer granularity
+   - Solution: Add small delays (1ms) to mock agents in tests to ensure measurable durations
+   - Example: `agent.sendDelay = 1 * time.Millisecond` in integration tests
+
+4. **Homebrew formula updates failing**
    - Issue: GitHub Actions bot lacks permissions
    - Solution: Add `HOMEBREW_TAP_TOKEN` secret with repo scope
 
-4. **Linting errors**
+5. **Linting errors**
    - Empty branches: Add comment or `_ = err`
    - Imports: Use `goimports -local github.com/kevinelliott/agentpipe`
    - Deprecated methods: Updated viewport scroll methods
