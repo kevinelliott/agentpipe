@@ -27,7 +27,7 @@ Example:
 }
 
 var (
-	listStates bool
+	listStates           bool
 	continueConversation bool
 )
 

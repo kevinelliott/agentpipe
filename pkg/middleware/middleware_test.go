@@ -425,7 +425,7 @@ func TestChain_Process_ContextCancellation(t *testing.T) {
 
 	_, err := chain.Process(ctx, msg)
 	if err == nil {
-		t.Error("Expected error from cancelled context")
+		t.Error("Expected error from canceled context")
 	}
 
 	if !errors.Is(err, context.Canceled) {

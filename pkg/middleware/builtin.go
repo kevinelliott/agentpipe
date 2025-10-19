@@ -222,10 +222,10 @@ type RateLimitConfig struct {
 // consider using the pkg/ratelimit package with persistent storage.
 func RateLimitMiddleware(config RateLimitConfig) Middleware {
 	type rateLimitState struct {
-		minuteCount    int
-		hourCount      int
-		minuteReset    time.Time
-		hourReset      time.Time
+		minuteCount int
+		hourCount   int
+		minuteReset time.Time
+		hourReset   time.Time
 	}
 
 	// In-memory state per agent

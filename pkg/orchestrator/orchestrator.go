@@ -67,7 +67,7 @@ type Orchestrator struct {
 	mu                sync.RWMutex
 	writer            io.Writer
 	logger            *logger.ChatLogger
-	currentTurnNumber int // tracks the current turn number for middleware context
+	currentTurnNumber int              // tracks the current turn number for middleware context
 	metrics           *metrics.Metrics // Prometheus metrics for monitoring
 }
 
@@ -107,12 +107,12 @@ func NewOrchestrator(config OrchestratorConfig, writer io.Writer) *Orchestrator 
 	}
 
 	return &Orchestrator{
-		config:           config,
-		agents:           make([]agent.Agent, 0),
-		messages:         make([]agent.Message, 0),
-		rateLimiters:     make(map[string]*ratelimit.Limiter),
-		middlewareChain:  middleware.NewChain(),
-		writer:           writer,
+		config:            config,
+		agents:            make([]agent.Agent, 0),
+		messages:          make([]agent.Message, 0),
+		rateLimiters:      make(map[string]*ratelimit.Limiter),
+		middlewareChain:   middleware.NewChain(),
+		writer:            writer,
 		currentTurnNumber: 0,
 	}
 }
@@ -442,10 +442,10 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 			delay := o.calculateBackoffDelay(attempt)
 			log.WithFields(map[string]interface{}{
-				"agent_name": a.GetName(),
-				"attempt":    attempt,
+				"agent_name":  a.GetName(),
+				"attempt":     attempt,
 				"max_retries": o.config.MaxRetries,
-				"delay":      delay.String(),
+				"delay":       delay.String(),
 			}).Warn("retrying agent request after failure")
 			if o.writer != nil {
 				fmt.Fprintf(o.writer, "[Retry] Waiting %v before retry %d/%d for %s...\n",
@@ -485,8 +485,8 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 		}
 
 		log.WithFields(map[string]interface{}{
-			"agent_name": a.GetName(),
-			"attempt":    attempt + 1,
+			"agent_name":  a.GetName(),
+			"attempt":     attempt + 1,
 			"max_retries": o.config.MaxRetries + 1,
 		}).WithError(lastErr).Warn("agent request attempt failed")
 	}

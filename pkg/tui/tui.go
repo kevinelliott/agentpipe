@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -47,10 +47,10 @@ var (
 			Background(lipgloss.Color("235")).
 			Padding(0, 1)
 
-	searchMatchStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("0")).
-			Background(lipgloss.Color("226"))
+	_ = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("0")).
+		Background(lipgloss.Color("226"))
 )
 
 type Model struct {
@@ -65,8 +65,8 @@ type Model struct {
 	searchMode         bool
 	commandMode        bool
 	showHelp           bool
-	searchResults      []int // Message indices that match search
-	currentSearchIndex int   // Current position in searchResults
+	searchResults      []int  // Message indices that match search
+	currentSearchIndex int    // Current position in searchResults
 	filterAgent        string // Agent name to filter by (empty = no filter)
 	width              int
 	height             int

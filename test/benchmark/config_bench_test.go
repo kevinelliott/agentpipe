@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
-	"gopkg.in/yaml.v3"
 )
 
 // BenchmarkConfigValidate benchmarks configuration validation

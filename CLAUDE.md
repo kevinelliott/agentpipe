@@ -83,6 +83,16 @@ YAML config supports:
 - Logging configuration
 - Turn limits and timeouts
 
+## Quality Requirements
+
+**IMPORTANT**: Before committing any changes, ALL of the following checks MUST pass:
+
+1. **Linting**: `golangci-lint run --timeout=5m`
+2. **Testing**: `go test -v -race ./...`
+3. **Build**: `go build -o agentpipe .`
+
+No code should be committed if any of these checks fail. This ensures code quality, prevents regressions, and maintains CI/CD pipeline health.
+
 ## Development Commands
 
 ```bash

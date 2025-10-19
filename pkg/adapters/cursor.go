@@ -34,6 +34,7 @@ func (c *CursorAgent) Initialize(config agent.AgentConfig) error {
 		log.WithFields(map[string]interface{}{
 			"agent_id":   config.ID,
 			"agent_name": config.Name,
+			"agent_type": "cursor",
 		}).WithError(err).Error("cursor agent base initialization failed")
 		return err
 	}
@@ -43,6 +44,7 @@ func (c *CursorAgent) Initialize(config agent.AgentConfig) error {
 		log.WithFields(map[string]interface{}{
 			"agent_id":   c.ID,
 			"agent_name": c.Name,
+			"agent_type": "cursor",
 		}).WithError(err).Error("cursor-agent CLI not found in PATH")
 		return fmt.Errorf("cursor-agent CLI not found: %w", err)
 	}
@@ -51,6 +53,7 @@ func (c *CursorAgent) Initialize(config agent.AgentConfig) error {
 	log.WithFields(map[string]interface{}{
 		"agent_id":   c.ID,
 		"agent_name": c.Name,
+		"agent_type": "cursor",
 		"exec_path":  path,
 		"model":      c.Config.Model,
 	}).Info("cursor agent initialized successfully")
@@ -65,11 +68,17 @@ func (c *CursorAgent) IsAvailable() bool {
 
 func (c *CursorAgent) HealthCheck(ctx context.Context) error {
 	if c.execPath == "" {
-		log.WithField("agent_name", c.Name).Error("cursor health check failed: not initialized")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).Error("cursor health check failed: not initialized")
 		return fmt.Errorf("cursor-agent CLI not initialized")
 	}
 
-	log.WithField("agent_name", c.Name).Debug("starting cursor health check")
+	log.WithFields(map[string]interface{}{
+		"agent_name": c.Name,
+		"agent_type": "cursor",
+	}).Debug("starting cursor health check")
 
 	// Check if cursor-agent is available and authenticated
 	cmd := exec.CommandContext(ctx, c.execPath, "status")
@@ -79,7 +88,10 @@ func (c *CursorAgent) HealthCheck(ctx context.Context) error {
 
 	// Check if we need to login
 	if strings.Contains(outputStr, "not logged in") || strings.Contains(outputStr, "Not authenticated") {
-		log.WithField("agent_name", c.Name).Error("cursor health check failed: not authenticated")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).Error("cursor health check failed: not authenticated")
 		return fmt.Errorf("cursor-agent not authenticated - please run 'cursor-agent login'")
 	}
 
@@ -88,29 +100,44 @@ func (c *CursorAgent) HealthCheck(ctx context.Context) error {
 		if len(outputStr) > 0 {
 			// If it contains "Logged in" it's actually working
 			if strings.Contains(outputStr, "Logged in") || strings.Contains(outputStr, "Login successful") {
-				log.WithField("agent_name", c.Name).Info("cursor health check passed")
+				log.WithFields(map[string]interface{}{
+					"agent_name": c.Name,
+					"agent_type": "cursor",
+				}).Info("cursor health check passed")
 				return nil
 			}
 		}
 
 		// Try with help flag as fallback
-		log.WithField("agent_name", c.Name).Debug("status check failed, trying --help")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).Debug("status check failed, trying --help")
 		cmd = exec.CommandContext(ctx, c.execPath, "--help")
 		_, err = cmd.CombinedOutput()
 
 		if err != nil {
-			log.WithField("agent_name", c.Name).WithError(err).Error("cursor health check failed: CLI not responding")
+			log.WithFields(map[string]interface{}{
+				"agent_name": c.Name,
+				"agent_type": "cursor",
+			}).WithError(err).Error("cursor health check failed: CLI not responding")
 			return fmt.Errorf("cursor-agent CLI not responding: %w", err)
 		}
 	}
 
 	// Check if output indicates it's working
 	if strings.Contains(outputStr, "Logged in") || strings.Contains(outputStr, "Login successful") || len(outputStr) > 10 {
-		log.WithField("agent_name", c.Name).Info("cursor health check passed")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).Info("cursor health check passed")
 		return nil
 	}
 
-	log.WithField("agent_name", c.Name).Error("cursor health check failed: unknown status")
+	log.WithFields(map[string]interface{}{
+		"agent_name": c.Name,
+		"agent_type": "cursor",
+	}).Error("cursor health check failed: unknown status")
 	return fmt.Errorf("cursor-agent CLI health check failed")
 }
 
@@ -136,6 +163,7 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 
 	log.WithFields(map[string]interface{}{
 		"agent_name":    c.Name,
+		"agent_type":    "cursor",
 		"message_count": len(messages),
 		"timeout":       cursorStreamTimeout.String(),
 	}).Debug("starting cursor streaming message")
@@ -158,18 +186,27 @@ func (c *CursorAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.WithField("agent_name", c.Name).WithError(err).Error("failed to create stdout pipe")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).WithError(err).Error("failed to create stdout pipe")
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.WithField("agent_name", c.Name).WithError(err).Error("failed to create stderr pipe")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).WithError(err).Error("failed to create stderr pipe")
 		return fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		log.WithField("agent_name", c.Name).WithError(err).Error("failed to start cursor-agent process")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).WithError(err).Error("failed to start cursor-agent process")
 		return fmt.Errorf("failed to start cursor-agent: %w", err)
 	}
 
@@ -235,7 +272,10 @@ scanLoop:
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		}
-		log.WithField("agent_name", c.Name).WithError(err).Error("error reading cursor streaming output")
+		log.WithFields(map[string]interface{}{
+			"agent_name": c.Name,
+			"agent_type": "cursor",
+		}).WithError(err).Error("error reading cursor streaming output")
 		return fmt.Errorf("error reading output: %w", err)
 	}
 
@@ -250,6 +290,7 @@ scanLoop:
 		stderrOutput := stderrBuf.String()
 		log.WithFields(map[string]interface{}{
 			"agent_name": c.Name,
+			"agent_type": "cursor",
 			"stderr":     stderrOutput,
 		}).Error("cursor produced no output")
 		if stderrOutput != "" {
@@ -260,6 +301,7 @@ scanLoop:
 
 	log.WithFields(map[string]interface{}{
 		"agent_name":     c.Name,
+		"agent_type":     "cursor",
 		"content_length": streamedContent.Len(),
 	}).Info("cursor streaming message completed")
 

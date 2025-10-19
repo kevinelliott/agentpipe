@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,11 +13,13 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/rs/zerolog"
 
 	"github.com/kevinelliott/agentpipe/internal/branding"
 	"github.com/kevinelliott/agentpipe/internal/version"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
+	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/orchestrator"
 )
@@ -38,10 +41,12 @@ type EnhancedModel struct {
 	// UI components
 	agentList    list.Model
 	conversation viewport.Model
+	logPanel     viewport.Model
 	userInput    textarea.Model
 
 	// State
 	messages      []agent.Message
+	logMessages   []string
 	activePanel   panel
 	showModal     bool
 	modalContent  string
@@ -53,6 +58,8 @@ type EnhancedModel struct {
 	userTurn      bool
 	err           error
 	msgChan       <-chan agent.Message
+	msgSendChan   chan<- agent.Message // Send-only channel for sending messages
+	logChan       <-chan string
 	turnCount     int
 	initialized   bool
 	initializing  bool
@@ -92,6 +99,12 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("240"))
 
+	// Log panel styles
+	logPanelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(0, 1)
+
 	// Title styles
 	enhancedTitleStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -121,9 +134,9 @@ var (
 			BorderForeground(lipgloss.Color("240")).
 			Align(lipgloss.Center)
 
-	logoTextStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("99")).
-			Bold(true)
+	_ = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("99")).
+		Bold(true)
 
 	logoInfoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244")).
@@ -150,6 +163,81 @@ func (i agentItem) FilterValue() string { return i.agent.GetName() }
 func (i agentItem) Title() string       { return i.agent.GetName() }
 func (i agentItem) Description() string {
 	return fmt.Sprintf("Type: %s | ID: %s", i.agent.GetType(), i.agent.GetID())
+}
+
+// logWriter is a custom io.Writer that captures log messages and sends them to a channel
+type logWriter struct {
+	logChan chan<- string
+	buffer  strings.Builder
+}
+
+// logEntry represents a parsed log entry from zerolog JSON output
+type logEntry struct {
+	Level     string `json:"level"`
+	Time      string `json:"time"`
+	Message   string `json:"message"`
+	AgentName string `json:"agent_name"`
+	AgentType string `json:"agent_type"`
+}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	content := string(p)
+	w.buffer.WriteString(content)
+
+	// Process complete lines
+	lines := strings.Split(w.buffer.String(), "\n")
+	w.buffer.Reset()
+
+	// Keep incomplete line in buffer
+	if len(lines) > 0 && !strings.HasSuffix(content, "\n") {
+		w.buffer.WriteString(lines[len(lines)-1])
+		lines = lines[:len(lines)-1]
+	}
+
+	// Send each complete line to the channel
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			// Try to parse as JSON and format nicely
+			formatted := w.formatLogLine(line)
+			select {
+			case w.logChan <- formatted:
+			default:
+				// Channel full, drop message to avoid blocking
+			}
+		}
+	}
+
+	return len(p), nil
+}
+
+// formatLogLine parses a zerolog JSON line and formats it nicely
+func (w *logWriter) formatLogLine(line string) string {
+	var entry logEntry
+	if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		// If parsing fails, return the raw line
+		return line
+	}
+
+	// Format: "LEVEL agent_name (agent_type) message"
+	// Example: "INF qoder (qoder) health check passed"
+	level := strings.ToUpper(entry.Level)
+	if len(level) > 3 {
+		level = level[:3]
+	}
+
+	formatted := level + " "
+
+	// Add agent name with type in parentheses if available
+	if entry.AgentName != "" && entry.AgentType != "" {
+		formatted += entry.AgentName + " (" + entry.AgentType + ") "
+	} else if entry.AgentName != "" {
+		formatted += entry.AgentName + " "
+	}
+
+	formatted += entry.Message
+
+	return formatted
 }
 
 func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, skipHealthCheck bool, healthCheckTimeout int, configPath string) error {
@@ -220,6 +308,19 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 	// Create a message channel for the orchestrator to send updates
 	msgChan := make(chan agent.Message, 100)
 
+	// Create a log channel for capturing log messages
+	logChan := make(chan string, 100)
+
+	// Initialize log writer to capture log messages for TUI
+	logWriter := &logWriter{
+		logChan: logChan,
+		buffer:  strings.Builder{},
+	}
+
+	// Reinitialize the logger to use our custom writer in TUI mode
+	// This will capture all log messages and send them to the log panel
+	log.InitLogger(logWriter, zerolog.InfoLevel, false)
+
 	// Create orchestrator with a writer that sends to our channel
 	orch := orchestrator.NewOrchestrator(orchConfig, &messageWriter{
 		msgChan:        msgChan,
@@ -248,9 +349,12 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 		agentList:          agentList,
 		userInput:          ta,
 		messages:           make([]agent.Message, 0),
+		logMessages:        make([]string, 0),
 		activePanel:        conversationPanel,
 		agentColors:        agentColorMap,
 		msgChan:            msgChan,
+		msgSendChan:        msgChan, // Same channel, but as send-only for internal use
+		logChan:            logChan,
 		initialized:        len(agents) > 0,
 		skipHealthCheck:    skipHealthCheck,
 		healthCheckTimeout: healthCheckTimeout,
@@ -264,6 +368,9 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 	// Close the message channel to signal cleanup
 	close(msgChan)
 
+	// Close the log channel
+	close(logChan)
+
 	// Close the logger if it exists
 	if chatLogger != nil {
 		chatLogger.Close()
@@ -275,6 +382,7 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 func (m EnhancedModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		textarea.Blink,
+		m.waitForLog(), // Start polling for log messages
 	}
 
 	if !m.initialized {
@@ -359,6 +467,20 @@ func (m EnhancedModel) waitForMessage() tea.Cmd {
 	}
 }
 
+// waitForLog polls for new log messages
+func (m EnhancedModel) waitForLog() tea.Cmd {
+	return func() tea.Msg {
+		// Check if there's a log message waiting
+		select {
+		case msg := <-m.logChan:
+			return logUpdate{message: msg}
+		case <-time.After(100 * time.Millisecond):
+			// No log message, return a tick to check again
+			return tickMsg{}
+		}
+	}
+}
+
 type tickMsg struct{}
 
 type agentInitMsg struct {
@@ -368,6 +490,10 @@ type agentInitMsg struct {
 type agentInitComplete struct {
 	agents []agent.Agent
 	err    error
+}
+
+type logUpdate struct {
+	message string
 }
 
 func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -465,12 +591,20 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			topicHeight = 4 // 3 for content + 1 for spacing (reduced by 2)
 		}
 
-		convHeight := msg.Height - 20 - topicHeight // Reduced by 1 more
+		// Log panel height (fixed at 5 lines)
+		logHeight := 5
+
+		// Adjust conversation height to make room for log panel
+		convHeight := msg.Height - 20 - topicHeight - logHeight - 2 // Account for log panel and spacing
 
 		if !m.ready {
 			// Initialize viewports with size (now using leftWidth for conversation)
 			m.conversation = viewport.New(leftWidth-2, convHeight)
 			m.conversation.SetContent(m.renderConversation())
+
+			// Initialize log panel viewport
+			m.logPanel = viewport.New(leftWidth-2, logHeight)
+			m.logPanel.SetContent(m.renderLogPanel())
 
 			m.agentList.SetSize(rightWidth-2, (msg.Height-6)/2)
 
@@ -483,6 +617,11 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.conversation.Width = leftWidth - 2
 			m.conversation.Height = convHeight
 			m.conversation.SetContent(m.renderConversation())
+
+			// Update log panel size
+			m.logPanel.Width = leftWidth - 2
+			m.logPanel.Height = logHeight
+			m.logPanel.SetContent(m.renderLogPanel())
 
 			m.agentList.SetSize(rightWidth-2, (msg.Height-6)/2)
 
@@ -588,17 +727,43 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if strings.Contains(msg.message.Content, "Starting AgentPipe conversation") {
 				m.running = true
 			}
+			// If this is the "Conversation ended" message, mark as not running
+			if strings.Contains(msg.message.Content, "Conversation ended") {
+				m.running = false
+			}
 			m.conversation.SetContent(m.renderConversation())
 			m.conversation.GotoBottom()
 		}
-		// Continue polling for messages
-		cmds = append(cmds, m.waitForMessage())
-
-	case tickMsg:
-		// Continue polling for messages if still running or if we have agents
-		if m.running || len(m.agents) > 0 {
+		// Continue polling for messages only if still running
+		if m.running {
 			cmds = append(cmds, m.waitForMessage())
 		}
+
+	case tickMsg:
+		// Continue polling for messages only if still running
+		if m.running {
+			cmds = append(cmds, m.waitForMessage())
+		}
+		// Always continue polling for logs
+		cmds = append(cmds, m.waitForLog())
+
+	case logUpdate:
+		// Add log message to the list
+		m.logMessages = append(m.logMessages, msg.message)
+
+		// Keep only the last 50 log messages to avoid memory bloat
+		if len(m.logMessages) > 50 {
+			m.logMessages = m.logMessages[len(m.logMessages)-50:]
+		}
+
+		// Update the log panel if it's ready
+		if m.ready {
+			m.logPanel.SetContent(m.renderLogPanel())
+			m.logPanel.GotoBottom()
+		}
+
+		// Continue polling for logs
+		cmds = append(cmds, m.waitForLog())
 
 	case conversationDone:
 		m.running = false
@@ -676,10 +841,19 @@ func (m EnhancedModel) View() string {
 		convPanelStyle = activePanelStyle
 	}
 
+	// Log panel height (fixed at 5 lines)
+	logHeight := 5
+
 	convView := convPanelStyle.
 		Width(leftWidth).
-		Height(m.height - 20 - topicHeight - 1). // Reduced by 1 more
+		Height(m.height - 20 - topicHeight - logHeight - 3). // Account for log panel
 		Render(m.conversation.View())
+
+	// Render log panel (between conversation and input)
+	logView := logPanelStyle.
+		Width(leftWidth).
+		Height(logHeight).
+		Render(m.logPanel.View())
 
 	// Render input panel (now on left)
 	inputPanelStyle := inactiveInputPanelStyle
@@ -732,12 +906,12 @@ func (m EnhancedModel) View() string {
 	// Render status bar
 	statusBar := m.renderStatusBar()
 
-	// Combine all panels (swapped: chat/input on left, agents/stats on right)
+	// Combine all panels (swapped: chat/log/input on left, agents/stats on right)
 	leftPanels := []string{}
 	if topicView != "" {
 		leftPanels = append(leftPanels, topicView)
 	}
-	leftPanels = append(leftPanels, convView, inputView)
+	leftPanels = append(leftPanels, convView, logView, inputView)
 
 	left := lipgloss.JoinVertical(lipgloss.Top, leftPanels...)
 
@@ -752,10 +926,11 @@ func (m EnhancedModel) View() string {
 	// Render logo panel at the top
 	logoView := m.renderLogo()
 
-	// Ensure the final output fits within terminal bounds
+	// Ensure the final output fits within terminal bounds and add left margin
 	return lipgloss.NewStyle().
 		MaxWidth(m.width - 6).
 		MaxHeight(m.height - 1).
+		PaddingLeft(1).
 		Render(lipgloss.JoinVertical(lipgloss.Top,
 			logoView,
 			main,
@@ -871,6 +1046,28 @@ func (m *EnhancedModel) renderConfig() string {
 	return b.String()
 }
 
+func (m *EnhancedModel) renderLogPanel() string {
+	var b strings.Builder
+
+	// Add title
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("244"))
+	b.WriteString(titleStyle.Render("📋 System Logs"))
+	b.WriteString("\n")
+
+	// Show only the messages that fit in the viewport
+	// The log panel will auto-scroll to the bottom
+	for _, logMsg := range m.logMessages {
+		// Use a dim style for log messages
+		logStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+		b.WriteString(logStyle.Render(logMsg))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
 func (m *EnhancedModel) renderStats() string {
 	var b strings.Builder
 
@@ -902,6 +1099,12 @@ func (m *EnhancedModel) renderStats() string {
 		timeDisplay = fmt.Sprintf("%dm%ds", minutes, seconds)
 	}
 
+	// Status with emoji
+	status := "🔴 Stopped"
+	if m.running {
+		status = "🟢 Running"
+	}
+
 	// Format with left/right alignment
 	items := []struct {
 		label string
@@ -912,6 +1115,7 @@ func (m *EnhancedModel) renderStats() string {
 		{"Turns:", turnsDisplay},
 		{"Total Time:", timeDisplay},
 		{"Total Cost:", fmt.Sprintf("$%.4f", m.totalCost)},
+		{"Status:", status},
 	}
 
 	for _, item := range items {
@@ -921,17 +1125,6 @@ func (m *EnhancedModel) renderStats() string {
 		}
 		b.WriteString(fmt.Sprintf("%s%s%s\n", item.label, strings.Repeat(" ", spaces), item.value))
 	}
-
-	// Status with emoji
-	status := "🔴 Stopped"
-	if m.running {
-		status = "🟢 Running"
-	}
-	spaces := availableWidth - 7 - len(status) // "Status:" is 7 chars
-	if spaces < 1 {
-		spaces = 1
-	}
-	b.WriteString(fmt.Sprintf("\nStatus:%s%s", strings.Repeat(" ", spaces), status))
 
 	if m.userTurn {
 		b.WriteString("\n👤 User turn enabled")
@@ -1102,7 +1295,7 @@ func (m *EnhancedModel) renderLogo() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		logo, // Already has color, no need to style it
-		"", // Add blank line
+		"",   // Add blank line
 		logoInfoStyle.Render(versionInfo),
 	)
 
@@ -1385,40 +1578,36 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 			m.orch.AddAgent(a)
 		}
 
-		// Create a done channel to track orchestrator completion
-		orchDone := make(chan struct{})
-
-		// Start the orchestrator in a goroutine
+		// Start the orchestrator in a background goroutine
+		// It will write to msgChan through the messageWriter
 		go func() {
-			defer close(orchDone)
-
 			// Use a longer timeout context for the entire conversation
 			orchCtx, cancel := context.WithTimeout(m.ctx, 10*time.Minute)
 			defer cancel()
 
-			if err := m.orch.Start(orchCtx); err != nil {
-				// Silently handle error to avoid stderr interference with TUI
-				// Errors will be visible in the TUI conversation panel
-			}
-			// Mark as not running when done
-			m.running = false
-		}()
+			convErr := m.orch.Start(orchCtx)
 
-		// Wait for orchestrator to finish with a timeout on TUI exit
-		// This goroutine will clean up when the orchestrator completes
-		go func() {
+			// Send a done message when orchestrator finishes
+			doneMsg := agent.Message{
+				AgentID:   "system",
+				AgentName: "System",
+				Content:   "✅ Conversation ended. Press 'q' to quit or Ctrl+C to exit.",
+				Timestamp: time.Now().Unix(),
+				Role:      "system",
+			}
+
+			if convErr != nil {
+				doneMsg.AgentID = "error"
+				doneMsg.Content = fmt.Sprintf("❌ Conversation ended with error: %v", convErr)
+			}
+
+			// Try to send the done message
+			// Use a select to avoid blocking if channel is full/closed
 			select {
-			case <-orchDone:
-				// Orchestrator finished normally
-			case <-m.ctx.Done():
-				// Context canceled (TUI exiting), wait briefly for orchestrator
-				select {
-				case <-orchDone:
-					// Orchestrator finished during grace period
-				case <-time.After(2 * time.Second):
-					// Grace period expired, orchestrator will be canceled by its own context
-					// Silently continue to avoid stderr interference with TUI
-				}
+			case m.msgSendChan <- doneMsg:
+				// Message sent successfully
+			default:
+				// Channel full or closed, ignore
 			}
 		}()
 

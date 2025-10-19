@@ -376,9 +376,9 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 	// Save conversation state if requested
 	if saveState || stateFile != "" {
-		if err := saveConversationState(orch, cfg, time.Now()); err != nil {
-			log.WithError(err).Error("failed to save conversation state")
-			fmt.Fprintf(os.Stderr, "Warning: Failed to save conversation state: %v\n", err)
+		if saveErr := saveConversationState(orch, cfg, time.Now()); saveErr != nil {
+			log.WithError(saveErr).Error("failed to save conversation state")
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save conversation state: %v\n", saveErr)
 		}
 	}
 

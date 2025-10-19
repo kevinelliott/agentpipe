@@ -60,7 +60,9 @@ func main() {
 		IncludeTimestamps: true,
 		Title:             "Product Brainstorm Session",
 	})
-	mdExporter.Export(messages, os.Stdout)
+	if err := mdExporter.Export(messages, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "Markdown export failed: %v\n", err)
+	}
 
 	fmt.Println("\n\n=== JSON Export ===")
 	// Export to JSON
@@ -69,7 +71,9 @@ func main() {
 		IncludeMetrics: true,
 		Title:          "Product Brainstorm Session",
 	})
-	jsonExporter.Export(messages, os.Stdout)
+	if err := jsonExporter.Export(messages, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "JSON export failed: %v\n", err)
+	}
 
 	fmt.Println("\n\n=== HTML Export (snippet) ===")
 	// Export to HTML
@@ -79,5 +83,7 @@ func main() {
 		IncludeTimestamps: true,
 		Title:             "Product Brainstorm Session",
 	})
-	htmlExporter.Export(messages, os.Stdout)
+	if err := htmlExporter.Export(messages, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "HTML export failed: %v\n", err)
+	}
 }

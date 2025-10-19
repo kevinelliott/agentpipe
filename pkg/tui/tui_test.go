@@ -795,21 +795,21 @@ type mockAgent struct {
 	name string
 }
 
-func (m *mockAgent) GetID() string                                        { return m.id }
-func (m *mockAgent) GetName() string                                      { return m.name }
-func (m *mockAgent) GetType() string                                      { return "mock" }
-func (m *mockAgent) GetModel() string                                     { return "mock-model" }
-func (m *mockAgent) GetRateLimit() float64                                { return 0 }
-func (m *mockAgent) GetRateLimitBurst() int                               { return 0 }
-func (m *mockAgent) Initialize(config agent.AgentConfig) error            { return nil }
+func (m *mockAgent) GetID() string                             { return m.id }
+func (m *mockAgent) GetName() string                           { return m.name }
+func (m *mockAgent) GetType() string                           { return "mock" }
+func (m *mockAgent) GetModel() string                          { return "mock-model" }
+func (m *mockAgent) GetRateLimit() float64                     { return 0 }
+func (m *mockAgent) GetRateLimitBurst() int                    { return 0 }
+func (m *mockAgent) Initialize(config agent.AgentConfig) error { return nil }
 func (m *mockAgent) SendMessage(ctx context.Context, messages []agent.Message) (string, error) {
 	return "mock response", nil
 }
 func (m *mockAgent) StreamMessage(ctx context.Context, messages []agent.Message, writer io.Writer) error {
 	return nil
 }
-func (m *mockAgent) Announce() string           { return m.name + " joined" }
-func (m *mockAgent) IsAvailable() bool          { return true }
+func (m *mockAgent) Announce() string                      { return m.name + " joined" }
+func (m *mockAgent) IsAvailable() bool                     { return true }
 func (m *mockAgent) HealthCheck(ctx context.Context) error { return nil }
 
 func TestModel_HelpModal(t *testing.T) {

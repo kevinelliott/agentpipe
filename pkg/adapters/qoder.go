@@ -42,10 +42,10 @@ func (q *QoderAgent) Initialize(config agent.AgentConfig) error {
 	q.execPath = path
 
 	log.WithFields(map[string]interface{}{
-		"agent_id":  q.ID,
+		"agent_id":   q.ID,
 		"agent_name": q.Name,
-		"exec_path": path,
-		"model":     q.Config.Model,
+		"exec_path":  path,
+		"model":      q.Config.Model,
 	}).Info("qoder agent initialized successfully")
 
 	return nil

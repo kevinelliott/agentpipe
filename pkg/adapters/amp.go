@@ -16,17 +16,17 @@ import (
 
 const (
 	// Amp-specific timeout constants
-	ampStreamTimeout  = 60 * time.Second
-	ampReadDeadline   = 55 * time.Second
-	ampHealthTimeout  = 5 * time.Second
+	ampStreamTimeout = 60 * time.Second
+	ampReadDeadline  = 55 * time.Second
+	ampHealthTimeout = 5 * time.Second
 )
 
 // AmpAgent represents the Amp coding agent adapter
 type AmpAgent struct {
 	agent.BaseAgent
-	execPath        string
-	threadID        string // Current Amp thread ID for conversation continuity
-	lastMessageIdx  int    // Index of last message sent to Amp (for incremental updates)
+	execPath       string
+	threadID       string // Current Amp thread ID for conversation continuity
+	lastMessageIdx int    // Index of last message sent to Amp (for incremental updates)
 }
 
 // NewAmpAgent creates a new Amp agent instance
@@ -353,12 +353,12 @@ func (a *AmpAgent) StreamMessage(ctx context.Context, messages []agent.Message, 
 		}
 
 		log.WithFields(map[string]interface{}{
-			"agent_name":         a.Name,
-			"total_messages":     len(messages),
-			"filtered_messages":  len(allRelevantMessages),
-			"system_messages":    systemMsgCount,
-			"has_custom_prompt":  a.Config.Prompt != "",
-			"mode":               "streaming",
+			"agent_name":        a.Name,
+			"total_messages":    len(messages),
+			"filtered_messages": len(allRelevantMessages),
+			"system_messages":   systemMsgCount,
+			"has_custom_prompt": a.Config.Prompt != "",
+			"mode":              "streaming",
 		}).Info("creating new amp thread (streaming) with relevant conversation context")
 
 		// IMPORTANT: Build prompt with proper structure
@@ -378,7 +378,7 @@ func (a *AmpAgent) StreamMessage(ctx context.Context, messages []agent.Message, 
 				previewLen = len(prompt)
 			}
 			log.WithFields(map[string]interface{}{
-				"agent_name":  a.Name,
+				"agent_name":   a.Name,
 				"prompt_start": prompt[:previewLen],
 			}).Debug("amp initial streaming prompt preview")
 		}

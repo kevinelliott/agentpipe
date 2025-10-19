@@ -62,7 +62,7 @@ func NewState(messages []agent.Message, cfg *config.Config, startedAt time.Time)
 			TotalTurns:    len(messages),
 			TotalMessages: len(messages),
 			StartedAt:     startedAt,
-			TotalDuration: int64(time.Since(startedAt).Milliseconds()),
+			TotalDuration: time.Since(startedAt).Milliseconds(),
 		},
 	}
 }
@@ -91,10 +91,10 @@ func (s *State) Save(path string) error {
 	}
 
 	log.WithFields(map[string]interface{}{
-		"path":          path,
-		"messages":      len(s.Messages),
-		"total_turns":   s.Metadata.TotalTurns,
-		"file_size":     len(data),
+		"path":        path,
+		"messages":    len(s.Messages),
+		"total_turns": s.Metadata.TotalTurns,
+		"file_size":   len(data),
 	}).Info("conversation state saved")
 
 	return nil
@@ -119,12 +119,12 @@ func LoadState(path string) (*State, error) {
 	}
 
 	log.WithFields(map[string]interface{}{
-		"path":         path,
-		"version":      state.Version,
-		"messages":     len(state.Messages),
-		"saved_at":     state.SavedAt,
-		"started_at":   state.Metadata.StartedAt,
-		"total_turns":  state.Metadata.TotalTurns,
+		"path":        path,
+		"version":     state.Version,
+		"messages":    len(state.Messages),
+		"saved_at":    state.SavedAt,
+		"started_at":  state.Metadata.StartedAt,
+		"total_turns": state.Metadata.TotalTurns,
 	}).Info("conversation state loaded")
 
 	return &state, nil
@@ -168,14 +168,14 @@ func ListStates(dir string) ([]string, error) {
 
 // StateInfo contains summary information about a saved state.
 type StateInfo struct {
-	Path          string
-	SavedAt       time.Time
-	StartedAt     time.Time
-	Messages      int
-	Turns         int
-	Description   string
-	AgentCount    int
-	Mode          string
+	Path        string
+	SavedAt     time.Time
+	StartedAt   time.Time
+	Messages    int
+	Turns       int
+	Description string
+	AgentCount  int
+	Mode        string
 }
 
 // GetStateInfo reads summary information from a state file without loading full state.

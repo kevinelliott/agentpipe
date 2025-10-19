@@ -211,7 +211,7 @@ func (l *Logger) GetZerolog() *zerolog.Logger {
 // InitLogger initializes the global logger with specific configuration.
 // This should be called at application startup.
 func InitLogger(w io.Writer, level zerolog.Level, pretty bool) {
-	var output io.Writer = w
+	output := w
 
 	if pretty {
 		output = zerolog.ConsoleWriter{

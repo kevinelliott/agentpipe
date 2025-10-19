@@ -8,5 +8,5 @@ import (
 
 // PrintLogo prints the AgentPipe ASCII art logo with sunset gradient
 func PrintLogo() {
-	fmt.Println("\n" + branding.ASCIILogo)
+	fmt.Print("\n" + branding.ASCIILogo + "\n")
 }

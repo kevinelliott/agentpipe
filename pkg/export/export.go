@@ -66,10 +66,10 @@ func (e *Exporter) Export(messages []agent.Message, writer io.Writer) error {
 // exportJSON exports messages as JSON.
 func (e *Exporter) exportJSON(messages []agent.Message, writer io.Writer) error {
 	output := struct {
-		Title     string           `json:"title,omitempty"`
+		Title      string          `json:"title,omitempty"`
 		ExportedAt string          `json:"exported_at"`
-		Messages  []agent.Message `json:"messages"`
-		Summary   *ExportSummary  `json:"summary,omitempty"`
+		Messages   []agent.Message `json:"messages"`
+		Summary    *ExportSummary  `json:"summary,omitempty"`
 	}{
 		Title:      e.options.Title,
 		ExportedAt: time.Now().Format(time.RFC3339),

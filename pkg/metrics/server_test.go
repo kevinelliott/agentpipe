@@ -291,7 +291,10 @@ func TestServer_GracefulShutdown(t *testing.T) {
 
 	// Make a request
 	go func() {
-		_, _ = http.Get("http://localhost:19095/metrics")
+		resp, _ := http.Get("http://localhost:19095/metrics")
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
 	}()
 
 	// Stop server with timeout

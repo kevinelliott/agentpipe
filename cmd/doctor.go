@@ -12,13 +12,13 @@ import (
 )
 
 type AgentCheck struct {
-	Name         string
-	Command      string
-	Available    bool
-	Path         string
-	Version      string
-	Error        error
-	InstallCmd   string
+	Name          string
+	Command       string
+	Available     bool
+	Path          string
+	Version       string
+	Error         error
+	InstallCmd    string
 	Authenticated bool
 }
 
