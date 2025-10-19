@@ -29,6 +29,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Codex** (OpenAI) - Code generation specialist (non-interactive exec mode)
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
+- ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)
 - ✅ **Gemini** (Google) - Multimodal understanding
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
@@ -160,6 +161,10 @@ AgentPipe requires at least one AI CLI tool to be installed:
 - [Cursor CLI](https://cursor.com/cli) - `cursor-agent`
   - Install: `curl https://cursor.com/install -fsS | bash`
   - Authenticate: `cursor-agent login`
+- [Factory CLI](https://factory.ai/product/cli) - `droid`
+  - Install: `curl -fsSL https://app.factory.ai/cli | sh`
+  - Authenticate: Sign in via browser when prompted
+  - Features: Agent-native development, Code Droid and Knowledge Droid, CI/CD integration
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
 - [Qoder CLI](https://qoder.com/cli) - `qodercli`
   - Install: See [installation guide](https://qoder.com/cli)
@@ -295,7 +300,7 @@ The doctor command performs a complete diagnostic check of your system and provi
 - AgentPipe directories (`~/.agentpipe/chats`, `~/.agentpipe/states`)
 
 **AI Agent CLIs:**
-- Detection of all 9 supported agent CLIs
+- Detection of all 10 supported agent CLIs
 - Installation paths
 - Version information
 - **Upgrade instructions** for keeping agents up-to-date
@@ -356,6 +361,59 @@ The doctor command performs a complete diagnostic check of your system and provi
    Available Agents: 9/9
 
 ✨ AgentPipe is ready! You can use 9 agent(s).
+   Run 'agentpipe run --help' to start a conversation.
+```
+
+**Example Output:**
+```
+🔍 AgentPipe Doctor - System Health Check
+=============================================================
+
+📋 SYSTEM ENVIRONMENT
+------------------------------------------------------------
+✅ Go Runtime: go1.25.3 (darwin/arm64)
+✅ PATH: 40 directories in PATH
+✅ Home Directory: /Users/username
+✅ Chat Logs Directory: /Users/username/.agentpipe/chats
+
+🤖 AI AGENT CLIS
+------------------------------------------------------------
+
+✅ Claude
+   Command:  claude
+   Path:     /usr/local/bin/claude
+   Version:  2.0.19 (Claude Code)
+   Upgrade:  See https://docs.claude.com/en/docs/claude-code/installation
+   Auth:     ✅ Authenticated
+   Docs:     https://github.com/anthropics/claude-code
+
+✅ Factory
+   Command:  droid
+   Path:     /usr/local/bin/droid
+   Version:  1.3.220
+   Upgrade:  See https://docs.factory.ai/cli for upgrade instructions
+   Auth:     ✅ Authenticated
+   Docs:     https://docs.factory.ai/cli
+
+✅ Gemini
+   Command:  gemini
+   Path:     /usr/local/bin/gemini
+   Version:  0.9.0
+   Upgrade:  npm update -g @google/generative-ai-cli
+   Auth:     ✅ Authenticated
+   Docs:     https://github.com/google/generative-ai-cli
+
+⚙️  CONFIGURATION
+------------------------------------------------------------
+✅ Example Configs: 2 example configurations found
+ℹ️ User Config: No user config (use 'agentpipe init' to create one)
+
+============================================================
+
+📊 SUMMARY
+   Available Agents: 10/10
+
+✨ AgentPipe is ready! You can use 10 agent(s).
    Run 'agentpipe run --help' to start a conversation.
 ```
 
@@ -842,6 +900,7 @@ func init() {
 - `codex.go` - Non-interactive exec mode with flags
 - `amp.go` - Advanced thread management pattern
 - `cursor.go` - JSON stream parsing pattern
+- `factory.go` - Non-interactive exec mode with autonomy levels
 - `qoder.go` - Non-interactive print mode with yolo flag
 
 ## Advanced Features
@@ -923,7 +982,7 @@ Now respond to the task above as AgentName. Provide a direct, thoughtful answer.
 1. **Message Filtering**: Each agent automatically filters out its own previous messages to avoid redundancy
 2. **Directive Instructions**: Clear "YOUR TASK - PLEASE RESPOND TO THIS" header ensures agents understand what to do
 3. **Context Separation**: System messages are clearly labeled and separated from agent messages
-4. **Consistent Structure**: All 8 adapters (Amp, Claude, Codex, Copilot, Cursor, Gemini, Qoder, Qwen) use identical patterns
+4. **Consistent Structure**: All 9 adapters (Amp, Claude, Codex, Copilot, Cursor, Factory, Gemini, Qoder, Qwen) use identical patterns
 5. **Structured Logging**: Comprehensive debug logging with timing, message counts, and prompt previews
 6. **HOST vs SYSTEM Distinction**: Clear separation between orchestrator messages (HOST) and system notifications (SYSTEM)
    - **HOST**: The orchestrator presenting the initial conversation task/prompt
@@ -1118,6 +1177,15 @@ The Cursor CLI (`cursor-agent`) has some unique characteristics:
 - **Process Management**: cursor-agent doesn't exit naturally; AgentPipe manages process termination
 - **Check Status**: Run `cursor-agent status` to verify authentication
 - **Timeout Errors**: If you see timeout errors, ensure you're authenticated and have a stable internet connection
+
+### Factory CLI Specific Issues
+The Factory CLI (`droid`) requires authentication and uses non-interactive exec mode:
+- **Authentication Required**: Run `droid` and sign in via browser when prompted
+- **Non-Interactive Mode**: AgentPipe uses `droid exec` automatically for non-interactive execution
+- **Autonomy Levels**: Uses `--auto high` to enable edits and commands without permission prompts
+- **Model Selection**: Optional model specification via config (e.g., `model: claude-sonnet-4.5`)
+- **Check Status**: Run `droid --help` to verify installation and available commands
+- Full documentation: https://docs.factory.ai/cli/getting-started/quickstart
 
 ### Codex CLI Specific Issues
 The Codex CLI requires non-interactive exec mode for multi-agent conversations:

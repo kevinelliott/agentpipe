@@ -31,9 +31,12 @@ AgentPipe is a multi-agent orchestration platform that enables AI agents from di
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
 │  │  Claude  │ │  Gemini  │ │ Copilot  │ │  Cursor  │      │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│  ┌──────────┐ ┌──────────┐                                 │
-│  │   Qwen   │ │  Codex   │  ... (extensible)               │
-│  └──────────┘ └──────────┘                                 │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
+│  │   Qwen   │ │  Codex   │ │  Factory │ │   Amp    │      │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
+│  ┌──────────┐                                               │
+│  │  Qoder   │  ... (extensible)                             │
+│  └──────────┘                                               │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
@@ -110,12 +113,15 @@ type Agent interface {
 ```
 
 **Supported Agents:**
+- Amp (via `amp` CLI)
 - Claude (via `claude` CLI)
-- Gemini (via `gemini` CLI)
-- GitHub Copilot (via `gh copilot` CLI)
-- Cursor (via `cursor-agent` CLI)
-- Qwen (via `qwen` CLI)
 - Codex (via `codex` CLI)
+- Copilot (via `copilot` CLI)
+- Cursor (via `cursor-agent` CLI)
+- Factory (via `droid` CLI)
+- Gemini (via `gemini` CLI)
+- Qoder (via `qodercli` CLI)
+- Qwen (via `qwen` CLI)
 
 **BaseAgent:**
 - Common functionality shared across all agents

@@ -69,6 +69,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		{"Codex", "codex", "npm install -g @openai/codex-cli", "npm update -g @openai/codex-cli", "https://github.com/openai/codex-cli"},
 		{"Copilot", "copilot", "npm install -g @github/copilot", "npm update -g @github/copilot", "https://github.com/github/copilot-cli"},
 		{"Cursor", "cursor-agent", "curl https://cursor.com/install -fsS | bash", "curl https://cursor.com/install -fsS | bash", "https://cursor.com/cli"},
+		{"Factory", "droid", "curl -fsSL https://app.factory.ai/cli | sh", "See https://docs.factory.ai/cli for upgrade instructions", "https://docs.factory.ai/cli"},
 		{"Gemini", "gemini", "npm install -g @google/generative-ai-cli", "npm update -g @google/generative-ai-cli", "https://github.com/google/generative-ai-cli"},
 		{"Qoder", "qodercli", "See https://qoder.com/cli", "See https://qoder.com/cli for upgrade instructions", "https://qoder.com/cli"},
 		{"Qwen", "qwen", "See https://github.com/QwenLM/qwen-code", "See https://github.com/QwenLM/qwen-code for upgrade instructions", "https://github.com/QwenLM/qwen-code"},
@@ -108,7 +109,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 			// Check authentication where applicable
 			if check.Authenticated {
 				fmt.Printf("     Auth:     ✅ Authenticated\n")
-			} else if agent.name == "Claude" || agent.name == "Cursor" || agent.name == "Qoder" {
+			} else if agent.name == "Claude" || agent.name == "Cursor" || agent.name == "Qoder" || agent.name == "Factory" {
 				fmt.Printf("     Auth:     ⚠️  Not authenticated (run '%s' and authenticate)\n", agent.command)
 			}
 		} else {
@@ -337,6 +338,10 @@ func checkAuthentication(command string) bool {
 		return !strings.Contains(strings.ToLower(string(output)), "not logged in")
 	case "qodercli":
 		// Qoder might need specific auth check
+		cmd := exec.Command(command, "--help")
+		return cmd.Run() == nil
+	case "droid":
+		// Factory CLI requires authentication
 		cmd := exec.Command(command, "--help")
 		return cmd.Run() == nil
 	default:
