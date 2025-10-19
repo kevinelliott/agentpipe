@@ -6,9 +6,9 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 ## Key Technical Details
 
 ### Go Version
-- **IMPORTANT**: Requires Go 1.25.3+ (go.mod specifies 1.25.3)
-- GitHub Actions workflows must use Go 1.25
-- All dependencies are compatible with Go 1.25
+- **IMPORTANT**: Requires Go 1.24+ (go.mod specifies 1.24.0)
+- GitHub Actions workflows must use Go 1.24
+- All dependencies are compatible with Go 1.24
 
 ### Health Check Configuration
 - Default timeout: 5 seconds (increased from 2 seconds)
