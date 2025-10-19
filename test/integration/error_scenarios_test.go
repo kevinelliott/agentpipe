@@ -291,10 +291,12 @@ func TestConversationFreeFormMode(t *testing.T) {
 }
 
 func TestConversationWithMetrics(t *testing.T) {
-	// Create agent
+	// Create agent with small delay to ensure measurable duration on all platforms
 	agent1 := NewMockIntegrationAgent("metrics", "MetricsAgent", "mock", func(messages []agent.Message) (string, error) {
 		return "This is a response with some tokens in it for testing metrics calculation", nil
 	})
+	// Add 1ms delay to ensure duration is measurable even on Windows
+	agent1.sendDelay = 1 * time.Millisecond
 
 	// Create orchestrator
 	var output bytes.Buffer
