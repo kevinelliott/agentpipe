@@ -55,9 +55,10 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
    - Solution: Use single-line test command
 
 3. **Windows test failures - timer resolution**
-   - Issue: `time.Since()` can return 0 for very fast operations due to Windows timer granularity
-   - Solution: Add small delays (1ms) to mock agents in tests to ensure measurable durations
-   - Example: `agent.sendDelay = 1 * time.Millisecond` in integration tests
+   - Issue: `time.Since()` can return 0 for very fast operations due to Windows timer granularity (~15.6ms default)
+   - Solution: Add delays (≥20ms) to mock agents in tests to ensure measurable durations
+   - Example: `agent.sendDelay = 20 * time.Millisecond` in integration tests
+   - Windows timer is much coarser than Unix (typically 1ms or better)
 
 4. **Homebrew formula updates failing**
    - Issue: GitHub Actions bot lacks permissions
