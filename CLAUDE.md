@@ -26,8 +26,10 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 #### Linting
 - Use golangci-lint-action@v6 (NOT v8)
 - GitHub Action version parameter: `version: latest` (downloads latest golangci-lint v1.x)
-- **IMPORTANT**: Config file is compatible with golangci-lint v1.64.8 (GitHub Actions)
-- Local development may use golangci-lint v2.x (different config format) - use GitHub Actions version for testing
+- **IMPORTANT**: Config file (`.golangci.yml`) is compatible with golangci-lint v1.64.8 (GitHub Actions)
+- **Local linting**: If you have golangci-lint v2.x installed locally, it will not work with the current config
+  - Either downgrade to v1.x: `brew install golangci/tap/golangci-lint@1`
+  - Or rely on GitHub Actions for linting verification
 - Configuration structure: `linters-settings:` for linter config, `issues.exclude-rules:` for exclusions
 - Cognitive complexity threshold: 30
 - Excluded from complexity checks: pkg/tui/, pkg/adapters/, pkg/orchestrator/
@@ -87,11 +89,13 @@ YAML config supports:
 
 **IMPORTANT**: Before committing any changes, ALL of the following checks MUST pass:
 
-1. **Linting**: `golangci-lint run --timeout=5m`
+1. **Linting**: `golangci-lint run --timeout=5m` (Note: Local v2.x won't work; verify via GitHub Actions)
 2. **Testing**: `go test -v -race ./...`
 3. **Build**: `go build -o agentpipe .`
 
 No code should be committed if any of these checks fail. This ensures code quality, prevents regressions, and maintains CI/CD pipeline health.
+
+**Note**: If local linting fails due to golangci-lint version mismatch, ensure tests and build pass locally, then verify linting on GitHub Actions.
 
 ## Development Commands
 
@@ -117,7 +121,9 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 ```
 
 ## Recent Changes Log
-- Upgraded to Go 1.25
+- Downgraded to Go 1.24.0 (for golangci-lint compatibility)
+- Fixed golangci-lint config for v1.64.8 (GitHub Actions)
+- Added skip logic to adapter tests for missing CLI tools
 - Increased health check timeout: 2s → 5s
 - Fixed Windows CI test command
 - Fixed Homebrew formula path: Formulae → Formula

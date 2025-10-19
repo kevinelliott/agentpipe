@@ -77,6 +77,9 @@ func TestClaudeAgentInitialization(t *testing.T) {
 
 	err := claudeAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("claude CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -108,6 +111,9 @@ func TestGeminiAgentInitialization(t *testing.T) {
 
 	err := geminiAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("gemini CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -133,6 +139,9 @@ func TestCopilotAgentInitialization(t *testing.T) {
 
 	err := copilotAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("copilot CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -157,6 +166,9 @@ func TestCursorAgentInitialization(t *testing.T) {
 
 	err := cursorAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("cursor CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -178,6 +190,9 @@ func TestQwenAgentInitialization(t *testing.T) {
 
 	err := qwenAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("qwen CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -199,6 +214,9 @@ func TestCodexAgentInitialization(t *testing.T) {
 
 	err := codexAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("codex CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -221,6 +239,9 @@ func TestAmpAgentInitialization(t *testing.T) {
 
 	err := ampAgent.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("amp CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -263,6 +284,9 @@ func TestAgentAnnouncement(t *testing.T) {
 
 			err := a.Initialize(config)
 			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					t.Skipf("%s CLI not available, skipping test", tt.name)
+				}
 				t.Fatalf("initialization failed: %v", err)
 			}
 
@@ -285,6 +309,9 @@ func TestAgentAnnouncementDefault(t *testing.T) {
 
 	err := a.Initialize(config)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("claude CLI not available, skipping test")
+		}
 		t.Fatalf("initialization failed: %v", err)
 	}
 
@@ -323,6 +350,9 @@ func TestAgentHealthCheckTimeout(t *testing.T) {
 
 			err := tt.agent.Initialize(config)
 			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					t.Skipf("%s CLI not available, skipping test", tt.name)
+				}
 				t.Fatalf("initialization failed: %v", err)
 			}
 
@@ -393,6 +423,9 @@ func TestAgentGetModel(t *testing.T) {
 
 			err := tt.agent.Initialize(config)
 			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					t.Skip("CLI not available, skipping test")
+				}
 				t.Fatalf("initialization failed: %v", err)
 			}
 
