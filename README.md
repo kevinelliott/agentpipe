@@ -3,7 +3,7 @@
 ![AgentPipe Logo](screenshots/agentpipe-logo.png)
 
 [![CI](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml/badge.svg)](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/github/license/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kevinelliott/agentpipe)](https://goreportcard.com/report/github.com/kevinelliott/agentpipe)
@@ -90,29 +90,24 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.1.0 - Enhanced TUI with agent type indicators, branded sunset logo, improved reliability with better error handling, and proper version display with build information.
+**Latest Release**: v0.1.1 - Windows compatibility fixes, Go 1.24 support, and improved cross-platform testing.
 
-**What's New in v0.1.0**:
-
-✨ **Major Features:**
-- **Agent Type Indicators**: Message badges now display agent type in parentheses (e.g., "Alice (qoder)") for quick identification
-- **Branded Sunset Logo**: Beautiful ASCII art logo with gradient colors in both CLI and TUI
-- **Enhanced HOST/SYSTEM Distinction**: Clear visual separation between orchestrator prompts (HOST) and system notifications (SYSTEM)
-- **Proper Version Display**: Shows version, commit hash, and build date in `agentpipe version`
-
-🚀 **Improvements:**
-- **Improved Gemini Adapter**: Better error handling for process exit issues, reduces false failures
-- **Consistent Badge Colors**: Fixed race condition ensuring agent badges always show correct colors
-- **Enhanced Output Cleaning**: Filters error traces and stack dumps from agent responses
+**What's New in v0.1.1**:
 
 🐛 **Bug Fixes:**
-- Fixed TUI display corruption from stderr output interference
-- Fixed version information not displaying correctly in builds
-- Fixed inconsistent agent badge colors on first message
+- **Windows Test Compatibility**: Fixed timer resolution issues causing test failures on Windows
+  - Increased mock agent delay to 20ms in metrics tests to ensure measurable durations
+  - All tests now pass reliably on Windows, macOS, and Linux
+- **Windows File Permission Tests**: Added OS detection to skip Unix-specific permission checks on Windows
+
+🔧 **Changes:**
+- **Go Version**: Downgraded from Go 1.25.3 to Go 1.24.0 for broader compatibility
+  - Maintains compatibility with golangci-lint v1.64.8
+  - All CI/CD workflows updated
 
 📚 **Documentation:**
-- Added console and doctor command screenshots to README
-- Comprehensive CHANGELOG updates with all changes
+- Added comprehensive Windows testing documentation in CLAUDE.md
+- Documented timer resolution requirements for cross-platform test development
 
 ## Installation
 

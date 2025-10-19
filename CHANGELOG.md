@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.1] - 2025-10-19
+
+### Fixed
+- **Windows Test Compatibility**: Fixed timer resolution issues causing test failures on Windows
+  - Windows timer granularity (~15.6ms) caused `time.Since()` to return 0 for very fast operations
+  - Increased mock agent delay to 20ms in TestConversationWithMetrics to ensure measurable durations
+  - Test now passes reliably on all platforms (Windows, macOS, Linux)
+- **Windows File Permission Tests**: Added runtime OS detection to skip Unix-specific permission checks
+  - TestState_Save now correctly skips file permission verification on Windows
+  - Tests properly handle platform differences in file permission models
+
+### Changed
+- **Go Version Requirement**: Downgraded from Go 1.25.3 to Go 1.24.0 for broader compatibility
+  - Maintains compatibility with golangci-lint v1.64.8
+  - All GitHub Actions workflows updated to use Go 1.24
+  - go.mod updated to reflect Go 1.24 requirement
+
+### Documentation
+- Added comprehensive documentation of Windows-specific testing challenges in CLAUDE.md
+- Documented timer resolution requirements for cross-platform test development
+- Updated development guide with platform compatibility considerations
+
 ## [v0.1.0] - 2025-10-16
 
 ### Added
