@@ -16,6 +16,7 @@ var (
 	installAll      bool
 	listInstalled   bool
 	listOutdated    bool
+	listCurrent     bool
 )
 
 // agentsCmd represents the agents command
@@ -42,7 +43,8 @@ var agentsListCmd = &cobra.Command{
 Examples:
   agentpipe agents list              # List all agents
   agentpipe agents list --installed  # List only installed agents
-  agentpipe agents list --outdated   # List only outdated agents`,
+  agentpipe agents list --outdated   # List outdated agents with version comparison
+  agentpipe agents list --current    # Check latest versions for all agents`,
 	Run: runAgentsList,
 }
 
@@ -65,12 +67,27 @@ func init() {
 	agentsCmd.AddCommand(agentsInstallCmd)
 
 	agentsListCmd.Flags().BoolVar(&listInstalled, "installed", false, "List only installed agents")
-	agentsListCmd.Flags().BoolVar(&listOutdated, "outdated", false, "List only outdated agents")
+	agentsListCmd.Flags().BoolVar(&listOutdated, "outdated", false, "List outdated agents with version comparison table")
+	agentsListCmd.Flags().BoolVar(&listCurrent, "current", false, "Check and display latest versions from the web")
 	agentsInstallCmd.Flags().BoolVar(&installAll, "all", false, "Install all agents")
 }
 
 func runAgentsList(cmd *cobra.Command, args []string) {
 	agents := registry.GetAll()
+
+	// Sort agents by name
+	sort.Slice(agents, func(i, j int) bool {
+		return agents[i].Name < agents[j].Name
+	})
+
+	// If --outdated flag is set, show comparison table
+	if listOutdated {
+		showOutdatedTable(agents)
+		return
+	}
+
+	// If --current flag is set along with other modes, show version info
+	showVersionInfo := listCurrent
 
 	// Filter agents based on flags
 	var filteredAgents []*registry.AgentDefinition
@@ -82,31 +99,16 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 			continue
 		}
 
-		if listOutdated {
-			if !installed {
-				continue
-			}
-			// Check if agent has updates available
-			hasUpdate, _, _ := checkForAgentUpdate(agent)
-			if !hasUpdate {
-				continue
-			}
-		}
-
 		filteredAgents = append(filteredAgents, agent)
 	}
-
-	// Sort agents by name
-	sort.Slice(filteredAgents, func(i, j int) bool {
-		return filteredAgents[i].Name < filteredAgents[j].Name
-	})
 
 	// Determine title based on flags
 	title := "AI Agent CLIs"
 	if listInstalled {
 		title = "Installed AI Agent CLIs"
-	} else if listOutdated {
-		title = "Outdated AI Agent CLIs"
+	}
+	if showVersionInfo {
+		title += " - Latest Versions"
 	}
 
 	fmt.Printf("\n%s\n", title)
@@ -114,9 +116,6 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 
 	if len(filteredAgents) == 0 {
 		fmt.Println("\nNo agents found matching the specified criteria.")
-		if listOutdated {
-			fmt.Println("All installed agents are up to date!")
-		}
 		fmt.Println()
 		return
 	}
@@ -144,16 +143,27 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 			}
 
 			// Show current version if available
-			version := getAgentVersion(agent.Command)
+			version := registry.GetInstalledVersion(agent.Command)
 			if version != "" {
 				fmt.Printf("   Version: %s\n", version)
 			}
 
-			// Check for updates
-			if hasUpdate, latestVersion, _ := checkForAgentUpdate(agent); hasUpdate {
-				fmt.Printf("   ⚠️  Update available: %s\n", latestVersion)
-				if upgradeCmd, err := agent.GetUpgradeCommand(); err == nil {
-					fmt.Printf("   Upgrade: %s\n", upgradeCmd)
+			// Check for updates if --current is set
+			if showVersionInfo && agent.PackageManager != "" {
+				latest, err := agent.GetLatestVersion()
+				if err == nil {
+					fmt.Printf("   Latest:  %s", latest)
+					if version != "" {
+						cmp, _ := registry.CompareVersions(version, latest)
+						if cmp < 0 {
+							fmt.Printf(" ⚠️  (update available)")
+						} else if cmp == 0 {
+							fmt.Printf(" ✅ (up to date)")
+						}
+					}
+					fmt.Println()
+				} else {
+					fmt.Printf("   Latest:  (unable to fetch: %v)\n", err)
 				}
 			}
 		} else {
@@ -166,11 +176,109 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 					fmt.Printf("   Install: %s\n", installCmd)
 				}
 			}
+
+			// Show latest version if --current is set and agent has package manager
+			if showVersionInfo && agent.PackageManager != "" {
+				latest, err := agent.GetLatestVersion()
+				if err == nil {
+					fmt.Printf("   Latest:  %s\n", latest)
+				}
+			}
 		}
 
 		fmt.Printf("   Docs: %s\n", agent.Docs)
 	}
 
+	fmt.Println()
+}
+
+// showOutdatedTable displays a table of agents with version comparison
+func showOutdatedTable(agents []*registry.AgentDefinition) {
+	fmt.Println("\n📊 Agent Version Status")
+	fmt.Println(strings.Repeat("=", 90))
+	fmt.Println()
+
+	// Build table data
+	type row struct {
+		name      string
+		installed bool
+		current   string
+		latest    string
+		hasUpdate bool
+		canCheck  bool
+	}
+
+	var rows []row
+	outdatedCount := 0
+
+	for _, agent := range agents {
+		installed := isAgentInstalled(agent.Command)
+		r := row{
+			name:      agent.Name,
+			installed: installed,
+			canCheck:  agent.PackageManager != "",
+		}
+
+		if installed {
+			r.current = registry.GetInstalledVersion(agent.Command)
+			if r.current == "" {
+				r.current = "unknown"
+			}
+		} else {
+			r.current = "not installed"
+		}
+
+		// Fetch latest version if package manager is configured
+		if agent.PackageManager != "" {
+			latest, err := agent.GetLatestVersion()
+			if err == nil {
+				r.latest = latest
+				if installed && r.current != "unknown" {
+					cmp, err := registry.CompareVersions(r.current, latest)
+					if err == nil && cmp < 0 {
+						r.hasUpdate = true
+						outdatedCount++
+					}
+				}
+			} else {
+				r.latest = fmt.Sprintf("(error: %v)", err)
+			}
+		} else {
+			r.latest = "manual install"
+		}
+
+		rows = append(rows, r)
+	}
+
+	// Print table header
+	fmt.Printf("%-15s  %-10s  %-20s  %-20s  %s\n",
+		"Agent", "Status", "Installed Version", "Latest Version", "Update")
+	fmt.Println(strings.Repeat("-", 90))
+
+	// Print table rows
+	for _, r := range rows {
+		status := "❌"
+		if r.installed {
+			status = "✅"
+		}
+
+		update := ""
+		if r.hasUpdate {
+			update = "⚠️  Available"
+		} else if r.installed && r.canCheck && r.current != "unknown" {
+			update = "✅ Up to date"
+		}
+
+		fmt.Printf("%-15s  %-10s  %-20s  %-20s  %s\n",
+			r.name, status, r.current, r.latest, update)
+	}
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("=", 90))
+	fmt.Printf("\nSummary: %d agent(s) with updates available\n", outdatedCount)
+	if outdatedCount > 0 {
+		fmt.Println("\nTo upgrade an agent, use: agentpipe agents install <agent>")
+	}
 	fmt.Println()
 }
 
@@ -271,52 +379,6 @@ func runAgentsInstall(cmd *cobra.Command, args []string) {
 	if failCount > 0 {
 		os.Exit(1)
 	}
-}
-
-// getAgentVersion gets the version of an installed agent
-func getAgentVersion(command string) string {
-	// Try --version first
-	cmd := exec.Command(command, "--version")
-	if output, err := cmd.CombinedOutput(); err == nil {
-		version := strings.TrimSpace(string(output))
-		// Take first line if multiline
-		if lines := strings.Split(version, "\n"); len(lines) > 0 {
-			version = strings.TrimSpace(lines[0])
-		}
-		// Limit length
-		if len(version) > 60 {
-			version = version[:60] + "..."
-		}
-		return version
-	}
-
-	// Try version subcommand
-	cmd = exec.Command(command, "version")
-	if output, err := cmd.CombinedOutput(); err == nil {
-		version := strings.TrimSpace(string(output))
-		if lines := strings.Split(version, "\n"); len(lines) > 0 {
-			version = strings.TrimSpace(lines[0])
-		}
-		if len(version) > 60 {
-			version = version[:60] + "..."
-		}
-		return version
-	}
-
-	return ""
-}
-
-// checkForAgentUpdate checks if an agent has an update available
-// Returns: hasUpdate, latestVersion, error
-func checkForAgentUpdate(agent *registry.AgentDefinition) (bool, string, error) {
-	// For now, we'll return false as implementing proper version checking
-	// requires npm/homebrew/package manager integration which is complex.
-	// This is a placeholder that can be enhanced later.
-
-	// Future enhancement: Check npm registry, homebrew, etc. for latest versions
-	// and compare with installed version using semantic versioning.
-
-	return false, "", nil
 }
 
 // isAgentInstalled checks if an agent CLI is available in PATH

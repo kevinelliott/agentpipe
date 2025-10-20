@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kevinelliott/agentpipe/internal/registry"
 )
 
 type AgentCheck struct {
@@ -65,39 +67,25 @@ func init() {
 }
 
 func runDoctor(cmd *cobra.Command, args []string) {
-	// Define all supported agents
-	agents := []struct {
-		name       string
-		command    string
-		installCmd string
-		upgradeCmd string
-		docs       string
-	}{
-		{"Amp", "amp", "See https://ampcode.com/install", "See https://ampcode.com/install for upgrade instructions", "https://ampcode.com"},
-		{"Claude", "claude", "See https://docs.claude.com/en/docs/claude-code/installation", "See https://docs.claude.com/en/docs/claude-code/installation for upgrade instructions", "https://github.com/anthropics/claude-code"},
-		{"Codex", "codex", "npm install -g @openai/codex-cli", "npm update -g @openai/codex-cli", "https://github.com/openai/codex-cli"},
-		{"Copilot", "copilot", "npm install -g @github/copilot", "npm update -g @github/copilot", "https://github.com/github/copilot-cli"},
-		{"Cursor", "cursor-agent", "curl https://cursor.com/install -fsS | bash", "curl https://cursor.com/install -fsS | bash", "https://cursor.com/cli"},
-		{"Factory", "droid", "curl -fsSL https://app.factory.ai/cli | sh", "See https://docs.factory.ai/cli for upgrade instructions", "https://docs.factory.ai/cli"},
-		{"Gemini", "gemini", "npm install -g @google/generative-ai-cli", "npm update -g @google/generative-ai-cli", "https://github.com/google/generative-ai-cli"},
-		{"Qoder", "qodercli", "See https://qoder.com/cli", "See https://qoder.com/cli for upgrade instructions", "https://qoder.com/cli"},
-		{"Qwen", "qwen", "See https://github.com/QwenLM/qwen-code", "See https://github.com/QwenLM/qwen-code for upgrade instructions", "https://github.com/QwenLM/qwen-code"},
-		{"Ollama", "ollama", "See https://ollama.com/download", "See https://ollama.com/download for upgrade instructions", "https://ollama.com"},
-	}
+	// Get all agents from registry
+	registryAgents := registry.GetAll()
 
 	// Perform system checks
 	systemChecks := performSystemChecks()
 
 	// Check all agents
-	supportedAgents := make([]AgentCheck, 0, len(agents))
-	availableAgents := make([]AgentCheck, 0, len(agents))
-	unavailableAgents := make([]string, 0, len(agents))
+	supportedAgents := make([]AgentCheck, 0, len(registryAgents))
+	availableAgents := make([]AgentCheck, 0, len(registryAgents))
+	unavailableAgents := make([]string, 0, len(registryAgents))
 
-	for _, agent := range agents {
-		check := checkAgent(agent.command, agent.installCmd)
-		check.Name = agent.name
-		check.UpgradeCmd = agent.upgradeCmd
-		check.Docs = agent.docs
+	for _, agent := range registryAgents {
+		installCmd, _ := agent.GetInstallCommand()
+		upgradeCmd, _ := agent.GetUpgradeCommand()
+
+		check := checkAgent(agent.Command, installCmd)
+		check.Name = agent.Name
+		check.UpgradeCmd = upgradeCmd
+		check.Docs = agent.Docs
 
 		if check.Error != nil {
 			check.ErrorMessage = check.Error.Error()
@@ -108,7 +96,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		if check.Available {
 			availableAgents = append(availableAgents, check)
 		} else {
-			unavailableAgents = append(unavailableAgents, agent.name)
+			unavailableAgents = append(unavailableAgents, agent.Name)
 		}
 	}
 
@@ -117,7 +105,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 
 	// Build summary
 	summary := DoctorSummary{
-		TotalAgents:    len(agents),
+		TotalAgents:    len(registryAgents),
 		AvailableCount: len(availableAgents),
 		MissingAgents:  unavailableAgents,
 		Ready:          len(availableAgents) > 0,
@@ -141,17 +129,11 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		}
 		fmt.Println(string(jsonOutput))
 	} else {
-		printHumanReadableOutput(output, agents)
+		printHumanReadableOutput(output)
 	}
 }
 
-func printHumanReadableOutput(output DoctorOutput, agents []struct {
-	name       string
-	command    string
-	installCmd string
-	upgradeCmd string
-	docs       string
-}) {
+func printHumanReadableOutput(output DoctorOutput) {
 	fmt.Println("\n🔍 AgentPipe Doctor - System Health Check")
 	fmt.Println(strings.Repeat("=", 61))
 

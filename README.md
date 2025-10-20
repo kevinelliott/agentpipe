@@ -131,7 +131,15 @@ go install github.com/kevinelliott/agentpipe@latest
 ```bash
 git clone https://github.com/kevinelliott/agentpipe.git
 cd agentpipe
+
+# Build only
 go build -o agentpipe .
+
+# Or build and install to /usr/local/bin (requires sudo on macOS/Linux)
+sudo make install
+
+# Or install to custom location (e.g., ~/.local/bin, no sudo needed)
+make install PREFIX=$HOME/.local
 ```
 
 ## Prerequisites

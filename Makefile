@@ -1,4 +1,4 @@
-.PHONY: help build test lint clean docker-build docker-run docker-push install dev
+.PHONY: help build test lint clean docker-build docker-run docker-push install uninstall dev
 
 # Variables
 BINARY_NAME=agentpipe
@@ -8,6 +8,11 @@ DATE?=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 DOCKER_IMAGE=agentpipe
 DOCKER_TAG?=latest
 DOCKER_REGISTRY?=docker.io/kevinelliott
+
+# Installation paths
+PREFIX?=/usr/local
+BINDIR?=$(PREFIX)/bin
+INSTALL?=install
 
 # Go build flags
 LDFLAGS=-ldflags "-w -s \
@@ -38,6 +43,18 @@ clean: ## Clean build artifacts
 	rm -f $(BINARY_NAME)
 	rm -rf dist/
 	go clean -cache -testcache
+
+install: build ## Install binary to system (default: /usr/local/bin, override with PREFIX)
+	@echo "Installing $(BINARY_NAME) to $(BINDIR)..."
+	@mkdir -p $(BINDIR)
+	$(INSTALL) -m 755 $(BINARY_NAME) $(BINDIR)/$(BINARY_NAME)
+	@echo "Installed $(BINARY_NAME) to $(BINDIR)/$(BINARY_NAME)"
+	@echo "Run '$(BINARY_NAME) --help' to get started"
+
+uninstall: ## Uninstall binary from system
+	@echo "Uninstalling $(BINARY_NAME) from $(BINDIR)..."
+	rm -f $(BINDIR)/$(BINARY_NAME)
+	@echo "Uninstalled $(BINARY_NAME)"
 
 docker-build: ## Build Docker image
 	@echo "Building Docker image..."

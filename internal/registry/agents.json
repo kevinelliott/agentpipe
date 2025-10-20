@@ -1,0 +1,234 @@
+{
+  "agents": [
+    {
+      "name": "Amp",
+      "command": "amp",
+      "description": "Amp is an AI-powered code editor CLI",
+      "docs": "https://ampcode.com",
+      "install": {
+        "darwin": "See https://ampcode.com/install",
+        "linux": "See https://ampcode.com/install",
+        "windows": "See https://ampcode.com/install"
+      },
+      "uninstall": {
+        "darwin": "See https://ampcode.com/install for uninstall instructions",
+        "linux": "See https://ampcode.com/install for uninstall instructions",
+        "windows": "See https://ampcode.com/install for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "See https://ampcode.com/install for upgrade instructions",
+        "linux": "See https://ampcode.com/install for upgrade instructions",
+        "windows": "See https://ampcode.com/install for upgrade instructions"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Claude",
+      "command": "claude",
+      "description": "Anthropic's Claude Code CLI",
+      "docs": "https://github.com/anthropics/claude-code",
+      "package_manager": "npm",
+      "package_name": "@anthropic-ai/claude-cli",
+      "install": {
+        "darwin": "npm install -g @anthropic-ai/claude-cli",
+        "linux": "npm install -g @anthropic-ai/claude-cli",
+        "windows": "npm install -g @anthropic-ai/claude-cli"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g @anthropic-ai/claude-cli",
+        "linux": "npm uninstall -g @anthropic-ai/claude-cli",
+        "windows": "npm uninstall -g @anthropic-ai/claude-cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g @anthropic-ai/claude-cli",
+        "linux": "npm update -g @anthropic-ai/claude-cli",
+        "windows": "npm update -g @anthropic-ai/claude-cli"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Codex",
+      "command": "codex",
+      "description": "OpenAI's Codex CLI",
+      "docs": "https://github.com/openai/codex-cli",
+      "package_manager": "npm",
+      "package_name": "@openai/codex-cli",
+      "install": {
+        "darwin": "npm install -g @openai/codex-cli",
+        "linux": "npm install -g @openai/codex-cli",
+        "windows": "npm install -g @openai/codex-cli"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g @openai/codex-cli",
+        "linux": "npm uninstall -g @openai/codex-cli",
+        "windows": "npm uninstall -g @openai/codex-cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g @openai/codex-cli",
+        "linux": "npm update -g @openai/codex-cli",
+        "windows": "npm update -g @openai/codex-cli"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Copilot",
+      "command": "github-copilot-cli",
+      "description": "GitHub Copilot CLI",
+      "docs": "https://github.com/github/copilot-cli",
+      "package_manager": "npm",
+      "package_name": "@githubnext/github-copilot-cli",
+      "install": {
+        "darwin": "npm install -g @githubnext/github-copilot-cli",
+        "linux": "npm install -g @githubnext/github-copilot-cli",
+        "windows": "npm install -g @githubnext/github-copilot-cli"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g @githubnext/github-copilot-cli",
+        "linux": "npm uninstall -g @githubnext/github-copilot-cli",
+        "windows": "npm uninstall -g @githubnext/github-copilot-cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g @githubnext/github-copilot-cli",
+        "linux": "npm update -g @githubnext/github-copilot-cli",
+        "windows": "npm update -g @githubnext/github-copilot-cli"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Cursor",
+      "command": "cursor-agent",
+      "description": "Cursor AI code editor CLI",
+      "docs": "https://cursor.com/cli",
+      "install": {
+        "darwin": "curl https://cursor.com/install -fsS | bash",
+        "linux": "curl https://cursor.com/install -fsS | bash",
+        "windows": "See https://cursor.com/cli for Windows installation"
+      },
+      "uninstall": {
+        "darwin": "See https://cursor.com/cli for uninstall instructions",
+        "linux": "See https://cursor.com/cli for uninstall instructions",
+        "windows": "See https://cursor.com/cli for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "curl https://cursor.com/install -fsS | bash",
+        "linux": "curl https://cursor.com/install -fsS | bash",
+        "windows": "See https://cursor.com/cli for upgrade instructions"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Factory",
+      "command": "droid",
+      "description": "Factory AI's Droid CLI",
+      "docs": "https://docs.factory.ai/cli",
+      "install": {
+        "darwin": "curl -fsSL https://app.factory.ai/cli | sh",
+        "linux": "curl -fsSL https://app.factory.ai/cli | sh",
+        "windows": "See https://docs.factory.ai/cli for Windows installation"
+      },
+      "uninstall": {
+        "darwin": "See https://docs.factory.ai/cli for uninstall instructions",
+        "linux": "See https://docs.factory.ai/cli for uninstall instructions",
+        "windows": "See https://docs.factory.ai/cli for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "See https://docs.factory.ai/cli for upgrade instructions",
+        "linux": "See https://docs.factory.ai/cli for upgrade instructions",
+        "windows": "See https://docs.factory.ai/cli for upgrade instructions"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Gemini",
+      "command": "gemini",
+      "description": "Google's Gemini CLI",
+      "docs": "https://github.com/google/generative-ai-cli",
+      "package_manager": "npm",
+      "package_name": "@google/generative-ai-cli",
+      "install": {
+        "darwin": "npm install -g @google/generative-ai-cli",
+        "linux": "npm install -g @google/generative-ai-cli",
+        "windows": "npm install -g @google/generative-ai-cli"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g @google/generative-ai-cli",
+        "linux": "npm uninstall -g @google/generative-ai-cli",
+        "windows": "npm uninstall -g @google/generative-ai-cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g @google/generative-ai-cli",
+        "linux": "npm update -g @google/generative-ai-cli",
+        "windows": "npm update -g @google/generative-ai-cli"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Qoder",
+      "command": "qodercli",
+      "description": "Qoder AI CLI",
+      "docs": "https://qoder.com/cli",
+      "install": {
+        "darwin": "See https://qoder.com/cli",
+        "linux": "See https://qoder.com/cli",
+        "windows": "See https://qoder.com/cli"
+      },
+      "uninstall": {
+        "darwin": "See https://qoder.com/cli for uninstall instructions",
+        "linux": "See https://qoder.com/cli for uninstall instructions",
+        "windows": "See https://qoder.com/cli for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "See https://qoder.com/cli for upgrade instructions",
+        "linux": "See https://qoder.com/cli for upgrade instructions",
+        "windows": "See https://qoder.com/cli for upgrade instructions"
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "Qwen",
+      "command": "qwen",
+      "description": "Alibaba's Qwen Code CLI",
+      "docs": "https://github.com/QwenLM/qwen-code",
+      "install": {
+        "darwin": "See https://github.com/QwenLM/qwen-code",
+        "linux": "See https://github.com/QwenLM/qwen-code",
+        "windows": "See https://github.com/QwenLM/qwen-code"
+      },
+      "uninstall": {
+        "darwin": "See https://github.com/QwenLM/qwen-code for uninstall instructions",
+        "linux": "See https://github.com/QwenLM/qwen-code for uninstall instructions",
+        "windows": "See https://github.com/QwenLM/qwen-code for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "See https://github.com/QwenLM/qwen-code for upgrade instructions",
+        "linux": "See https://github.com/QwenLM/qwen-code for upgrade instructions",
+        "windows": "See https://github.com/QwenLM/qwen-code for upgrade instructions"
+      },
+      "requires_auth": false
+    },
+    {
+      "name": "Ollama",
+      "command": "ollama",
+      "description": "Run large language models locally",
+      "docs": "https://ollama.com",
+      "package_manager": "homebrew",
+      "package_name": "ollama",
+      "install": {
+        "darwin": "brew install ollama",
+        "linux": "curl -fsSL https://ollama.com/install.sh | sh",
+        "windows": "See https://ollama.com/download"
+      },
+      "uninstall": {
+        "darwin": "brew uninstall ollama",
+        "linux": "See https://ollama.com/download for uninstall instructions",
+        "windows": "See https://ollama.com/download for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "brew upgrade ollama",
+        "linux": "curl -fsSL https://ollama.com/install.sh | sh",
+        "windows": "See https://ollama.com/download for upgrade instructions"
+      },
+      "requires_auth": false
+    }
+  ]
+}
