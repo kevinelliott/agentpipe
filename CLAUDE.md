@@ -135,3 +135,4 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 - Fixed Homebrew formula path: Formulae → Formula
 - Added badges to README
 - Fixed all linting issues for CI
+- Before releasing, be sure that lints, tests, and build pass.
