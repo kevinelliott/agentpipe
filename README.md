@@ -192,6 +192,7 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - Features: Enhanced context engineering, intelligent agents, MCP integration, built-in tools
 - [Qwen CLI](https://github.com/QwenLM/qwen-code) - `qwen`
 - [Codex CLI](https://github.com/openai/codex-cli) - `codex`
+  - Install: `npm install -g @openai/codex` or `brew install --cask codex`
   - Uses `codex exec` subcommand for non-interactive mode
   - Automatically bypasses approval prompts for multi-agent conversations
   - ⚠️ For development/testing only - not recommended for production use

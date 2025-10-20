@@ -56,19 +56,19 @@
       "package_manager": "npm",
       "package_name": "@openai/codex",
       "install": {
-        "darwin": "npm install -g @openai/codex-cli",
-        "linux": "npm install -g @openai/codex-cli",
-        "windows": "npm install -g @openai/codex-cli"
+        "darwin": "npm install -g @openai/codex",
+        "linux": "npm install -g @openai/codex",
+        "windows": "npm install -g @openai/codex"
       },
       "uninstall": {
-        "darwin": "npm uninstall -g @openai/codex-cli",
-        "linux": "npm uninstall -g @openai/codex-cli",
-        "windows": "npm uninstall -g @openai/codex-cli"
+        "darwin": "npm uninstall -g @openai/codex",
+        "linux": "npm uninstall -g @openai/codex",
+        "windows": "npm uninstall -g @openai/codex"
       },
       "upgrade": {
-        "darwin": "npm update -g @openai/codex-cli",
-        "linux": "npm update -g @openai/codex-cli",
-        "windows": "npm update -g @openai/codex-cli"
+        "darwin": "npm update -g @openai/codex",
+        "linux": "npm update -g @openai/codex",
+        "windows": "npm update -g @openai/codex"
       },
       "requires_auth": true
     },
