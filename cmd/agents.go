@@ -210,7 +210,7 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 // showOutdatedTable displays a table of agents with version comparison
 func showOutdatedTable(agents []*registry.AgentDefinition) {
 	fmt.Println("\n📊 Agent Version Status")
-	fmt.Println(strings.Repeat("=", 80))
+	fmt.Println(strings.Repeat("=", 85))
 	fmt.Println()
 
 	// Build table data
@@ -300,9 +300,9 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 	close(resultChan)
 
 	// Print table header
-	fmt.Printf("%-15s  %-20s  %-20s  %s\n",
+	fmt.Printf("%-12s  %-24s  %-24s  %s\n",
 		"Agent", "Installed Version", "Latest Version", "Update")
-	fmt.Println(strings.Repeat("-", 80))
+	fmt.Println(strings.Repeat("-", 85))
 
 	// Print table rows
 	for _, r := range rows {
@@ -313,12 +313,12 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 			update = "✅ Up to date"
 		}
 
-		fmt.Printf("%-15s  %-20s  %-20s  %s\n",
+		fmt.Printf("%-12s  %-24s  %-24s  %s\n",
 			r.name, r.current, r.latest, update)
 	}
 
 	fmt.Println()
-	fmt.Println(strings.Repeat("=", 80))
+	fmt.Println(strings.Repeat("=", 85))
 	fmt.Printf("\nSummary: %d agent(s) with updates available\n", outdatedCount)
 	if outdatedCount > 0 {
 		fmt.Println("\nTo upgrade an agent, use: agentpipe agents upgrade <agent>")
