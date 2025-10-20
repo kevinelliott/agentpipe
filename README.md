@@ -31,6 +31,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)
 - ✅ **Gemini** (Google) - Multimodal understanding
+- ✅ **OpenCode** (SST) - AI coding agent built for the terminal (non-interactive run mode)
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
 - ✅ **Ollama** - Local LLM support (planned)
@@ -181,6 +182,10 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - Authenticate: Sign in via browser when prompted
   - Features: Agent-native development, Code Droid and Knowledge Droid, CI/CD integration
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
+- [OpenCode CLI](https://opencode.ai) - `opencode`
+  - Install: `npm install -g opencode-ai@latest`
+  - Authenticate: Run `opencode auth login` and configure API keys
+  - Features: Terminal-native AI coding agent, non-interactive run mode, multi-provider support
 - [Qoder CLI](https://qoder.com/cli) - `qodercli`
   - Install: See [installation guide](https://qoder.com/cli)
   - Authenticate: Run `qodercli` and use `/login` command
@@ -1040,6 +1045,7 @@ func init() {
 - `amp.go` - Advanced thread management pattern
 - `cursor.go` - JSON stream parsing pattern
 - `factory.go` - Non-interactive exec mode with autonomy levels
+- `opencode.go` - Non-interactive run mode with quiet flag
 - `qoder.go` - Non-interactive print mode with yolo flag
 
 ## Advanced Features
@@ -1334,6 +1340,15 @@ The Codex CLI requires non-interactive exec mode for multi-agent conversations:
 - **Important**: This is designed for development/testing environments only
 - **Security Note**: Never use with untrusted prompts or in production without proper sandboxing
 - Check status: `codex --help` to verify installation and available commands
+
+### OpenCode CLI Specific Issues
+The OpenCode CLI requires authentication and uses non-interactive run mode:
+- **Authentication Required**: Run `opencode auth login` and configure API keys for your chosen provider
+- **Non-Interactive Mode**: AgentPipe uses `opencode run` automatically for non-interactive execution
+- **Permission Handling**: All permissions are auto-approved in non-interactive mode
+- **Multi-Provider Support**: Supports multiple AI providers (configure via `opencode auth login`)
+- **Check Status**: Run `opencode --help` to verify installation and available commands
+- Full documentation: https://opencode.ai/docs
 
 ### Qoder CLI Specific Issues
 The Qoder CLI requires authentication and uses non-interactive mode:

@@ -239,6 +239,30 @@
         "windows": "See https://ollama.com/download for upgrade instructions"
       },
       "requires_auth": false
+    },
+    {
+      "name": "OpenCode",
+      "command": "opencode",
+      "description": "AI coding agent built for the terminal",
+      "docs": "https://opencode.ai/docs",
+      "package_manager": "npm",
+      "package_name": "opencode-ai",
+      "install": {
+        "darwin": "npm install -g opencode-ai@latest",
+        "linux": "npm install -g opencode-ai@latest",
+        "windows": "npm install -g opencode-ai@latest"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g opencode-ai",
+        "linux": "npm uninstall -g opencode-ai",
+        "windows": "npm uninstall -g opencode-ai"
+      },
+      "upgrade": {
+        "darwin": "npm update -g opencode-ai",
+        "linux": "npm update -g opencode-ai",
+        "windows": "npm update -g opencode-ai"
+      },
+      "requires_auth": true
     }
   ]
 }
