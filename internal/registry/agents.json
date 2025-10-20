@@ -28,7 +28,7 @@
       "description": "Anthropic's Claude Code CLI",
       "docs": "https://github.com/anthropics/claude-code",
       "package_manager": "npm",
-      "package_name": "@anthropic-ai/claude-cli",
+      "package_name": "@anthropic-ai/claude-code",
       "install": {
         "darwin": "npm install -g @anthropic-ai/claude-cli",
         "linux": "npm install -g @anthropic-ai/claude-cli",
@@ -52,7 +52,7 @@
       "description": "OpenAI's Codex CLI",
       "docs": "https://github.com/openai/codex-cli",
       "package_manager": "npm",
-      "package_name": "@openai/codex-cli",
+      "package_name": "@openai/codex",
       "install": {
         "darwin": "npm install -g @openai/codex-cli",
         "linux": "npm install -g @openai/codex-cli",
@@ -132,8 +132,8 @@
         "windows": "See https://docs.factory.ai/cli for uninstall instructions"
       },
       "upgrade": {
-        "darwin": "See https://docs.factory.ai/cli for upgrade instructions",
-        "linux": "See https://docs.factory.ai/cli for upgrade instructions",
+        "darwin": "curl -fsSL https://app.factory.ai/cli | sh",
+        "linux": "curl -fsSL https://app.factory.ai/cli | sh",
         "windows": "See https://docs.factory.ai/cli for upgrade instructions"
       },
       "requires_auth": true
@@ -142,9 +142,9 @@
       "name": "Gemini",
       "command": "gemini",
       "description": "Google's Gemini CLI",
-      "docs": "https://github.com/google/generative-ai-cli",
+      "docs": "https://github.com/google-gemini/gemini-cli",
       "package_manager": "npm",
-      "package_name": "@google/generative-ai-cli",
+      "package_name": "@google/gemini-cli",
       "install": {
         "darwin": "npm install -g @google/generative-ai-cli",
         "linux": "npm install -g @google/generative-ai-cli",
@@ -189,20 +189,22 @@
       "command": "qwen",
       "description": "Alibaba's Qwen Code CLI",
       "docs": "https://github.com/QwenLM/qwen-code",
+      "package_manager": "github",
+      "package_name": "QwenLM/qwen-code",
       "install": {
-        "darwin": "See https://github.com/QwenLM/qwen-code",
-        "linux": "See https://github.com/QwenLM/qwen-code",
-        "windows": "See https://github.com/QwenLM/qwen-code"
+        "darwin": "npm install -g @qwen-code/qwen-code",
+        "linux": "npm install -g @qwen-code/qwen-code",
+        "windows": "npm install -g @qwen-code/qwen-code"
       },
       "uninstall": {
-        "darwin": "See https://github.com/QwenLM/qwen-code for uninstall instructions",
-        "linux": "See https://github.com/QwenLM/qwen-code for uninstall instructions",
-        "windows": "See https://github.com/QwenLM/qwen-code for uninstall instructions"
+        "darwin": "npm uninstall -g @qwen-code/qwen-code",
+        "linux": "npm uninstall -g @qwen-code/qwen-code",
+        "windows": "npm uninstall -g @qwen-code/qwen-code"
       },
       "upgrade": {
-        "darwin": "See https://github.com/QwenLM/qwen-code for upgrade instructions",
-        "linux": "See https://github.com/QwenLM/qwen-code for upgrade instructions",
-        "windows": "See https://github.com/QwenLM/qwen-code for upgrade instructions"
+        "darwin": "npm update -g @qwen-code/qwen-code",
+        "linux": "npm update -g @qwen-code/qwen-code",
+        "windows": "npm update -g @qwen-code/qwen-code"
       },
       "requires_auth": false
     },

@@ -24,6 +24,8 @@ func (a *AgentDefinition) GetLatestVersion() (string, error) {
 		return getNPMLatestVersion(a.PackageName)
 	case "homebrew":
 		return getHomebrewLatestVersion(a.PackageName)
+	case "github":
+		return getGitHubLatestRelease(a.PackageName)
 	default:
 		return "", fmt.Errorf("no package manager configured for %s", a.Name)
 	}
@@ -109,19 +111,94 @@ func getHomebrewLatestVersion(formulaName string) (string, error) {
 	return data.Versions.Stable, nil
 }
 
+// getGitHubLatestRelease fetches the latest release version from GitHub
+func getGitHubLatestRelease(repoName string) (string, error) {
+	// Use GitHub API to get latest release
+	// repoName should be in format "owner/repo"
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repoName)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set User-Agent header (required by GitHub API)
+	req.Header.Set("User-Agent", "agentpipe-cli")
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch github release info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("github api returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read github response: %w", err)
+	}
+
+	var data struct {
+		TagName string `json:"tag_name"`
+	}
+
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", fmt.Errorf("failed to parse github response: %w", err)
+	}
+
+	if data.TagName == "" {
+		return "", fmt.Errorf("no tag found in github release response")
+	}
+
+	// Remove 'v' prefix if present
+	version := strings.TrimPrefix(data.TagName, "v")
+	return version, nil
+}
+
 // GetInstalledVersion gets the currently installed version of an agent
 func GetInstalledVersion(command string) string {
 	// Try --version first
 	cmd := exec.Command(command, "--version")
-	if output, err := cmd.CombinedOutput(); err == nil {
+	output, err := cmd.CombinedOutput()
+	if err == nil || len(output) > 0 {
+		// Even if command exits with error, we might have version info in output
 		version := strings.TrimSpace(string(output))
-		// Take first line if multiline
-		if lines := strings.Split(version, "\n"); len(lines) > 0 {
-			version = strings.TrimSpace(lines[0])
+
+		// Handle multi-line output - look for version in all lines
+		lines := strings.Split(version, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			// Skip empty lines
+			if line == "" {
+				continue
+			}
+			// Look for lines that contain version info (even in warnings)
+			if containsVersion(line) {
+				version = extractVersionNumber(line)
+				if version != "" && version != line {
+					// Successfully extracted a version that's different from the whole line
+					return version
+				}
+			}
 		}
-		// Extract just the version number (remove command name, etc.)
-		version = extractVersionNumber(version)
-		return version
+
+		// Fallback: try first non-warning line
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" && !strings.HasPrefix(line, "Warning:") && !strings.HasPrefix(line, "Error:") {
+				version = extractVersionNumber(line)
+				if version != "" {
+					return version
+				}
+			}
+		}
 	}
 
 	// Try version subcommand
@@ -136,6 +213,15 @@ func GetInstalledVersion(command string) string {
 	}
 
 	return ""
+}
+
+// containsVersion checks if a string appears to contain version information
+func containsVersion(s string) bool {
+	// Look for version keywords or version-like patterns
+	lower := strings.ToLower(s)
+	return strings.Contains(lower, "version") ||
+		strings.Contains(lower, "client version") ||
+		strings.Contains(s, ".") && containsDigit(s)
 }
 
 // extractVersionNumber extracts a semantic version number from a string

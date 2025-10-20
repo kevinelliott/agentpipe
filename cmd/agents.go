@@ -61,15 +61,30 @@ Examples:
 	Run: runAgentsInstall,
 }
 
+// agentsUpgradeCmd upgrades one or more agents
+var agentsUpgradeCmd = &cobra.Command{
+	Use:   "upgrade [agent...]",
+	Short: "Upgrade AI agent CLIs",
+	Long: `Upgrade one or more AI agent CLIs to the latest version. Use --all to upgrade all installed agents.
+
+Examples:
+  agentpipe agents upgrade claude         # Upgrade Claude CLI
+  agentpipe agents upgrade claude ollama  # Upgrade multiple agents
+  agentpipe agents upgrade --all          # Upgrade all installed agents`,
+	Run: runAgentsUpgrade,
+}
+
 func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsInstallCmd)
+	agentsCmd.AddCommand(agentsUpgradeCmd)
 
 	agentsListCmd.Flags().BoolVar(&listInstalled, "installed", false, "List only installed agents")
 	agentsListCmd.Flags().BoolVar(&listOutdated, "outdated", false, "List outdated agents with version comparison table")
 	agentsListCmd.Flags().BoolVar(&listCurrent, "current", false, "Check and display latest versions from the web")
 	agentsInstallCmd.Flags().BoolVar(&installAll, "all", false, "Install all agents")
+	agentsUpgradeCmd.Flags().BoolVar(&installAll, "all", false, "Upgrade all agents")
 }
 
 func runAgentsList(cmd *cobra.Command, args []string) {
@@ -195,7 +210,7 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 // showOutdatedTable displays a table of agents with version comparison
 func showOutdatedTable(agents []*registry.AgentDefinition) {
 	fmt.Println("\n📊 Agent Version Status")
-	fmt.Println(strings.Repeat("=", 90))
+	fmt.Println(strings.Repeat("=", 80))
 	fmt.Println()
 
 	// Build table data
@@ -208,60 +223,89 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 		canCheck  bool
 	}
 
-	var rows []row
+	// Fetch version info in parallel
+	type versionResult struct {
+		index   int
+		current string
+		latest  string
+		err     error
+	}
+
+	resultChan := make(chan versionResult, len(agents))
+	rows := make([]row, len(agents))
 	outdatedCount := 0
 
-	for _, agent := range agents {
-		installed := isAgentInstalled(agent.Command)
+	// Launch parallel version checks
+	for i, agent := range agents {
+		go func(index int, ag *registry.AgentDefinition) {
+			result := versionResult{index: index}
+
+			// Check if installed and get current version
+			installed := isAgentInstalled(ag.Command)
+			if installed {
+				result.current = registry.GetInstalledVersion(ag.Command)
+				if result.current == "" {
+					result.current = "unknown"
+				}
+			} else {
+				result.current = "not installed"
+			}
+
+			// Fetch latest version if package manager is configured
+			if ag.PackageManager != "" {
+				latest, err := ag.GetLatestVersion()
+				if err == nil {
+					result.latest = latest
+				} else {
+					result.err = err
+				}
+			} else {
+				result.latest = "manual install"
+			}
+
+			resultChan <- result
+		}(i, agent)
+	}
+
+	// Collect results
+	for i := 0; i < len(agents); i++ {
+		result := <-resultChan
+		agent := agents[result.index]
+		installed := result.current != "not installed"
+
 		r := row{
 			name:      agent.Name,
 			installed: installed,
+			current:   result.current,
 			canCheck:  agent.PackageManager != "",
 		}
 
-		if installed {
-			r.current = registry.GetInstalledVersion(agent.Command)
-			if r.current == "" {
-				r.current = "unknown"
-			}
+		if result.err != nil {
+			r.latest = fmt.Sprintf("(error: %v)", result.err)
 		} else {
-			r.current = "not installed"
+			r.latest = result.latest
 		}
 
-		// Fetch latest version if package manager is configured
-		if agent.PackageManager != "" {
-			latest, err := agent.GetLatestVersion()
-			if err == nil {
-				r.latest = latest
-				if installed && r.current != "unknown" {
-					cmp, err := registry.CompareVersions(r.current, latest)
-					if err == nil && cmp < 0 {
-						r.hasUpdate = true
-						outdatedCount++
-					}
-				}
-			} else {
-				r.latest = fmt.Sprintf("(error: %v)", err)
+		// Check for updates
+		if installed && r.current != "unknown" && result.latest != "" && result.latest != "manual install" && result.err == nil {
+			cmp, err := registry.CompareVersions(r.current, result.latest)
+			if err == nil && cmp < 0 {
+				r.hasUpdate = true
+				outdatedCount++
 			}
-		} else {
-			r.latest = "manual install"
 		}
 
-		rows = append(rows, r)
+		rows[result.index] = r
 	}
+	close(resultChan)
 
 	// Print table header
-	fmt.Printf("%-15s  %-10s  %-20s  %-20s  %s\n",
-		"Agent", "Status", "Installed Version", "Latest Version", "Update")
-	fmt.Println(strings.Repeat("-", 90))
+	fmt.Printf("%-15s  %-20s  %-20s  %s\n",
+		"Agent", "Installed Version", "Latest Version", "Update")
+	fmt.Println(strings.Repeat("-", 80))
 
 	// Print table rows
 	for _, r := range rows {
-		status := "❌"
-		if r.installed {
-			status = "✅"
-		}
-
 		update := ""
 		if r.hasUpdate {
 			update = "⚠️  Available"
@@ -269,15 +313,15 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 			update = "✅ Up to date"
 		}
 
-		fmt.Printf("%-15s  %-10s  %-20s  %-20s  %s\n",
-			r.name, status, r.current, r.latest, update)
+		fmt.Printf("%-15s  %-20s  %-20s  %s\n",
+			r.name, r.current, r.latest, update)
 	}
 
 	fmt.Println()
-	fmt.Println(strings.Repeat("=", 90))
+	fmt.Println(strings.Repeat("=", 80))
 	fmt.Printf("\nSummary: %d agent(s) with updates available\n", outdatedCount)
 	if outdatedCount > 0 {
-		fmt.Println("\nTo upgrade an agent, use: agentpipe agents install <agent>")
+		fmt.Println("\nTo upgrade an agent, use: agentpipe agents upgrade <agent>")
 	}
 	fmt.Println()
 }
@@ -373,6 +417,104 @@ func runAgentsInstall(cmd *cobra.Command, args []string) {
 	}
 	if failCount > 0 {
 		fmt.Printf("  ❌ Failed:    %d\n", failCount)
+	}
+	fmt.Println()
+
+	if failCount > 0 {
+		os.Exit(1)
+	}
+}
+
+func runAgentsUpgrade(cmd *cobra.Command, args []string) {
+	var agentsToUpgrade []*registry.AgentDefinition
+
+	if installAll {
+		// Upgrade all installed agents
+		allAgents := registry.GetAll()
+		for _, agent := range allAgents {
+			if isAgentInstalled(agent.Command) {
+				agentsToUpgrade = append(agentsToUpgrade, agent)
+			}
+		}
+		if len(agentsToUpgrade) == 0 {
+			fmt.Println("\nNo agents are currently installed.")
+			return
+		}
+		fmt.Printf("\nUpgrading %d installed agent(s)...\n", len(agentsToUpgrade))
+	} else if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: Please specify at least one agent to upgrade, or use --all\n")
+		fmt.Fprintf(os.Stderr, "Usage: agentpipe agents upgrade [agent...]\n")
+		fmt.Fprintf(os.Stderr, "       agentpipe agents upgrade --all\n\n")
+		fmt.Fprintf(os.Stderr, "Run 'agentpipe agents list --outdated' to see agents with updates available\n")
+		os.Exit(1)
+		return
+	} else {
+		// Upgrade specific agents
+		for _, name := range args {
+			agent, err := registry.GetByName(name)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Agent '%s' not found in registry\n", name)
+				fmt.Fprintf(os.Stderr, "Run 'agentpipe agents list' to see available agents\n")
+				os.Exit(1)
+				return
+			}
+			if !isAgentInstalled(agent.Command) {
+				fmt.Fprintf(os.Stderr, "Error: Agent '%s' is not currently installed\n", name)
+				fmt.Fprintf(os.Stderr, "Use 'agentpipe agents install %s' to install it first\n", name)
+				os.Exit(1)
+				return
+			}
+			agentsToUpgrade = append(agentsToUpgrade, agent)
+		}
+	}
+
+	// Track upgrade results
+	successCount := 0
+	skipCount := 0
+	failCount := 0
+
+	fmt.Println()
+
+	for _, agent := range agentsToUpgrade {
+		// Get upgrade command
+		upgradeCmd, err := agent.GetUpgradeCommand()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ %s: %v\n", agent.Name, err)
+			failCount++
+			continue
+		}
+
+		// Check if upgradeable via command
+		if strings.HasPrefix(upgradeCmd, "See ") {
+			fmt.Printf("ℹ️  %s: %s\n", agent.Name, upgradeCmd)
+			skipCount++
+			continue
+		}
+
+		// Execute upgrade
+		fmt.Printf("⬆️  Upgrading %s...\n", agent.Name)
+		fmt.Printf("   Running: %s\n", upgradeCmd)
+
+		if err := executeInstallCommand(upgradeCmd); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Failed to upgrade %s: %v\n", agent.Name, err)
+			failCount++
+			continue
+		}
+
+		fmt.Printf("✅ Successfully upgraded %s\n", agent.Name)
+		successCount++
+		fmt.Println()
+	}
+
+	// Print summary
+	fmt.Println(strings.Repeat("=", 70))
+	fmt.Printf("\nUpgrade Summary:\n")
+	fmt.Printf("  ✅ Upgraded: %d\n", successCount)
+	if skipCount > 0 {
+		fmt.Printf("  ⏭️  Skipped:  %d\n", skipCount)
+	}
+	if failCount > 0 {
+		fmt.Printf("  ❌ Failed:   %d\n", failCount)
 	}
 	fmt.Println()
 
