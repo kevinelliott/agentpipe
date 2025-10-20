@@ -160,7 +160,7 @@ make install PREFIX=$HOME/.local
 AgentPipe requires at least one AI CLI tool to be installed:
 
 - [Amp CLI](https://ampcode.com) - `amp` ⚡ **Optimized**
-  - Install: See [installation guide](https://ampcode.com/install)
+  - Install: `npm install -g @sourcegraph/amp` or see [installation guide](https://ampcode.com/install)
   - Authenticate: Follow Amp documentation
   - Features: Autonomous coding, IDE integration, complex task execution
   - **Thread Management**: AgentPipe uses Amp's native threading to maintain server-side conversation state

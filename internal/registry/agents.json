@@ -8,19 +8,19 @@
       "package_manager": "npm",
       "package_name": "@sourcegraph/amp",
       "install": {
-        "darwin": "See https://ampcode.com/install",
-        "linux": "See https://ampcode.com/install",
-        "windows": "See https://ampcode.com/install"
+        "darwin": "npm install -g @sourcegraph/amp",
+        "linux": "npm install -g @sourcegraph/amp",
+        "windows": "npm install -g @sourcegraph/amp"
       },
       "uninstall": {
-        "darwin": "See https://ampcode.com/install for uninstall instructions",
-        "linux": "See https://ampcode.com/install for uninstall instructions",
-        "windows": "See https://ampcode.com/install for uninstall instructions"
+        "darwin": "npm uninstall -g @sourcegraph/amp",
+        "linux": "npm uninstall -g @sourcegraph/amp",
+        "windows": "npm uninstall -g @sourcegraph/amp"
       },
       "upgrade": {
-        "darwin": "See https://ampcode.com/install for upgrade instructions",
-        "linux": "See https://ampcode.com/install for upgrade instructions",
-        "windows": "See https://ampcode.com/install for upgrade instructions"
+        "darwin": "npm update -g @sourcegraph/amp",
+        "linux": "npm update -g @sourcegraph/amp",
+        "windows": "npm update -g @sourcegraph/amp"
       },
       "requires_auth": true
     },
