@@ -91,19 +91,31 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.1.5 - Linting fixes for clean CI/CD builds.
+**Latest Release**: v0.2.0 - Enhanced agent version management with automated upgrades.
 
-**What's New in v0.1.5**:
+**What's New in v0.2.0**:
+
+✨ **New Features:**
+- **Agent Upgrade Command**: Easily update AI agent CLIs
+  - `agentpipe agents upgrade <agent>` - Upgrade specific agents
+  - `agentpipe agents upgrade --all` - Upgrade all installed agents
+  - Cross-platform support with automatic OS detection
+- **Automated Version Detection**: Real-time version checking for all agents
+  - Parallel version checks with ~70% performance improvement (10s → 3.7s)
+  - Support for multiple package managers (npm, homebrew, GitHub, scripts, manifests)
+  - No more "manual install" placeholders - all agents show actual versions
 
 🐛 **Bug Fixes:**
-- **Linting Errors**: Fixed golangci-lint errors in doctor.go
-  - Fixed gofmt formatting (struct field alignment)
-  - Fixed prealloc warning (pre-allocated slices with known capacity)
-  - CI/CD pipeline now passes all quality checks
+- **npm 404 Errors**: Corrected package names for Claude, Codex, and Gemini
+- **Ollama Version Detection**: Now works without running Ollama instance
+  - Parses version from warning messages
 
+🎨 **UI/UX Improvements:**
+- **Better Table Display**: Rebalanced column widths for clearer output
+- **Clearer Instructions**: Changed from "install" to "upgrade" in messages
+
+**Previous Release - v0.1.5**: Linting fixes for clean CI/CD builds
 **Previous Release - v0.1.4**: JSON output for programmatic agent detection
-- `agentpipe doctor --json` for structured, machine-readable output
-- Perfect for dynamic UI generation (e.g., agentpipe-web)
 
 ## Installation
 
@@ -461,6 +473,87 @@ Use this command to:
 - Find upgrade instructions for installed agents
 - Troubleshoot missing dependencies
 - Validate authentication status before starting conversations
+
+### `agentpipe agents`
+
+Manage AI agent CLI installations with version checking and upgrade capabilities.
+
+#### `agentpipe agents list`
+
+List all supported AI agent CLIs with their availability status.
+
+```bash
+# List all agents
+agentpipe agents list
+
+# List only installed agents
+agentpipe agents list --installed
+
+# List agents with available updates
+agentpipe agents list --outdated
+```
+
+**Output includes:**
+- Agent name and command
+- Installation status (✅ installed, ❌ not installed)
+- Current installed version
+- Latest available version
+- Update availability indicator
+
+**Example Output:**
+```
+AI Agent CLIs
+=============================================================
+
+Agent         Installed Version        Latest Version           Update
+---------------------------------------------------------------------------------
+Amp           not installed            2.1.0                    Install with: npm install -g @sourcegraph/amp
+Claude        2.0.19                   2.0.19                   ✅ Up to date
+Cursor        2025.10.17-e060db4       2025.10.17-e060db4       ✅ Up to date
+Factory       1.3.220                  1.3.220                  ✅ Up to date
+Gemini        0.9.0                    0.9.1                    ⚠️  Update available
+Ollama        0.12.5                   0.12.5                   ✅ Up to date
+Qoder         1.2.3                    1.2.3                    ✅ Up to date
+
+To upgrade an agent, use: agentpipe agents upgrade <agent>
+```
+
+#### `agentpipe agents upgrade`
+
+Upgrade one or more AI agent CLIs to the latest version.
+
+```bash
+# Upgrade a specific agent
+agentpipe agents upgrade claude
+
+# Upgrade multiple agents
+agentpipe agents upgrade claude ollama gemini
+
+# Upgrade all installed agents
+agentpipe agents upgrade --all
+```
+
+**Features:**
+- Automatic detection of current OS (darwin, linux, windows)
+- Uses appropriate package manager (npm, homebrew, etc.)
+- Confirmation prompt before upgrading
+- Parallel version checking for performance
+- Cross-platform support
+
+**Flags:**
+- `--all`: Upgrade all installed agents instead of specific ones
+
+**Example:**
+```bash
+$ agentpipe agents upgrade gemini
+
+Upgrading: gemini (0.9.0 → 0.9.1)
+Command: npm update -g @google/generative-ai-cli
+
+Proceed with upgrade? (y/N): y
+Running: npm update -g @google/generative-ai-cli
+✅ gemini upgraded successfully!
+```
 
 ### `agentpipe export`
 

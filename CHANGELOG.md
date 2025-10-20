@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.0] - 2025-10-20
+
+### Added
+- **Agent Upgrade Command**: New `agentpipe agents upgrade` subcommand for easy updates
+  - Upgrade individual agents: `agentpipe agents upgrade claude`
+  - Upgrade multiple agents: `agentpipe agents upgrade claude ollama gemini`
+  - Upgrade all installed agents: `agentpipe agents upgrade --all`
+  - Automatic detection of installed agents for selective upgrades
+  - User confirmation prompts before performing upgrades
+  - Cross-platform support (darwin, linux, windows)
+- **Automated Version Detection**: Complete version checking for all 10 supported agents
+  - npm registry integration (Claude, Codex, Gemini, Copilot, Amp, Qwen)
+  - Homebrew Formulae API integration (Ollama)
+  - GitHub Releases API integration (Qwen fallback)
+  - Shell script parsing for version extraction (Factory, Cursor)
+  - JSON manifest parsing (Qoder)
+  - Replaces all "manual install" placeholders with actual version numbers
+- **Multiple Package Manager Support**: Extensible version checking architecture
+  - `npm`: Query npm registry API for latest versions
+  - `homebrew`: Query Homebrew Formulae API for latest versions
+  - `github`: Query GitHub Releases API for latest releases
+  - `script`: Parse shell install scripts for VER= or DOWNLOAD_URL= version patterns
+  - `manifest`: Fetch and parse JSON manifests with "latest" field
+- **Parallel Version Checking**: Dramatically improved performance with concurrent API calls
+  - Goroutine-based concurrent version fetching
+  - Buffered channels for result collection
+  - Performance improvement: ~10+ seconds → ~3.7 seconds for 10 agents
+  - Thread-safe result aggregation
+
+### Fixed
+- **npm 404 Errors**: Corrected package names for npm-based agents
+  - Claude: `@anthropic-ai/claude-cli` → `@anthropic-ai/claude-code`
+  - Codex: `@openai/codex-cli` → `@openai/codex`
+  - Gemini: `@google/generative-ai-cli` → `@google/gemini-cli`
+- **Ollama Version Detection**: Enhanced to work without running Ollama instance
+  - Now parses version from warning messages (e.g., "Warning: client version is 0.12.5")
+  - Improved `containsVersion()` and `extractVersionNumber()` logic
+  - No longer requires Ollama server to be running
+
+### Improved
+- **UI/UX Enhancements**: Better table display for agent version information
+  - Removed redundant "Status" column from outdated agents table
+  - Rebalanced column widths for better readability
+    - Agent: 15 → 12 characters
+    - Installed Version: 20 → 24 characters
+    - Latest Version: 20 → 24 characters
+    - Total width: 80 → 85 characters
+  - Changed upgrade instructions from "install" to "upgrade" for clarity
+- **Agent Registry Metadata**: Complete package manager information for all agents
+  - Factory: Uses script-based version detection from https://app.factory.ai/cli
+  - Amp: Uses npm registry @sourcegraph/amp
+  - Cursor: Uses script-based version detection from https://cursor.com/install
+  - Qoder: Uses manifest from qoder-ide.oss-ap-southeast-1.aliyuncs.com
+  - All agents now have upgrade commands defined for current OS
+
 ## [v0.1.5] - 2025-10-19
 
 ### Fixed
@@ -346,7 +401,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/kevinelliott/agentpipe/compare/v0.1.5...v0.2.0
 [v0.1.5]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/kevinelliott/agentpipe/compare/v0.1.1...v0.1.3

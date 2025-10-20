@@ -136,3 +136,4 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 - Added badges to README
 - Fixed all linting issues for CI
 - Before releasing, be sure that lints, tests, and build pass.
+- Before releasing, be sure to update and commit the README.md and CHANGELOG.md with the recent changes if they haven't been yet.
