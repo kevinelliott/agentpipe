@@ -168,6 +168,20 @@ func getGitHubLatestRelease(repoName string) (string, error) {
 
 // getScriptVersion fetches version from a shell script that contains VER= definition
 func getScriptVersion(scriptURL string) (string, error) {
+	scriptContent, err := fetchScriptContent(scriptURL)
+	if err != nil {
+		return "", err
+	}
+
+	version, err := extractVersionFromScript(scriptContent)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+func fetchScriptContent(scriptURL string) (string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -187,44 +201,67 @@ func getScriptVersion(scriptURL string) (string, error) {
 		return "", fmt.Errorf("failed to read script: %w", err)
 	}
 
-	// Look for VER="x.y.z" or DOWNLOAD_URL patterns in the script
-	scriptContent := string(body)
+	return string(body), nil
+}
+
+func extractVersionFromScript(scriptContent string) (string, error) {
 	lines := strings.Split(scriptContent, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 
 		// Check for VER="x.y.z" pattern
-		if strings.HasPrefix(line, "VER=") {
-			version := strings.TrimPrefix(line, "VER=")
-			version = strings.Trim(version, "\"'")
-			if version != "" {
-				return version, nil
-			}
+		if version := extractVERPattern(line); version != "" {
+			return version, nil
 		}
 
-		// Check for DOWNLOAD_URL with version in path (e.g., /2025.10.17-e060db4/)
-		if strings.HasPrefix(line, "DOWNLOAD_URL=") {
-			url := strings.TrimPrefix(line, "DOWNLOAD_URL=")
-			url = strings.Trim(url, "\"'")
-
-			// Extract version from URL path like /2025.10.17-e060db4/
-			// Split by / and look for version-like segments
-			parts := strings.Split(url, "/")
-			for _, part := range parts {
-				// Look for date-based versions (YYYY.MM.DD-hash) or semantic versions
-				if strings.Contains(part, ".") && (containsDigit(part) || strings.Contains(part, "-")) {
-					// Skip common non-version parts
-					if part != "${OS}" && part != "${ARCH}" && part != "darwin" && part != "linux" &&
-					   part != "x64" && part != "arm64" && !strings.HasSuffix(part, ".tar.gz") &&
-					   !strings.HasSuffix(part, ".zip") {
-						return part, nil
-					}
-				}
-			}
+		// Check for DOWNLOAD_URL with version in path
+		if version := extractVersionFromDownloadURL(line); version != "" {
+			return version, nil
 		}
 	}
 
 	return "", fmt.Errorf("no VER or DOWNLOAD_URL version found in script")
+}
+
+func extractVERPattern(line string) string {
+	if strings.HasPrefix(line, "VER=") {
+		version := strings.TrimPrefix(line, "VER=")
+		version = strings.Trim(version, "\"'")
+		return version
+	}
+	return ""
+}
+
+func extractVersionFromDownloadURL(line string) string {
+	if !strings.HasPrefix(line, "DOWNLOAD_URL=") {
+		return ""
+	}
+
+	url := strings.TrimPrefix(line, "DOWNLOAD_URL=")
+	url = strings.Trim(url, "\"'")
+
+	parts := strings.Split(url, "/")
+	for _, part := range parts {
+		if isVersionLikePart(part) && !isExcludedPart(part) {
+			return part
+		}
+	}
+
+	return ""
+}
+
+func isVersionLikePart(part string) bool {
+	return strings.Contains(part, ".") && (containsDigit(part) || strings.Contains(part, "-"))
+}
+
+func isExcludedPart(part string) bool {
+	excludedParts := []string{"${OS}", "${ARCH}", "darwin", "linux", "x64", "arm64"}
+	for _, excluded := range excludedParts {
+		if part == excluded {
+			return true
+		}
+	}
+	return strings.HasSuffix(part, ".tar.gz") || strings.HasSuffix(part, ".zip")
 }
 
 // getManifestVersion fetches version from a JSON manifest with "latest" field
@@ -395,12 +432,12 @@ func CompareVersions(v1, v2 string) (int, error) {
 		if i < len(parts1) {
 			// Extract numeric part only
 			numStr := extractNumericPrefix(parts1[i])
-			fmt.Sscanf(numStr, "%d", &p1)
+			_, _ = fmt.Sscanf(numStr, "%d", &p1)
 		}
 
 		if i < len(parts2) {
 			numStr := extractNumericPrefix(parts2[i])
-			fmt.Sscanf(numStr, "%d", &p2)
+			_, _ = fmt.Sscanf(numStr, "%d", &p2)
 		}
 
 		if p1 < p2 {

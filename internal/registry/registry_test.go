@@ -139,12 +139,12 @@ func TestGetUpgradeCommand(t *testing.T) {
 
 func TestIsInstallable(t *testing.T) {
 	tests := []struct {
-		name         string
-		wantInstall  bool
+		name        string
+		wantInstall bool
 	}{
-		{"Claude", true},      // npm install
-		{"Ollama", true},      // brew install (darwin) or curl script
-		{"Amp", true},         // npm install
+		{"Claude", true}, // npm install
+		{"Ollama", true}, // brew install (darwin) or curl script
+		{"Amp", true},    // npm install
 	}
 
 	for _, tt := range tests {

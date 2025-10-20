@@ -40,10 +40,11 @@ Claude, Gemini, and Qwen, allowing them to communicate in a shared "room".`,
 }
 
 func Execute() {
-	// Skip logo for doctor --json command for clean JSON output
+	// Skip logo for --json commands for clean JSON output
 	shouldSkipLogo := false
-	if len(os.Args) >= 2 && os.Args[1] == "doctor" {
-		for _, arg := range os.Args[2:] {
+	if len(os.Args) >= 2 {
+		// Check if --json flag is present anywhere in args
+		for _, arg := range os.Args[1:] {
 			if arg == "--json" {
 				shouldSkipLogo = true
 				break

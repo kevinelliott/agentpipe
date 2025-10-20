@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	installAll      bool
-	listInstalled   bool
-	listOutdated    bool
-	listCurrent     bool
-	listJSON        bool
+	installAll    bool
+	listInstalled bool
+	listOutdated  bool
+	listCurrent   bool
+	listJSON      bool
 )
 
 // agentsCmd represents the agents command
@@ -32,7 +32,7 @@ Examples:
   agentpipe agents install claude    # Install Claude CLI
   agentpipe agents install --all     # Install all agents`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 
@@ -122,7 +122,7 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 	showVersionInfo := listCurrent
 
 	// Filter agents based on flags
-	var filteredAgents []*registry.AgentDefinition
+	filteredAgents := make([]*registry.AgentDefinition, 0, len(agents))
 	for _, agent := range agents {
 		installed := isAgentInstalled(agent.Command)
 
@@ -556,7 +556,7 @@ func runAgentsUpgrade(cmd *cobra.Command, args []string) {
 
 // outputAgentsJSON outputs agent list in JSON format
 func outputAgentsJSON(agents []*registry.AgentDefinition, showVersionInfo bool) {
-	var jsonAgents []AgentListJSON
+	jsonAgents := make([]AgentListJSON, 0, len(agents))
 
 	for _, agent := range agents {
 		installed := isAgentInstalled(agent.Command)
@@ -625,15 +625,15 @@ func outputAgentsJSON(agents []*registry.AgentDefinition, showVersionInfo bool) 
 // outputOutdatedJSON outputs agent version information in JSON format
 func outputOutdatedJSON(rows []agentVersionRow) {
 	type OutdatedAgentJSON struct {
-		Name          string `json:"name"`
-		Installed     bool   `json:"installed"`
-		CurrentVer    string `json:"current_version"`
-		LatestVer     string `json:"latest_version"`
-		HasUpdate     bool   `json:"has_update"`
-		CanCheckVer   bool   `json:"can_check_version"`
+		Name        string `json:"name"`
+		Installed   bool   `json:"installed"`
+		CurrentVer  string `json:"current_version"`
+		LatestVer   string `json:"latest_version"`
+		HasUpdate   bool   `json:"has_update"`
+		CanCheckVer bool   `json:"can_check_version"`
 	}
 
-	var jsonAgents []OutdatedAgentJSON
+	jsonAgents := make([]OutdatedAgentJSON, 0, len(rows))
 	for _, r := range rows {
 		jsonAgents = append(jsonAgents, OutdatedAgentJSON{
 			Name:        r.name,
