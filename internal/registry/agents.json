@@ -121,6 +121,8 @@
       "command": "droid",
       "description": "Factory AI's Droid CLI",
       "docs": "https://docs.factory.ai/cli",
+      "package_manager": "script",
+      "package_name": "https://app.factory.ai/cli",
       "install": {
         "darwin": "curl -fsSL https://app.factory.ai/cli | sh",
         "linux": "curl -fsSL https://app.factory.ai/cli | sh",

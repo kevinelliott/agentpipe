@@ -26,6 +26,8 @@ func (a *AgentDefinition) GetLatestVersion() (string, error) {
 		return getHomebrewLatestVersion(a.PackageName)
 	case "github":
 		return getGitHubLatestRelease(a.PackageName)
+	case "script":
+		return getScriptVersion(a.PackageName)
 	default:
 		return "", fmt.Errorf("no package manager configured for %s", a.Name)
 	}
@@ -160,6 +162,45 @@ func getGitHubLatestRelease(repoName string) (string, error) {
 	// Remove 'v' prefix if present
 	version := strings.TrimPrefix(data.TagName, "v")
 	return version, nil
+}
+
+// getScriptVersion fetches version from a shell script that contains VER= definition
+func getScriptVersion(scriptURL string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(scriptURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch script: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("script fetch returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read script: %w", err)
+	}
+
+	// Look for VER="x.y.z" pattern in the script
+	scriptContent := string(body)
+	lines := strings.Split(scriptContent, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "VER=") {
+			// Extract version from VER="x.y.z" or VER=x.y.z
+			version := strings.TrimPrefix(line, "VER=")
+			version = strings.Trim(version, "\"'")
+			if version != "" {
+				return version, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no VER definition found in script")
 }
 
 // GetInstalledVersion gets the currently installed version of an agent
