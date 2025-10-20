@@ -198,6 +198,19 @@ Check which agents are available on your system:
 agentpipe doctor
 ```
 
+## Support AgentPipe Development
+
+Help support the ongoing development and testing of AgentPipe by using these referral links when signing up for AI agent services. Using these links provides the author with service credits to continue improving agent implementations and adding new features.
+
+### Referral Links
+
+- **Qoder CLI** - Enhanced context engineering and intelligent agents
+  - **Referral Link**: [Sign up with referral code](https://qoder.com/referral?referral_code=1oOG0VHes5uNvrKJr8gwc7Fjm7AWxx52)
+  - Regular link: [qoder.com/cli](https://qoder.com/cli)
+  - Benefits: Using the referral link provides credits for continued Qoder integration development
+
+> **Note**: Using referral links costs you nothing extra and helps fund the development of better multi-agent orchestration features. Thank you for your support!
+
 ## Quick Start
 
 ### Simple conversation with command-line flags
