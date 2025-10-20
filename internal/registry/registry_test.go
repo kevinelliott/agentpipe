@@ -144,7 +144,7 @@ func TestIsInstallable(t *testing.T) {
 	}{
 		{"Claude", true},      // npm install
 		{"Ollama", true},      // brew install (darwin) or curl script
-		{"Amp", false},        // "See https://..." instruction
+		{"Amp", true},         // npm install
 	}
 
 	for _, tt := range tests {

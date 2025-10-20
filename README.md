@@ -92,31 +92,28 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.2.0 - Enhanced agent version management with automated upgrades.
+**Latest Release**: v0.2.1 - Added OpenCode agent and improved package management.
 
-**What's New in v0.2.0**:
+**What's New in v0.2.1**:
 
 ✨ **New Features:**
-- **Agent Upgrade Command**: Easily update AI agent CLIs
-  - `agentpipe agents upgrade <agent>` - Upgrade specific agents
-  - `agentpipe agents upgrade --all` - Upgrade all installed agents
-  - Cross-platform support with automatic OS detection
-- **Automated Version Detection**: Real-time version checking for all agents
-  - Parallel version checks with ~70% performance improvement (10s → 3.7s)
-  - Support for multiple package managers (npm, homebrew, GitHub, scripts, manifests)
-  - No more "manual install" placeholders - all agents show actual versions
+- **OpenCode CLI Agent**: SST's terminal-native AI coding agent
+  - 11 supported agents total
+  - Multi-provider support with non-interactive mode
+  - npm package: `opencode-ai@latest`
+- **Referral Links**: New section to support project development
 
 🐛 **Bug Fixes:**
-- **npm 404 Errors**: Corrected package names for Claude, Codex, and Gemini
-- **Ollama Version Detection**: Now works without running Ollama instance
-  - Parses version from warning messages
+- **Amp CLI**: Now supports npm installation and automated upgrades
+- **Codex CLI**: Fixed package name from `@openai/codex-cli` to `@openai/codex`
+  - Added homebrew support: `brew install --cask codex`
 
-🎨 **UI/UX Improvements:**
-- **Better Table Display**: Rebalanced column widths for clearer output
-- **Clearer Instructions**: Changed from "install" to "upgrade" in messages
+📚 **Documentation:**
+- Enhanced installation instructions with npm and homebrew options
+- Updated Prerequisites with all installation methods
 
+**Previous Release - v0.2.0**: Agent upgrade command and automated version detection
 **Previous Release - v0.1.5**: Linting fixes for clean CI/CD builds
-**Previous Release - v0.1.4**: JSON output for programmatic agent detection
 
 ## Installation
 

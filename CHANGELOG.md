@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.1] - 2025-10-20
+
+### Added
+- **OpenCode CLI Agent**: Complete integration for SST's OpenCode terminal-native AI coding agent
+  - Full adapter implementation with non-interactive `opencode run` mode
+  - npm package support: `opencode-ai@latest`
+  - Quiet flag for non-interactive execution
+  - Comprehensive documentation and troubleshooting
+  - Now 11 supported AI agent CLIs
+- **Referral Links Section**: New dedicated section in README to support project development
+  - Qoder referral link for users to support ongoing development
+  - Clear explanation of how referral links help fund the project
+
+### Fixed
+- **Amp CLI**: Updated to support npm-based installation and automated upgrades
+  - Changed from manual-only to `npm install -g @sourcegraph/amp`
+  - Now supports `agentpipe agents upgrade amp`
+- **Codex CLI**: Fixed npm package name for correct version detection
+  - Corrected from `@openai/codex-cli` to `@openai/codex`
+  - Added homebrew installation option: `brew install --cask codex`
+  - Automated upgrades now work correctly
+
+### Improved
+- **Documentation**: Enhanced installation instructions for multiple agents
+  - Added npm and homebrew options where applicable
+  - Updated Prerequisites section with all installation methods
+  - Added OpenCode to adapter reference implementations
+- **Tests**: Updated registry tests to reflect Amp's new installable status
+
 ## [v0.2.0] - 2025-10-20
 
 ### Added
@@ -401,7 +430,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/kevinelliott/agentpipe/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/kevinelliott/agentpipe/compare/v0.1.5...v0.2.0
 [v0.1.5]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/kevinelliott/agentpipe/compare/v0.1.3...v0.1.4
