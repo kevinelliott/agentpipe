@@ -5,6 +5,8 @@
       "command": "amp",
       "description": "Amp is an AI-powered code editor CLI",
       "docs": "https://ampcode.com",
+      "package_manager": "npm",
+      "package_name": "@sourcegraph/amp",
       "install": {
         "darwin": "See https://ampcode.com/install",
         "linux": "See https://ampcode.com/install",
@@ -99,6 +101,8 @@
       "command": "cursor-agent",
       "description": "Cursor AI code editor CLI",
       "docs": "https://cursor.com/cli",
+      "package_manager": "script",
+      "package_name": "https://cursor.com/install",
       "install": {
         "darwin": "curl https://cursor.com/install -fsS | bash",
         "linux": "curl https://cursor.com/install -fsS | bash",

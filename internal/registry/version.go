@@ -185,22 +185,44 @@ func getScriptVersion(scriptURL string) (string, error) {
 		return "", fmt.Errorf("failed to read script: %w", err)
 	}
 
-	// Look for VER="x.y.z" pattern in the script
+	// Look for VER="x.y.z" or DOWNLOAD_URL patterns in the script
 	scriptContent := string(body)
 	lines := strings.Split(scriptContent, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
+
+		// Check for VER="x.y.z" pattern
 		if strings.HasPrefix(line, "VER=") {
-			// Extract version from VER="x.y.z" or VER=x.y.z
 			version := strings.TrimPrefix(line, "VER=")
 			version = strings.Trim(version, "\"'")
 			if version != "" {
 				return version, nil
 			}
 		}
+
+		// Check for DOWNLOAD_URL with version in path (e.g., /2025.10.17-e060db4/)
+		if strings.HasPrefix(line, "DOWNLOAD_URL=") {
+			url := strings.TrimPrefix(line, "DOWNLOAD_URL=")
+			url = strings.Trim(url, "\"'")
+
+			// Extract version from URL path like /2025.10.17-e060db4/
+			// Split by / and look for version-like segments
+			parts := strings.Split(url, "/")
+			for _, part := range parts {
+				// Look for date-based versions (YYYY.MM.DD-hash) or semantic versions
+				if strings.Contains(part, ".") && (containsDigit(part) || strings.Contains(part, "-")) {
+					// Skip common non-version parts
+					if part != "${OS}" && part != "${ARCH}" && part != "darwin" && part != "linux" &&
+					   part != "x64" && part != "arm64" && !strings.HasSuffix(part, ".tar.gz") &&
+					   !strings.HasSuffix(part, ".zip") {
+						return part, nil
+					}
+				}
+			}
+		}
 	}
 
-	return "", fmt.Errorf("no VER definition found in script")
+	return "", fmt.Errorf("no VER or DOWNLOAD_URL version found in script")
 }
 
 // GetInstalledVersion gets the currently installed version of an agent
