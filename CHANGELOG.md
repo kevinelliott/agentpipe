@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.2] - 2025-10-20
+
+### Added
+- **JSON Output Support**: Added `--json` flag to `agentpipe agents list` command
+  - Regular list mode outputs structured JSON with agent details
+  - Outdated mode outputs version comparison data in JSON format
+  - Works with all existing filters: `--installed`, `--outdated`, `--current`
+  - Clean JSON structure with appropriate omitempty fields
+  - Example: `agentpipe agents list --json`
+  - Example: `agentpipe agents list --outdated --json`
+  - Useful for programmatic integration and automation
+
+### Improved
+- **Agent List Output**: Enhanced parallel version checking for both human-readable and JSON outputs
+- **Code Organization**: Refactored version row type for better reusability
+
 ## [v0.2.1] - 2025-10-20
 
 ### Added

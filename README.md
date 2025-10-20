@@ -92,28 +92,27 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.2.1 - Added OpenCode agent and improved package management.
+**Latest Release**: v0.2.2 - Added JSON output support to agents list command.
 
-**What's New in v0.2.1**:
+**What's New in v0.2.2**:
 
 ✨ **New Features:**
-- **OpenCode CLI Agent**: SST's terminal-native AI coding agent
-  - 11 supported agents total
-  - Multi-provider support with non-interactive mode
-  - npm package: `opencode-ai@latest`
-- **Referral Links**: New section to support project development
+- **JSON Output Support**: Added `--json` flag to `agentpipe agents list` command
+  - Regular list mode: Structured JSON with agent details (name, command, installed status, versions, etc.)
+  - Outdated mode: Version comparison data in JSON format
+  - Works with all filters: `--installed`, `--outdated`, `--current`
+  - Perfect for automation and programmatic integration
+  - Examples:
+    - `agentpipe agents list --json`
+    - `agentpipe agents list --outdated --json`
+    - `agentpipe agents list --installed --json --current`
 
-🐛 **Bug Fixes:**
-- **Amp CLI**: Now supports npm installation and automated upgrades
-- **Codex CLI**: Fixed package name from `@openai/codex-cli` to `@openai/codex`
-  - Added homebrew support: `brew install --cask codex`
+⚡ **Improvements:**
+- Enhanced parallel version checking for both human-readable and JSON outputs
+- Improved code organization with refactored version row types
 
-📚 **Documentation:**
-- Enhanced installation instructions with npm and homebrew options
-- Updated Prerequisites with all installation methods
-
+**Previous Release - v0.2.1**: OpenCode agent and improved package management
 **Previous Release - v0.2.0**: Agent upgrade command and automated version detection
-**Previous Release - v0.1.5**: Linting fixes for clean CI/CD builds
 
 ## Installation
 
