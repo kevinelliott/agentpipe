@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ var (
 	listInstalled   bool
 	listOutdated    bool
 	listCurrent     bool
+	listJSON        bool
 )
 
 // agentsCmd represents the agents command
@@ -83,8 +85,23 @@ func init() {
 	agentsListCmd.Flags().BoolVar(&listInstalled, "installed", false, "List only installed agents")
 	agentsListCmd.Flags().BoolVar(&listOutdated, "outdated", false, "List outdated agents with version comparison table")
 	agentsListCmd.Flags().BoolVar(&listCurrent, "current", false, "Check and display latest versions from the web")
+	agentsListCmd.Flags().BoolVar(&listJSON, "json", false, "Output in JSON format")
 	agentsInstallCmd.Flags().BoolVar(&installAll, "all", false, "Install all agents")
 	agentsUpgradeCmd.Flags().BoolVar(&installAll, "all", false, "Upgrade all agents")
+}
+
+// AgentListJSON represents an agent in JSON output
+type AgentListJSON struct {
+	Name          string `json:"name"`
+	Command       string `json:"command"`
+	Description   string `json:"description"`
+	Docs          string `json:"docs"`
+	Installed     bool   `json:"installed"`
+	Path          string `json:"path,omitempty"`
+	Version       string `json:"version,omitempty"`
+	LatestVersion string `json:"latest_version,omitempty"`
+	HasUpdate     bool   `json:"has_update,omitempty"`
+	InstallCmd    string `json:"install_cmd,omitempty"`
 }
 
 func runAgentsList(cmd *cobra.Command, args []string) {
@@ -115,6 +132,12 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 		}
 
 		filteredAgents = append(filteredAgents, agent)
+	}
+
+	// Handle JSON output
+	if listJSON {
+		outputAgentsJSON(filteredAgents, showVersionInfo)
+		return
 	}
 
 	// Determine title based on flags
@@ -207,21 +230,18 @@ func runAgentsList(cmd *cobra.Command, args []string) {
 	fmt.Println()
 }
 
+// agentVersionRow represents version information for an agent
+type agentVersionRow struct {
+	name      string
+	installed bool
+	current   string
+	latest    string
+	hasUpdate bool
+	canCheck  bool
+}
+
 // showOutdatedTable displays a table of agents with version comparison
 func showOutdatedTable(agents []*registry.AgentDefinition) {
-	fmt.Println("\n📊 Agent Version Status")
-	fmt.Println(strings.Repeat("=", 85))
-	fmt.Println()
-
-	// Build table data
-	type row struct {
-		name      string
-		installed bool
-		current   string
-		latest    string
-		hasUpdate bool
-		canCheck  bool
-	}
 
 	// Fetch version info in parallel
 	type versionResult struct {
@@ -232,7 +252,7 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 	}
 
 	resultChan := make(chan versionResult, len(agents))
-	rows := make([]row, len(agents))
+	rows := make([]agentVersionRow, len(agents))
 	outdatedCount := 0
 
 	// Launch parallel version checks
@@ -273,7 +293,7 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 		agent := agents[result.index]
 		installed := result.current != "not installed"
 
-		r := row{
+		r := agentVersionRow{
 			name:      agent.Name,
 			installed: installed,
 			current:   result.current,
@@ -298,6 +318,17 @@ func showOutdatedTable(agents []*registry.AgentDefinition) {
 		rows[result.index] = r
 	}
 	close(resultChan)
+
+	// Output JSON format if requested
+	if listJSON {
+		outputOutdatedJSON(rows)
+		return
+	}
+
+	// Human-readable format
+	fmt.Println("\n📊 Agent Version Status")
+	fmt.Println(strings.Repeat("=", 85))
+	fmt.Println()
 
 	// Print table header
 	fmt.Printf("%-12s  %-24s  %-24s  %s\n",
@@ -521,6 +552,106 @@ func runAgentsUpgrade(cmd *cobra.Command, args []string) {
 	if failCount > 0 {
 		os.Exit(1)
 	}
+}
+
+// outputAgentsJSON outputs agent list in JSON format
+func outputAgentsJSON(agents []*registry.AgentDefinition, showVersionInfo bool) {
+	var jsonAgents []AgentListJSON
+
+	for _, agent := range agents {
+		installed := isAgentInstalled(agent.Command)
+
+		agentJSON := AgentListJSON{
+			Name:        agent.Name,
+			Command:     agent.Command,
+			Description: agent.Description,
+			Docs:        agent.Docs,
+			Installed:   installed,
+		}
+
+		if installed {
+			if path, err := exec.LookPath(agent.Command); err == nil {
+				agentJSON.Path = path
+			}
+
+			version := registry.GetInstalledVersion(agent.Command)
+			if version != "" {
+				agentJSON.Version = version
+			}
+
+			// Check for updates if showVersionInfo is true
+			if showVersionInfo && agent.PackageManager != "" {
+				latest, err := agent.GetLatestVersion()
+				if err == nil {
+					agentJSON.LatestVersion = latest
+					if version != "" {
+						cmp, _ := registry.CompareVersions(version, latest)
+						agentJSON.HasUpdate = cmp < 0
+					}
+				}
+			}
+		} else {
+			// Get install command for non-installed agents
+			installCmd, err := agent.GetInstallCommand()
+			if err == nil {
+				if agent.IsInstallable() {
+					agentJSON.InstallCmd = fmt.Sprintf("agentpipe agents install %s", strings.ToLower(agent.Name))
+				} else {
+					agentJSON.InstallCmd = installCmd
+				}
+			}
+
+			// Show latest version if showVersionInfo is set
+			if showVersionInfo && agent.PackageManager != "" {
+				latest, err := agent.GetLatestVersion()
+				if err == nil {
+					agentJSON.LatestVersion = latest
+				}
+			}
+		}
+
+		jsonAgents = append(jsonAgents, agentJSON)
+	}
+
+	output, err := json.MarshalIndent(jsonAgents, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating JSON output: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(output))
+}
+
+// outputOutdatedJSON outputs agent version information in JSON format
+func outputOutdatedJSON(rows []agentVersionRow) {
+	type OutdatedAgentJSON struct {
+		Name          string `json:"name"`
+		Installed     bool   `json:"installed"`
+		CurrentVer    string `json:"current_version"`
+		LatestVer     string `json:"latest_version"`
+		HasUpdate     bool   `json:"has_update"`
+		CanCheckVer   bool   `json:"can_check_version"`
+	}
+
+	var jsonAgents []OutdatedAgentJSON
+	for _, r := range rows {
+		jsonAgents = append(jsonAgents, OutdatedAgentJSON{
+			Name:        r.name,
+			Installed:   r.installed,
+			CurrentVer:  r.current,
+			LatestVer:   r.latest,
+			HasUpdate:   r.hasUpdate,
+			CanCheckVer: r.canCheck,
+		})
+	}
+
+	output, err := json.MarshalIndent(jsonAgents, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating JSON output: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(output))
 }
 
 // isAgentInstalled checks if an agent CLI is available in PATH
