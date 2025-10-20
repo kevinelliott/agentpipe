@@ -173,9 +173,11 @@
       "command": "qodercli",
       "description": "Qoder AI CLI",
       "docs": "https://qoder.com/cli",
+      "package_manager": "manifest",
+      "package_name": "https://qoder-ide.oss-ap-southeast-1.aliyuncs.com/qodercli/channels/manifest.json",
       "install": {
-        "darwin": "See https://qoder.com/cli",
-        "linux": "See https://qoder.com/cli",
+        "darwin": "curl -fsSL https://qoder.com/install | bash",
+        "linux": "curl -fsSL https://qoder.com/install | bash",
         "windows": "See https://qoder.com/cli"
       },
       "uninstall": {
@@ -184,8 +186,8 @@
         "windows": "See https://qoder.com/cli for uninstall instructions"
       },
       "upgrade": {
-        "darwin": "See https://qoder.com/cli for upgrade instructions",
-        "linux": "See https://qoder.com/cli for upgrade instructions",
+        "darwin": "curl -fsSL https://qoder.com/install | bash",
+        "linux": "curl -fsSL https://qoder.com/install | bash",
         "windows": "See https://qoder.com/cli for upgrade instructions"
       },
       "requires_auth": true

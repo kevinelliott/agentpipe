@@ -28,6 +28,8 @@ func (a *AgentDefinition) GetLatestVersion() (string, error) {
 		return getGitHubLatestRelease(a.PackageName)
 	case "script":
 		return getScriptVersion(a.PackageName)
+	case "manifest":
+		return getManifestVersion(a.PackageName)
 	default:
 		return "", fmt.Errorf("no package manager configured for %s", a.Name)
 	}
@@ -223,6 +225,42 @@ func getScriptVersion(scriptURL string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no VER or DOWNLOAD_URL version found in script")
+}
+
+// getManifestVersion fetches version from a JSON manifest with "latest" field
+func getManifestVersion(manifestURL string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(manifestURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch manifest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("manifest fetch returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read manifest: %w", err)
+	}
+
+	var data struct {
+		Latest string `json:"latest"`
+	}
+
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	if data.Latest == "" {
+		return "", fmt.Errorf("no 'latest' field found in manifest")
+	}
+
+	return data.Latest, nil
 }
 
 // GetInstalledVersion gets the currently installed version of an agent
