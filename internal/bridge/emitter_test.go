@@ -171,51 +171,65 @@ func TestEmitMessageCreated(t *testing.T) {
 	emitter.EmitMessageCreated("gemini", "Gemini", "Hi", "gemini-pro", 1, 80, 40, 40, 0.0008, 987*time.Millisecond)
 
 	// Collect both events (they may arrive in any order due to async sending)
+	events := collectEvents(t, receivedEvents, 2)
+
+	// Verify both events by sequence number
+	for _, event := range events {
+		verifyMessageEvent(t, event)
+	}
+}
+
+// Helper to collect multiple events with timeout
+func collectEvents(t *testing.T, ch chan *Event, count int) []*Event {
+	t.Helper()
 	var events []*Event
-	for i := 0; i < 2; i++ {
+	for i := 0; i < count; i++ {
 		select {
-		case event := <-receivedEvents:
+		case event := <-ch:
 			events = append(events, event)
 		case <-time.After(2 * time.Second):
 			t.Fatalf("Timeout waiting for event %d", i+1)
 		}
 	}
+	return events
+}
 
-	// Verify both events by sequence number
-	for _, event := range events {
-		if event.Type != EventMessageCreated {
-			t.Errorf("Expected type=%s, got %s", EventMessageCreated, event.Type)
-		}
+// Helper to verify a message.created event
+func verifyMessageEvent(t *testing.T, event *Event) {
+	t.Helper()
 
-		data, ok := event.Data.(map[string]interface{})
-		if !ok {
-			t.Fatal("Expected data to be a map")
-		}
+	if event.Type != EventMessageCreated {
+		t.Errorf("Expected type=%s, got %s", EventMessageCreated, event.Type)
+	}
 
-		seqNum := int(data["sequence_number"].(float64))
-		if seqNum == 1 {
-			if data["content"] != "Hello" {
-				t.Errorf("Expected content='Hello' for seq 1, got %v", data["content"])
-			}
-			if data["agent_name"] != "Claude" {
-				t.Errorf("Expected agent_name='Claude' for seq 1, got %v", data["agent_name"])
-			}
-		} else if seqNum == 2 {
-			if data["content"] != "Hi" {
-				t.Errorf("Expected content='Hi' for seq 2, got %v", data["content"])
-			}
-			if data["agent_name"] != "Gemini" {
-				t.Errorf("Expected agent_name='Gemini' for seq 2, got %v", data["agent_name"])
-			}
-		} else {
-			t.Errorf("Unexpected sequence number: %d", seqNum)
-		}
+	data, ok := event.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected data to be a map")
+	}
 
-		// Verify message_id is a UUID
-		messageID, ok := data["message_id"].(string)
-		if !ok || messageID == "" {
-			t.Error("Expected message_id to be a non-empty string")
+	seqNum := int(data["sequence_number"].(float64))
+	if seqNum == 1 {
+		if data["content"] != "Hello" {
+			t.Errorf("Expected content='Hello' for seq 1, got %v", data["content"])
 		}
+		if data["agent_name"] != "Claude" {
+			t.Errorf("Expected agent_name='Claude' for seq 1, got %v", data["agent_name"])
+		}
+	} else if seqNum == 2 {
+		if data["content"] != "Hi" {
+			t.Errorf("Expected content='Hi' for seq 2, got %v", data["content"])
+		}
+		if data["agent_name"] != "Gemini" {
+			t.Errorf("Expected agent_name='Gemini' for seq 2, got %v", data["agent_name"])
+		}
+	} else {
+		t.Errorf("Unexpected sequence number: %d", seqNum)
+	}
+
+	// Verify message_id is a UUID
+	messageID, ok := data["message_id"].(string)
+	if !ok || messageID == "" {
+		t.Error("Expected message_id to be a non-empty string")
 	}
 }
 

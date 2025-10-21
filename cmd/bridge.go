@@ -138,9 +138,26 @@ func runBridgeSetup() {
 	if enableInput != "y" && enableInput != "yes" {
 		// Disable and exit
 		viper.Set("bridge.enabled", false)
+
+		// Try to write config, create if doesn't exist
 		if err := viper.WriteConfig(); err != nil {
-			fmt.Printf("Error saving config: %v\n", err)
-			os.Exit(1)
+			// If config doesn't exist, create it
+			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+				// Get home directory and create config file
+				home, homeErr := os.UserHomeDir()
+				if homeErr != nil {
+					fmt.Printf("Error getting home directory: %v\n", homeErr)
+					os.Exit(1)
+				}
+				configPath := fmt.Sprintf("%s/.agentpipe.yaml", home)
+				if writeErr := viper.WriteConfigAs(configPath); writeErr != nil {
+					fmt.Printf("Error creating configuration file: %v\n", writeErr)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Printf("Error saving config: %v\n", err)
+				os.Exit(1)
+			}
 		}
 		fmt.Println("✓ Bridge disabled")
 		return
@@ -200,9 +217,25 @@ func runBridgeSetup() {
 	viper.Set("bridge.retry_attempts", retryAttempts)
 	viper.Set("bridge.log_level", "info")
 
+	// Try to write config, create if doesn't exist
 	if err := viper.WriteConfig(); err != nil {
-		fmt.Printf("\n✗ Error saving configuration: %v\n", err)
-		os.Exit(1)
+		// If config doesn't exist, create it
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Get home directory and create config file
+			home, homeErr := os.UserHomeDir()
+			if homeErr != nil {
+				fmt.Printf("\n✗ Error getting home directory: %v\n", homeErr)
+				os.Exit(1)
+			}
+			configPath := fmt.Sprintf("%s/.agentpipe.yaml", home)
+			if writeErr := viper.WriteConfigAs(configPath); writeErr != nil {
+				fmt.Printf("\n✗ Error creating configuration file: %v\n", writeErr)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Printf("\n✗ Error saving configuration: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Println("\n✓ Bridge configuration saved successfully!")
@@ -317,9 +350,25 @@ func runBridgeTest() {
 func runBridgeDisable() {
 	viper.Set("bridge.enabled", false)
 
+	// Try to write config, create if doesn't exist
 	if err := viper.WriteConfig(); err != nil {
-		fmt.Printf("Error saving configuration: %v\n", err)
-		os.Exit(1)
+		// If config doesn't exist, create it
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Get home directory and create config file
+			home, homeErr := os.UserHomeDir()
+			if homeErr != nil {
+				fmt.Printf("Error getting home directory: %v\n", homeErr)
+				os.Exit(1)
+			}
+			configPath := fmt.Sprintf("%s/.agentpipe.yaml", home)
+			if writeErr := viper.WriteConfigAs(configPath); writeErr != nil {
+				fmt.Printf("Error creating configuration file: %v\n", writeErr)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Printf("Error saving configuration: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Println("✓ Bridge disabled")
