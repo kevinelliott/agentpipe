@@ -39,6 +39,7 @@ func (m *MockAgent) GetRateLimit() float64  { return m.rateLimit }
 func (m *MockAgent) GetRateLimitBurst() int { return m.rateLimitBurst }
 func (m *MockAgent) IsAvailable() bool      { return m.available }
 func (m *MockAgent) Announce() string       { return m.name + " has joined" }
+func (m *MockAgent) GetCLIVersion() string  { return "1.0.0" }
 func (m *MockAgent) Initialize(config agent.AgentConfig) error {
 	m.id = config.ID
 	m.name = config.Name

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
@@ -69,6 +70,8 @@ type Orchestrator struct {
 	logger            *logger.ChatLogger
 	currentTurnNumber int              // tracks the current turn number for middleware context
 	metrics           *metrics.Metrics // Prometheus metrics for monitoring
+	bridgeEmitter     *bridge.Emitter  // optional streaming bridge for real-time updates
+	conversationStart time.Time        // conversation start time for duration tracking
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -139,6 +142,61 @@ func (o *Orchestrator) GetMetrics() *metrics.Metrics {
 	o.mu.RLock()
 	defer o.mu.RUnlock()
 	return o.metrics
+}
+
+// SetBridgeEmitter sets the streaming bridge emitter for real-time conversation updates.
+// If set, the orchestrator will emit events for conversation lifecycle and messages.
+// This method is thread-safe.
+func (o *Orchestrator) SetBridgeEmitter(emitter *bridge.Emitter) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.bridgeEmitter = emitter
+}
+
+// emitConversationCompleted emits the conversation.completed event if bridge is enabled.
+// This helper method calculates the conversation statistics and duration.
+func (o *Orchestrator) emitConversationCompleted(status string) {
+	o.mu.RLock()
+	bridgeEmitter := o.bridgeEmitter
+	messageCount := len(o.messages)
+	startTime := o.conversationStart
+	o.mu.RUnlock()
+
+	if bridgeEmitter == nil {
+		return
+	}
+
+	// Calculate total metrics from all messages
+	totalTokens := 0
+	totalCost := 0.0
+	for _, msg := range o.getMessages() {
+		if msg.Metrics != nil {
+			totalTokens += msg.Metrics.TotalTokens
+			totalCost += msg.Metrics.Cost
+		}
+	}
+
+	duration := time.Since(startTime)
+
+	bridgeEmitter.EmitConversationCompleted(
+		status,
+		messageCount,
+		o.currentTurnNumber,
+		totalTokens,
+		totalCost,
+		duration,
+	)
+}
+
+// emitConversationError emits the conversation.error event if bridge is enabled.
+func (o *Orchestrator) emitConversationError(errorMsg, errorType, agentType string) {
+	o.mu.RLock()
+	bridgeEmitter := o.bridgeEmitter
+	o.mu.RUnlock()
+
+	if bridgeEmitter != nil {
+		bridgeEmitter.EmitConversationError(errorMsg, errorType, agentType)
+	}
 }
 
 // AddMiddleware adds a middleware to the orchestrator's processing chain.
@@ -227,6 +285,46 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		"has_prompt": o.config.InitialPrompt != "",
 	}).Info("starting conversation")
 
+	// Record conversation start time for duration tracking
+	o.conversationStart = time.Now()
+
+	// Emit conversation.completed when function returns
+	defer func() {
+		// Determine status based on context
+		status := "completed"
+		select {
+		case <-ctx.Done():
+			status = "interrupted"
+		default:
+		}
+		o.emitConversationCompleted(status)
+	}()
+
+	// Emit conversation.started event if bridge is enabled
+	o.mu.RLock()
+	bridgeEmitter := o.bridgeEmitter
+	o.mu.RUnlock()
+
+	if bridgeEmitter != nil {
+		// Build agent participants list
+		participants := make([]bridge.AgentParticipant, 0, len(o.agents))
+		for _, a := range o.agents {
+			participants = append(participants, bridge.AgentParticipant{
+				AgentType:  a.GetType(),
+				Model:      a.GetModel(),
+				Name:       a.GetName(),
+				CLIVersion: a.GetCLIVersion(),
+			})
+		}
+
+		bridgeEmitter.EmitConversationStarted(
+			string(o.config.Mode),
+			o.config.InitialPrompt,
+			o.config.MaxTurns,
+			participants,
+		)
+	}
+
 	if o.config.InitialPrompt != "" {
 		initialMsg := agent.Message{
 			AgentID:   "host",
@@ -258,6 +356,8 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		return o.runFreeForm(ctx)
 	default:
 		log.WithField("mode", o.config.Mode).Error("unknown conversation mode")
+		errMsg := fmt.Sprintf("unknown conversation mode: %s", o.config.Mode)
+		o.emitConversationError(errMsg, "configuration", "orchestrator")
 		return fmt.Errorf("unknown conversation mode: %s", o.config.Mode)
 	}
 }
@@ -498,17 +598,22 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 			"attempts":   o.config.MaxRetries + 1,
 		}).WithError(lastErr).Error("all agent request attempts failed")
 
+		// Determine error type
+		errorType := "unknown"
+		if strings.Contains(lastErr.Error(), "timeout") || strings.Contains(lastErr.Error(), "deadline") {
+			errorType = "timeout"
+		} else if strings.Contains(lastErr.Error(), "rate limit") {
+			errorType = "rate_limit"
+		}
+
 		// Record error metric
 		if o.metrics != nil {
-			errorType := "unknown"
-			if strings.Contains(lastErr.Error(), "timeout") || strings.Contains(lastErr.Error(), "deadline") {
-				errorType = "timeout"
-			} else if strings.Contains(lastErr.Error(), "rate limit") {
-				errorType = "rate_limit"
-			}
 			o.metrics.RecordAgentError(a.GetName(), a.GetType(), errorType)
 			o.metrics.RecordAgentRequest(a.GetName(), a.GetType(), "error")
 		}
+
+		// Emit conversation.error event
+		o.emitConversationError(lastErr.Error(), errorType, a.GetType())
 
 		return lastErr
 	}
@@ -596,8 +701,26 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 
 	o.mu.Lock()
 	o.messages = append(o.messages, msg)
+	currentTurn := o.currentTurnNumber
 	o.currentTurnNumber++
+	bridgeEmitter := o.bridgeEmitter
 	o.mu.Unlock()
+
+	// Emit message.created event if bridge is enabled
+	if bridgeEmitter != nil {
+		bridgeEmitter.EmitMessageCreated(
+			a.GetType(),
+			a.GetName(),
+			response,
+			model,
+			currentTurn,
+			totalTokens,
+			inputTokens,
+			outputTokens,
+			cost,
+			duration,
+		)
+	}
 
 	// Display the response
 	if o.logger != nil {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -64,6 +65,10 @@ func (c *CursorAgent) Initialize(config agent.AgentConfig) error {
 func (c *CursorAgent) IsAvailable() bool {
 	_, err := exec.LookPath("cursor-agent")
 	return err == nil
+}
+
+func (c *CursorAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("cursor-agent")
 }
 
 func (c *CursorAgent) HealthCheck(ctx context.Context) error {

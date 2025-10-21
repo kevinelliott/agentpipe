@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -54,6 +55,10 @@ func (f *FactoryAgent) Initialize(config agent.AgentConfig) error {
 func (f *FactoryAgent) IsAvailable() bool {
 	_, err := exec.LookPath("droid")
 	return err == nil
+}
+
+func (f *FactoryAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("droid")
 }
 
 func (f *FactoryAgent) HealthCheck(ctx context.Context) error {

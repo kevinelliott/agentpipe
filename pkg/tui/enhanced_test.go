@@ -71,6 +71,7 @@ func (m *MockAgent) GetRateLimit() float64              { return 0 }
 func (m *MockAgent) GetRateLimitBurst() int             { return 0 }
 func (m *MockAgent) Announce() string                   { return "" }
 func (m *MockAgent) GetModel() string                   { return "mock-model" }
+func (m *MockAgent) GetCLIVersion() string              { return "1.0.0" }
 
 // TestEnhancedModel_Init tests initialization
 func TestEnhancedModel_Init(t *testing.T) {

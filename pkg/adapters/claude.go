@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -54,6 +55,10 @@ func (c *ClaudeAgent) Initialize(config agent.AgentConfig) error {
 func (c *ClaudeAgent) IsAvailable() bool {
 	_, err := exec.LookPath("claude")
 	return err == nil
+}
+
+func (c *ClaudeAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("claude")
 }
 
 func (c *ClaudeAgent) HealthCheck(ctx context.Context) error {

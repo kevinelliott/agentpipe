@@ -14,7 +14,7 @@ import (
 )
 
 // Config is the top-level configuration structure for AgentPipe.
-// It defines agents, orchestration behavior, and logging settings.
+// It defines agents, orchestration behavior, logging settings, and bridge streaming.
 type Config struct {
 	// Version is the configuration file format version
 	Version string `yaml:"version"`
@@ -24,6 +24,8 @@ type Config struct {
 	Orchestrator OrchestratorConfig `yaml:"orchestrator"`
 	// Logging defines logging behavior
 	Logging LoggingConfig `yaml:"logging"`
+	// Bridge defines streaming bridge settings
+	Bridge BridgeConfig `yaml:"bridge"`
 }
 
 // OrchestratorConfig defines how the orchestrator manages conversations.
@@ -50,6 +52,22 @@ type LoggingConfig struct {
 	LogFormat string `yaml:"log_format"`
 	// ShowMetrics determines if token/cost metrics are logged
 	ShowMetrics bool `yaml:"show_metrics"`
+}
+
+// BridgeConfig defines streaming bridge configuration for real-time conversation updates.
+type BridgeConfig struct {
+	// Enabled determines if streaming bridge is active (disabled by default)
+	Enabled bool `yaml:"enabled"`
+	// URL is the base URL of the AgentPipe Web app (e.g., https://agentpipe.ai)
+	URL string `yaml:"url"`
+	// APIKey is the authentication key for the streaming API
+	APIKey string `yaml:"api_key"`
+	// TimeoutMs is the HTTP request timeout in milliseconds (default: 10000)
+	TimeoutMs int `yaml:"timeout_ms"`
+	// RetryAttempts is the number of retry attempts for failed requests (default: 3)
+	RetryAttempts int `yaml:"retry_attempts"`
+	// LogLevel is the logging level for bridge operations: "debug", "info", "warn", "error" (default: "info")
+	LogLevel string `yaml:"log_level"`
 }
 
 // NewDefaultConfig creates a configuration with sensible defaults.
@@ -187,6 +205,18 @@ func (c *Config) applyDefaults() {
 
 	if c.Logging.LogFormat == "" {
 		c.Logging.LogFormat = "text"
+	}
+
+	// Bridge defaults
+	// Note: Enabled defaults to false (opt-in), URL handled by internal/bridge
+	if c.Bridge.TimeoutMs == 0 {
+		c.Bridge.TimeoutMs = 10000
+	}
+	if c.Bridge.RetryAttempts == 0 {
+		c.Bridge.RetryAttempts = 3
+	}
+	if c.Bridge.LogLevel == "" {
+		c.Bridge.LogLevel = "info"
 	}
 
 	for i := range c.Agents {

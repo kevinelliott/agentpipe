@@ -67,6 +67,10 @@ func (m *MockIntegrationAgent) IsAvailable() bool {
 	return true
 }
 
+func (m *MockIntegrationAgent) GetCLIVersion() string {
+	return "1.0.0"
+}
+
 func (m *MockIntegrationAgent) HealthCheck(ctx context.Context) error {
 	return nil
 }

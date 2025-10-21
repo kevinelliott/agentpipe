@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -54,6 +55,10 @@ func (o *OpenCodeAgent) Initialize(config agent.AgentConfig) error {
 func (o *OpenCodeAgent) IsAvailable() bool {
 	_, err := exec.LookPath("opencode")
 	return err == nil
+}
+
+func (o *OpenCodeAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("opencode")
 }
 
 func (o *OpenCodeAgent) HealthCheck(ctx context.Context) error {

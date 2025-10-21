@@ -28,6 +28,10 @@ func (a *BenchmarkAgent) IsAvailable() bool {
 	return true
 }
 
+func (a *BenchmarkAgent) GetCLIVersion() string {
+	return "1.0.0"
+}
+
 func (a *BenchmarkAgent) HealthCheck(ctx context.Context) error {
 	return nil
 }

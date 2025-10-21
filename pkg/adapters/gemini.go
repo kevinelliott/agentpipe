@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -54,6 +55,10 @@ func (g *GeminiAgent) Initialize(config agent.AgentConfig) error {
 func (g *GeminiAgent) IsAvailable() bool {
 	_, err := exec.LookPath("gemini")
 	return err == nil
+}
+
+func (g *GeminiAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("gemini")
 }
 
 func (g *GeminiAgent) HealthCheck(ctx context.Context) error {

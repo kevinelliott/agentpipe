@@ -76,6 +76,7 @@ Each agent adapter must implement:
 - `HealthCheck(ctx)` - Verify CLI works
 - `SendMessage(ctx, messages)` - Send and receive
 - `GetMetrics()` - Return usage metrics
+- `GetCLIVersion()` - Return CLI tool version (added in v0.3.0 for streaming bridge)
 
 ### TUI Features
 - Three panels: agents list, conversation, user input
@@ -90,6 +91,43 @@ YAML config supports:
 - Orchestrator modes: round-robin, reactive, free-form
 - Logging configuration
 - Turn limits and timeouts
+- **Streaming bridge configuration** (v0.3.0+):
+  - Bridge enabled status, URL, API key, timeout, retry attempts, log level
+  - Defaults: disabled, 10s timeout, 3 retries
+  - Environment variables override config file: `AGENTPIPE_STREAM_ENABLED`, `AGENTPIPE_STREAM_URL`, `AGENTPIPE_STREAM_API_KEY`
+
+### Streaming Bridge (v0.3.0+)
+**Overview:**
+- Opt-in real-time conversation streaming to AgentPipe Web (https://agentpipe.ai)
+- Four event types: `conversation.started`, `message.created`, `conversation.completed`, `conversation.error`
+- Non-blocking async HTTP implementation using goroutines - never blocks conversations
+- Privacy-first: disabled by default, API keys never logged, clear disclosure
+
+**Architecture:**
+- Package: `internal/bridge/`
+- Components:
+  - `events.go` - Event type definitions matching web app Zod schemas
+  - `client.go` - HTTP client with retry logic (exponential backoff: 1s, 2s, 4s)
+  - `emitter.go` - High-level event emitter interface
+  - `config.go` - Configuration with env var > viper > defaults precedence
+  - `sysinfo.go` - Platform-specific OS version detection (macOS, Linux, Windows)
+- CLI Commands: `bridge setup`, `bridge status`, `bridge test`, `bridge disable`
+- Integration: Orchestrator emits events via `SetBridgeEmitter()` method
+- Thread Safety: RWMutex for concurrent access to bridge emitter
+
+**Event Schema:**
+- `conversation.started`: Agent participants (type, model, name, CLI version), system info, mode, max turns
+- `message.created`: Agent name/type, content, turn number, tokens (input/output/total), cost, duration
+- `conversation.completed`: Status (completed/interrupted), total messages, turns, tokens, cost, duration
+- `conversation.error`: Error message, type (timeout/rate_limit/unknown), agent type
+
+**Implementation Details:**
+- Build tags for environment-specific defaults: dev (`http://localhost:3000`) vs production (`https://agentpipe.ai`)
+- Client retries failed requests with exponential backoff (up to 3 attempts by default)
+- 4xx errors (client errors) are not retried - only 5xx (server errors)
+- SendEventAsync() uses goroutines for non-blocking execution
+- Comprehensive tests with >80% coverage
+- Agent version detection via `GetCLIVersion()` method and internal registry
 
 ## Quality Requirements
 
@@ -127,6 +165,16 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 ```
 
 ## Recent Changes Log
+- **v0.3.0 (2025-10-21)**: Streaming Bridge feature
+  - Added opt-in real-time conversation streaming to AgentPipe Web
+  - Created `internal/bridge/` package with comprehensive infrastructure
+  - Extended Agent interface with `GetCLIVersion()` method (BREAKING CHANGE)
+  - Implemented bridge CLI commands: setup, status, test, disable
+  - Non-blocking async event emission with retry logic
+  - Thread-safe orchestrator integration with RWMutex
+  - Privacy-first design: disabled by default, API keys never logged
+  - >80% test coverage for bridge package
+  - Updated README.md and CHANGELOG.md with streaming bridge docs
 - Downgraded to Go 1.24.0 (for golangci-lint compatibility)
 - Fixed golangci-lint config for v1.64.8 (GitHub Actions)
 - Added skip logic to adapter tests for missing CLI tools

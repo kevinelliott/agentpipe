@@ -92,25 +92,34 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.2.2 - Added JSON output support to agents list command.
+**Latest Release**: v0.3.0 - Real-time conversation streaming to AgentPipe Web
 
-**What's New in v0.2.2**:
+**What's New in v0.3.0**:
 
-✨ **New Features:**
-- **JSON Output Support**: Added `--json` flag to `agentpipe agents list` command
-  - Regular list mode: Structured JSON with agent details (name, command, installed status, versions, etc.)
-  - Outdated mode: Version comparison data in JSON format
-  - Works with all filters: `--installed`, `--outdated`, `--current`
-  - Perfect for automation and programmatic integration
-  - Examples:
-    - `agentpipe agents list --json`
-    - `agentpipe agents list --outdated --json`
-    - `agentpipe agents list --installed --json --current`
+🌐 **Major New Feature - Streaming Bridge:**
+- **Real-Time Conversation Streaming**: Stream live conversations to AgentPipe Web for browser viewing
+  - Four event types: conversation.started, message.created, conversation.completed, conversation.error
+  - Non-blocking async implementation that never interrupts conversations
+  - Rich metrics: agent participants, CLI versions, tokens, costs, duration, system info
+  - Privacy-first: disabled by default, API keys never logged
+- **Bridge CLI Commands**: Easy configuration and management
+  - `agentpipe bridge setup` - Interactive wizard
+  - `agentpipe bridge status` - View config (with `--json` support)
+  - `agentpipe bridge test` - Test connection
+  - `agentpipe bridge disable` - Disable streaming
+- **Production Ready**: Retry logic with exponential backoff, >80% test coverage
+
+⚠️ **Breaking Changes:**
+- Extended Agent interface with `GetCLIVersion()` method
+  - All built-in adapters updated
+  - Custom agent implementations must implement this new method
 
 ⚡ **Improvements:**
-- Enhanced parallel version checking for both human-readable and JSON outputs
-- Improved code organization with refactored version row types
+- Added BridgeConfig to support streaming configuration
+- Thread-safe orchestrator with RWMutex for concurrent bridge access
+- Environment variable overrides for bridge settings
 
+**Previous Release - v0.2.2**: JSON output support for agents list command
 **Previous Release - v0.2.1**: OpenCode agent and improved package management
 **Previous Release - v0.2.0**: Agent upgrade command and automated version detection
 
@@ -607,6 +616,74 @@ agentpipe resume state.json --continue
 **Flags:**
 - `--list`: List all saved conversation states
 - `--continue`: Continue the conversation (planned feature)
+
+### `agentpipe bridge`
+
+Manage streaming bridge configuration for real-time conversation streaming to AgentPipe Web.
+
+#### `agentpipe bridge setup`
+
+Interactive wizard to configure the streaming bridge.
+
+```bash
+agentpipe bridge setup
+```
+
+Guides you through:
+1. Enabling/disabling the bridge
+2. Setting the AgentPipe Web URL
+3. Configuring your API key
+4. Setting timeout and retry options
+
+Your API key is stored in your agentpipe configuration file and never logged.
+
+#### `agentpipe bridge status`
+
+Show current bridge status and configuration.
+
+```bash
+# Human-readable output
+agentpipe bridge status
+
+# JSON output for automation
+agentpipe bridge status --json
+```
+
+Displays:
+- Whether the bridge is enabled
+- Configured URL
+- API key status (present/missing, never shows actual key)
+- Timeout and retry settings
+- Current configuration source
+- Environment variable overrides (if any)
+
+**Flags:**
+- `--json`: Output status as JSON
+
+#### `agentpipe bridge test`
+
+Test the streaming bridge connection by sending a test event.
+
+```bash
+agentpipe bridge test
+```
+
+This will:
+1. Load your bridge configuration
+2. Send a test `conversation.started` event
+3. Report success or failure
+
+This helps verify your API key and network connectivity.
+
+#### `agentpipe bridge disable`
+
+Disable the streaming bridge.
+
+```bash
+agentpipe bridge disable
+```
+
+Sets `bridge.enabled` to false in your configuration. Your API key and other settings are preserved.
 
 ### `agentpipe init`
 
@@ -1186,6 +1263,108 @@ orch.SetMetrics(metrics.DefaultMetrics)
 - `http://localhost:9090/` - Web UI with documentation
 
 See `examples/prometheus-metrics.yaml` for complete configuration, Prometheus queries, Grafana dashboard setup, and alerting rules.
+
+### Real-Time Conversation Streaming
+
+AgentPipe can stream live conversation events to AgentPipe Web for browser viewing and analysis. This opt-in feature allows you to watch multi-agent conversations unfold in real-time through a web interface.
+
+**Key Features:**
+- **Non-Blocking**: Streaming happens asynchronously and never blocks conversations
+- **Privacy-First**: Disabled by default, API keys never logged, opt-in only
+- **Four Event Types**:
+  - `conversation.started` - Conversation begins with agent participants and system info
+  - `message.created` - Agent sends a message with full metrics (tokens, cost, duration)
+  - `conversation.completed` - Conversation ends with summary statistics
+  - `conversation.error` - Agent or orchestration errors
+- **Comprehensive Metrics**: Track turns, tokens, costs, and duration in real-time
+- **System Information**: OS, version, architecture, AgentPipe version, agent CLI versions
+- **Production-Ready**: Retry logic with exponential backoff, >80% test coverage
+
+**Quick Start:**
+
+```bash
+# Interactive setup wizard
+agentpipe bridge setup
+
+# Check current configuration
+agentpipe bridge status
+
+# Test your connection
+agentpipe bridge test
+
+# Disable streaming
+agentpipe bridge disable
+```
+
+**Configuration:**
+
+The bridge can be configured via CLI wizard, YAML config, or environment variables:
+
+```yaml
+# In your config.yaml
+bridge:
+  enabled: true
+  url: https://agentpipe.ai
+  api_key: your-api-key-here
+  timeout_ms: 10000
+  retry_attempts: 3
+  log_level: info
+```
+
+Or using environment variables:
+```bash
+export AGENTPIPE_STREAM_ENABLED=true
+export AGENTPIPE_STREAM_URL=https://agentpipe.ai
+export AGENTPIPE_STREAM_API_KEY=your-api-key-here
+```
+
+**Get an API Key:**
+
+Visit [agentpipe.ai](https://agentpipe.ai) to create an account and generate your streaming API key.
+
+**How It Works:**
+
+1. **Setup**: Configure bridge with `agentpipe bridge setup`
+2. **Run Conversations**: Start any conversation normally with `agentpipe run`
+3. **Stream Events**: AgentPipe automatically sends events to the web app
+4. **View in Browser**: Watch live conversations at https://agentpipe.ai
+
+**Event Data:**
+
+Each event includes rich context:
+- **conversation.started**: Agent list with types, models, CLI versions, system info
+- **message.created**: Agent name/type, message content, turn number, tokens used, cost, duration
+- **conversation.completed**: Status (completed/interrupted), total messages, turns, tokens, cost, duration
+- **conversation.error**: Error message, type (timeout/rate_limit/unknown), agent type
+
+**Security & Privacy:**
+
+- Bridge is **disabled by default** - you must explicitly enable it
+- API keys are **never logged**, even in debug mode
+- All communication uses **HTTPS** with retry logic
+- Failed streaming requests **never interrupt conversations**
+- You can disable at any time with `agentpipe bridge disable`
+
+**Example Output:**
+
+```bash
+$ agentpipe bridge status
+
+╔══════════════════════════════════════════════════════════╗
+║          AgentPipe Streaming Bridge Status              ║
+╚══════════════════════════════════════════════════════════╝
+
+Enabled:        ✓ Enabled
+URL:            https://agentpipe.ai
+API Key:        ✓ Configured (abcd...xyz9)
+Timeout:        10000ms
+Retry Attempts: 3
+Log Level:      info
+
+Configuration: /Users/you/.agentpipe/config.yaml
+```
+
+See the streaming bridge in action by visiting [agentpipe.ai](https://agentpipe.ai) after enabling and running a conversation.
 
 ### Docker Support
 

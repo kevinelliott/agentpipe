@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -54,6 +55,10 @@ func (c *CopilotAgent) Initialize(config agent.AgentConfig) error {
 func (c *CopilotAgent) IsAvailable() bool {
 	_, err := exec.LookPath("copilot")
 	return err == nil
+}
+
+func (c *CopilotAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("copilot")
 }
 
 func (c *CopilotAgent) HealthCheck(ctx context.Context) error {

@@ -801,6 +801,7 @@ func (m *mockAgent) GetType() string                           { return "mock" }
 func (m *mockAgent) GetModel() string                          { return "mock-model" }
 func (m *mockAgent) GetRateLimit() float64                     { return 0 }
 func (m *mockAgent) GetRateLimitBurst() int                    { return 0 }
+func (m *mockAgent) GetCLIVersion() string                     { return "1.0.0" }
 func (m *mockAgent) Initialize(config agent.AgentConfig) error { return nil }
 func (m *mockAgent) SendMessage(ctx context.Context, messages []agent.Message) (string, error) {
 	return "mock response", nil

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -68,6 +69,11 @@ func (a *AmpAgent) Initialize(config agent.AgentConfig) error {
 func (a *AmpAgent) IsAvailable() bool {
 	_, err := exec.LookPath("amp")
 	return err == nil
+}
+
+// GetCLIVersion returns the version of the Amp CLI
+func (a *AmpAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("amp")
 }
 
 // HealthCheck verifies that the Amp CLI is installed and functional

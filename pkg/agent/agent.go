@@ -100,6 +100,8 @@ type Agent interface {
 	IsAvailable() bool
 	// HealthCheck performs a comprehensive health check of the agent
 	HealthCheck(ctx context.Context) error
+	// GetCLIVersion returns the version of the agent's CLI tool
+	GetCLIVersion() string
 }
 
 // BaseAgent provides a default implementation of common Agent interface methods.

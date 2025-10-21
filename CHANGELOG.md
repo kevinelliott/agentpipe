@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0] - 2025-10-21
+
+### Added
+- **Streaming Bridge**: Opt-in real-time conversation streaming to AgentPipe Web
+  - Stream live conversation events to AgentPipe Web for browser viewing
+  - Four event types: `conversation.started`, `message.created`, `conversation.completed`, `conversation.error`
+  - Non-blocking async HTTP implementation that never blocks conversations
+  - CLI commands for easy configuration:
+    - `agentpipe bridge setup` - Interactive configuration wizard
+    - `agentpipe bridge status` - View current bridge configuration (with `--json` flag support)
+    - `agentpipe bridge test` - Test connection to AgentPipe Web
+    - `agentpipe bridge disable` - Disable streaming
+  - System info collection: OS, version, architecture, AgentPipe version, Go version
+  - Configuration via viper config file or environment variables
+  - Build-tag conditional defaults (dev vs production URLs)
+  - Privacy-first design: disabled by default, API keys never logged, clear disclosure
+  - Production-ready with retry logic (exponential backoff) and comprehensive tests (>80% coverage)
+  - Agent participants tracked with CLI version information
+  - Conversation metrics: turns, tokens, cost, duration
+
+### Changed
+- **BREAKING**: Extended Agent interface with new `GetCLIVersion()` method
+  - All agent adapters now implement version detection
+  - Uses internal registry for version lookup
+  - Required for streaming bridge agent participant data
+  - Custom agent implementations must add this method
+
+### Improved
+- **Configuration**: Added `BridgeConfig` struct to support streaming bridge settings
+  - Bridge enabled status, URL, API key, timeout, retry attempts, log level
+  - Defaults applied automatically in config parsing
+  - Environment variable overrides supported
+
+### Fixed
+- **Thread Safety**: Added RWMutex for safe concurrent access to orchestrator bridge emitter
+- **Linting**: Fixed non-constant format string error in orchestrator error handling
+
 ## [v0.2.2] - 2025-10-20
 
 ### Added

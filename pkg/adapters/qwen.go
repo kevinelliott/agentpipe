@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/registry"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
@@ -53,6 +54,10 @@ func (q *QwenAgent) Initialize(config agent.AgentConfig) error {
 func (q *QwenAgent) IsAvailable() bool {
 	_, err := exec.LookPath("qwen")
 	return err == nil
+}
+
+func (q *QwenAgent) GetCLIVersion() string {
+	return registry.GetInstalledVersion("qwen")
 }
 
 func (q *QwenAgent) HealthCheck(ctx context.Context) error {
