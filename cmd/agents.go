@@ -613,7 +613,14 @@ func outputAgentsJSON(agents []*registry.AgentDefinition, showVersionInfo bool) 
 		jsonAgents = append(jsonAgents, agentJSON)
 	}
 
-	output, err := json.MarshalIndent(jsonAgents, "", "  ")
+	// Wrap array in object for consistent API structure
+	wrapper := struct {
+		Agents []AgentListJSON `json:"agents"`
+	}{
+		Agents: jsonAgents,
+	}
+
+	output, err := json.MarshalIndent(wrapper, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating JSON output: %v\n", err)
 		os.Exit(1)
@@ -645,7 +652,14 @@ func outputOutdatedJSON(rows []agentVersionRow) {
 		})
 	}
 
-	output, err := json.MarshalIndent(jsonAgents, "", "  ")
+	// Wrap array in object for consistent API structure
+	wrapper := struct {
+		Agents []OutdatedAgentJSON `json:"agents"`
+	}{
+		Agents: jsonAgents,
+	}
+
+	output, err := json.MarshalIndent(wrapper, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating JSON output: %v\n", err)
 		os.Exit(1)
