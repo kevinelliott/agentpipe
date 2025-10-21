@@ -90,7 +90,6 @@ func TestGetByCommand(t *testing.T) {
 				}
 				if agent == nil {
 					t.Errorf("Expected agent for command '%s', got nil", tt.command)
-					return
 				}
 				if agent.Name != tt.wantName {
 					t.Errorf("Expected agent name '%s', got '%s'", tt.wantName, agent.Name)
