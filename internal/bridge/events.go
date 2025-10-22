@@ -17,6 +17,8 @@ const (
 	EventConversationCompleted EventType = "conversation.completed"
 	// EventConversationError is emitted when an error occurs during the conversation
 	EventConversationError EventType = "conversation.error"
+	// EventBridgeTest is emitted when testing the bridge connection
+	EventBridgeTest EventType = "bridge.test"
 )
 
 // UTCTime wraps time.Time to ensure JSON marshaling always uses UTC with Z suffix
@@ -96,4 +98,10 @@ type ConversationErrorData struct {
 	ErrorMessage   string `json:"error_message"`
 	ErrorType      string `json:"error_type,omitempty"`
 	AgentType      string `json:"agent_type,omitempty"`
+}
+
+// BridgeTestData contains data for bridge.test events
+type BridgeTestData struct {
+	Message    string     `json:"message"`
+	SystemInfo SystemInfo `json:"system_info"`
 }

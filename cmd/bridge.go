@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -303,35 +302,16 @@ func runBridgeTest() {
 	fmt.Printf("Timeout: %dms\n", config.TimeoutMs)
 	fmt.Println()
 
-	// Create a test event
-	emitter := bridge.NewEmitter(config, version.GetShortVersion())
-	testAgents := []bridge.AgentParticipant{
-		{
-			AgentType:  "test",
-			Name:       "Test Agent",
-			Model:      "test-model",
-			CLIVersion: "1.0.0",
-		},
-	}
-
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.TimeoutMs)*time.Millisecond)
-	defer cancel()
-
 	// Send test event
 	fmt.Println("Sending test event...")
 	client := bridge.NewClient(config)
 
 	event := &bridge.Event{
-		Type:      bridge.EventConversationStarted,
+		Type:      bridge.EventBridgeTest,
 		Timestamp: bridge.UTCTime{Time: time.Now()},
-		Data: bridge.ConversationStartedData{
-			ConversationID: emitter.GetConversationID(),
-			Mode:           "test",
-			InitialPrompt:  "Bridge connection test",
-			MaxTurns:       0,
-			Agents:         testAgents,
-			SystemInfo:     bridge.CollectSystemInfo(version.GetShortVersion()),
+		Data: bridge.BridgeTestData{
+			Message:    "Bridge connection test",
+			SystemInfo: bridge.CollectSystemInfo(version.GetShortVersion()),
 		},
 	}
 
@@ -341,10 +321,7 @@ func runBridgeTest() {
 		os.Exit(1)
 	}
 
-	_ = ctx // Use ctx to avoid unused variable warning
-
 	fmt.Println("✓ Connection successful!")
-	fmt.Printf("  Conversation ID: %s\n", emitter.GetConversationID())
 }
 
 func runBridgeDisable() {
