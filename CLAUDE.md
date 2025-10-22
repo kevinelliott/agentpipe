@@ -24,14 +24,14 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 ### CI/CD Configuration
 
 #### Linting
-- Use golangci-lint-action@v8 with golangci-lint v1.64.8 (stable v1.x)
-- GitHub Action version parameter: `version: v1.64.8` (pinned for reproducibility)
-- **IMPORTANT**: Config file (`.golangci.yml`) uses v1.x format (no version field required)
+- Use golangci-lint-action@v6 with golangci-lint v1.x (latest stable)
+- GitHub Action version parameter: `version: latest` (downloads latest v1.x)
+- **IMPORTANT**: Config file (`.golangci.yml`) uses v1.x format (no version field)
 - **Note**: Removed `nakedret` linter (removed in v2.x, compatible with v1.x)
-- **Status**: v2.5.0 (latest) has config compatibility issues; v1.64.8 is stable
-- **Local linting**: Install golangci-lint v1.64.8
+- **Status**: v2.x requires config schema changes; staying on v1.x is more stable
+- **Local linting**: Install latest golangci-lint v1.x
   - Install: `brew install golangci-lint`
-  - Or: `go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8`
+  - Or: `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - Configuration structure: `linters-settings:` for linter config, `issues.exclude-rules:` for exclusions
 - Cognitive complexity threshold: 30
 - Excluded from complexity checks: pkg/tui/, pkg/adapters/, pkg/orchestrator/
