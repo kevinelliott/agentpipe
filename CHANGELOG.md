@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.1] - 2025-10-22
+
+### Added
+- **Conversation Summarization**: Automatic AI-generated summaries at conversation completion
+  - Configurable summary agent (default: Gemini, supports all agent types)
+  - `--no-summary` flag to disable summaries
+  - `--summary-agent` flag to override configured agent
+  - Summary configuration in YAML config file
+  - Summary metadata includes agent type, model, tokens, cost, and duration
+  - Summary tokens and cost factored into conversation totals
+  - Smart prompt design avoiding meta-commentary
+
+- **Unique Agent IDs**: Enhanced agent identification for multiple agents of same type
+  - Agent IDs now unique per instance: `{agentType}-{index}` (e.g., `claude-0`, `claude-1`)
+  - AgentID included in all bridge streaming events
+  - Allows tracking of multiple agents with same type in single conversation
+  - AgentID in conversation.started participants list
+  - AgentID in all message.created events
+
+- **Event Store**: Local event persistence
+  - Events saved to `~/.agentpipe/events/` directory
+  - One JSON Lines file per conversation
+  - Non-blocking async operation
+  - Debug logging for storage errors
+
+### Changed
+- **Bridge Events**: Enhanced ConversationCompletedData structure
+  - Summary field now contains full SummaryMetadata (instead of plain string)
+  - Includes summary agent type, model, tokens, cost, duration
+  - Total tokens and cost now include summary metrics
+  - Duration does not include summary generation time
+
+- **Streaming Protocol**: Updated message event structure
+  - EmitMessageCreated now requires agentID as first parameter
+  - MessageCreatedData includes agent_id field
+  - AgentParticipant includes agent_id field
+
+### Fixed
+- Agent identification for conversations with multiple agents of same type
+- Cost tracking to include summary generation costs in totals
+- Thread-safe access to bridge emitter in orchestrator
+
+## [v0.4.0] - 2025-10-21
+
+### Added
+- **Bridge Connection Events**: Automatic connection announcement
+  - Emit bridge.connected event on emitter initialization
+  - System info included in connection event
+  - Synchronous sending ensures reliability
+
+- **Cancellation Detection**: Detect and report conversation interruption
+  - Emit conversation.completed with status="interrupted" on Ctrl+C
+  - Distinguish between normal completion and cancellation
+  - Proper error propagation in orchestrator
+
+### Changed
+- **Event Reliability**: Improved critical event delivery
+  - Use synchronous SendEvent for completion and error events
+  - Prevent truncated JSON payloads on program exit
+
 ## [v0.3.0] - 2025-10-21
 
 ### Added

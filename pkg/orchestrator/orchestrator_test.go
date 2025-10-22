@@ -100,21 +100,25 @@ func (m *MockBridgeEmitter) GetConversationID() string {
 	return "test-conv-123"
 }
 
-func (m *MockBridgeEmitter) EmitConversationStarted(mode string, initialPrompt string, maxTurns int, agents []bridge.AgentParticipant) {
+func (m *MockBridgeEmitter) EmitConversationStarted(mode string, initialPrompt string, maxTurns int, agents []bridge.AgentParticipant, commandInfo *bridge.CommandInfo) {
 	m.conversationStartedCalled = true
 }
 
-func (m *MockBridgeEmitter) EmitMessageCreated(agentType, agentName, content, model string, turnNumber, tokensUsed, inputTokens, outputTokens int, cost float64, duration time.Duration) {
+func (m *MockBridgeEmitter) EmitMessageCreated(agentID, agentType, agentName, content, model string, turnNumber, tokensUsed, inputTokens, outputTokens int, cost float64, duration time.Duration) {
 	m.messageCreatedCount++
 }
 
-func (m *MockBridgeEmitter) EmitConversationCompleted(status string, totalMessages, totalTurns, totalTokens int, totalCost float64, duration time.Duration) {
+func (m *MockBridgeEmitter) EmitConversationCompleted(status string, totalMessages, totalTurns, totalTokens int, totalCost float64, duration time.Duration, summary *bridge.SummaryMetadata) {
 	m.conversationCompletedCalled = true
 	m.completedStatus = status
 }
 
 func (m *MockBridgeEmitter) EmitConversationError(errorMessage, errorType, agentType string) {
 	m.errorCalled = true
+}
+
+func (m *MockBridgeEmitter) Close() error {
+	return nil
 }
 
 func TestNewOrchestrator(t *testing.T) {

@@ -40,6 +40,16 @@ type OrchestratorConfig struct {
 	ResponseDelay time.Duration `yaml:"response_delay"`
 	// InitialPrompt is an optional starting prompt for the conversation
 	InitialPrompt string `yaml:"initial_prompt"`
+	// Summary defines conversation summary generation settings
+	Summary SummaryConfig `yaml:"summary"`
+}
+
+// SummaryConfig defines conversation summary generation behavior.
+type SummaryConfig struct {
+	// Enabled determines if conversation summaries are generated (default: true)
+	Enabled bool `yaml:"enabled"`
+	// Agent is the agent type to use for summary generation (default: "gemini")
+	Agent string `yaml:"agent"`
 }
 
 // LoggingConfig defines conversation logging behavior.
@@ -87,6 +97,10 @@ func NewDefaultConfig() *Config {
 			MaxTurns:      10,
 			TurnTimeout:   30 * time.Second,
 			ResponseDelay: 1 * time.Second,
+			Summary: SummaryConfig{
+				Enabled: true,
+				Agent:   "gemini",
+			},
 		},
 		Logging: LoggingConfig{
 			Enabled:     true,
@@ -173,6 +187,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// nolint:gocyclo // Config defaults are inherently sequential; complexity is acceptable for readability
 func (c *Config) applyDefaults() {
 	if c.Version == "" {
 		c.Version = "1.0"
@@ -192,6 +207,14 @@ func (c *Config) applyDefaults() {
 
 	if c.Orchestrator.ResponseDelay == 0 {
 		c.Orchestrator.ResponseDelay = 1 * time.Second
+	}
+
+	// Summary defaults
+	// Note: Enabled defaults to true (opt-out with --no-summary)
+	if c.Orchestrator.Summary.Agent == "" {
+		c.Orchestrator.Summary.Agent = "gemini"
+		// Default enabled to true for new configs
+		c.Orchestrator.Summary.Enabled = true
 	}
 
 	// Logging defaults

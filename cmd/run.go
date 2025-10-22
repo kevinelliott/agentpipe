@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/kevinelliott/agentpipe/internal/bridge"
@@ -44,6 +45,8 @@ var (
 	stateFile          string
 	streamEnabled      bool
 	noStream           bool
+	noSummary          bool
+	summaryAgent       string
 )
 
 var runCmd = &cobra.Command{
@@ -75,6 +78,8 @@ func init() {
 	runCmd.Flags().StringVar(&stateFile, "state-file", "", "Specific file path to save conversation state")
 	runCmd.Flags().BoolVar(&streamEnabled, "stream", false, "Enable streaming to AgentPipe Web for this run (overrides config)")
 	runCmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming to AgentPipe Web for this run (overrides config)")
+	runCmd.Flags().BoolVar(&noSummary, "no-summary", false, "Disable conversation summary generation (overrides config)")
+	runCmd.Flags().StringVar(&summaryAgent, "summary-agent", "", "Agent to use for summary generation (default: gemini, overrides config)")
 }
 
 func runConversation(cobraCmd *cobra.Command, args []string) {
@@ -138,6 +143,14 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 	}
 	if showMetrics {
 		cfg.Logging.ShowMetrics = true
+	}
+
+	// Apply CLI overrides for summary
+	if noSummary {
+		cfg.Orchestrator.Summary.Enabled = false
+	}
+	if summaryAgent != "" {
+		cfg.Orchestrator.Summary.Agent = summaryAgent
 	}
 
 	if err := startConversation(cobraCmd, cfg); err != nil {
@@ -324,6 +337,7 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		MaxTurns:      cfg.Orchestrator.MaxTurns,
 		ResponseDelay: cfg.Orchestrator.ResponseDelay,
 		InitialPrompt: cfg.Orchestrator.InitialPrompt,
+		Summary:       cfg.Orchestrator.Summary,
 	}
 
 	// Create logger if enabled
@@ -349,6 +363,10 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	if chatLogger != nil {
 		orch.SetLogger(chatLogger)
 	}
+
+	// Capture command information for event tracking
+	commandInfo := buildCommandInfo(cmd, cfg)
+	orch.SetCommandInfo(commandInfo)
 
 	// Set up streaming bridge if enabled
 	shouldStream := determineShouldStream(streamEnabled, noStream)
@@ -543,4 +561,43 @@ func determineShouldStream(streamEnabled, noStream bool) bool {
 	// We return true here to let the config be checked
 	bridgeConfig := bridge.LoadConfig()
 	return bridgeConfig.Enabled
+}
+
+// buildCommandInfo constructs a CommandInfo struct from the cobra command and config
+func buildCommandInfo(cmd *cobra.Command, cfg *config.Config) *bridge.CommandInfo {
+	// Build the full command string
+	args := os.Args
+	fullCommand := strings.Join(args, " ")
+
+	// Build options map with all relevant flags
+	options := make(map[string]string)
+
+	// Add all flags that were explicitly set
+	cmd.Flags().Visit(func(flag *pflag.Flag) {
+		options[flag.Name] = flag.Value.String()
+	})
+
+	// Build agent list string for readability
+	agentList := make([]string, 0, len(cfg.Agents))
+	for _, agent := range cfg.Agents {
+		agentSpec := fmt.Sprintf("%s:%s", agent.Type, agent.Name)
+		agentList = append(agentList, agentSpec)
+	}
+	if len(agentList) > 0 {
+		options["agents_list"] = strings.Join(agentList, ",")
+	}
+
+	return &bridge.CommandInfo{
+		FullCommand:    fullCommand,
+		Args:           args[1:], // Exclude program name
+		Mode:           cfg.Orchestrator.Mode,
+		MaxTurns:       cfg.Orchestrator.MaxTurns,
+		InitialPrompt:  cfg.Orchestrator.InitialPrompt,
+		ConfigFile:     configPath,
+		TUIEnabled:     useTUI,
+		LoggingEnabled: cfg.Logging.Enabled,
+		ShowMetrics:    showMetrics,
+		Timeout:        int(cfg.Orchestrator.TurnTimeout.Seconds()),
+		Options:        options,
+	}
 }

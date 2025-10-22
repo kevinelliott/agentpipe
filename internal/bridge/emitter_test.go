@@ -106,7 +106,7 @@ func TestEmitConversationStarted(t *testing.T) {
 		},
 	}
 
-	emitter.EmitConversationStarted("round-robin", "Hello agents", 10, agents)
+	emitter.EmitConversationStarted("round-robin", "Hello agents", 10, agents, nil)
 
 	// Collect both events (bridge.connected and conversation.started)
 	events := collectEvents(t, receivedEvents, 2)
@@ -170,8 +170,8 @@ func TestEmitMessageCreated(t *testing.T) {
 	emitter := NewEmitter(config, "0.2.4")
 
 	// Emit two messages to test sequence numbering
-	emitter.EmitMessageCreated("claude", "Claude", "Hello", "claude-sonnet-4", 1, 100, 50, 50, 0.001, 1234*time.Millisecond)
-	emitter.EmitMessageCreated("gemini", "Gemini", "Hi", "gemini-pro", 1, 80, 40, 40, 0.0008, 987*time.Millisecond)
+	emitter.EmitMessageCreated("claude-0", "claude", "Claude", "Hello", "claude-sonnet-4", 1, 100, 50, 50, 0.001, 1234*time.Millisecond)
+	emitter.EmitMessageCreated("gemini-0", "gemini", "Gemini", "Hi", "gemini-pro", 1, 80, 40, 40, 0.0008, 987*time.Millisecond)
 
 	// Collect all three events (bridge.connected + two messages)
 	events := collectEvents(t, receivedEvents, 3)
@@ -270,7 +270,18 @@ func TestEmitConversationCompleted(t *testing.T) {
 
 	emitter := NewEmitter(config, "0.2.4")
 
-	emitter.EmitConversationCompleted("completed", 20, 10, 3000, 0.03, 300*time.Second)
+	summary := &SummaryMetadata{
+		Text:         "Test summary of the conversation",
+		AgentType:    "gemini",
+		Model:        "gemini-2.0-flash",
+		InputTokens:  2500,
+		OutputTokens: 150,
+		TotalTokens:  2650,
+		Cost:         0.002,
+		DurationMs:   1200,
+	}
+
+	emitter.EmitConversationCompleted("completed", 20, 10, 3000, 0.03, 300*time.Second, summary)
 
 	// Collect both events (bridge.connected and conversation.completed)
 	events := collectEvents(t, receivedEvents, 2)
@@ -381,19 +392,19 @@ func TestSequenceNumbering(t *testing.T) {
 	}
 
 	// After first message, should be 1
-	emitter.EmitMessageCreated("claude", "Claude", "msg1", "model", 1, 100, 50, 50, 0.001, 1*time.Second)
+	emitter.EmitMessageCreated("claude-0", "claude", "Claude", "msg1", "model", 1, 100, 50, 50, 0.001, 1*time.Second)
 	if emitter.sequenceNumber != 1 {
 		t.Errorf("Expected sequence_number=1 after first message, got %d", emitter.sequenceNumber)
 	}
 
 	// After second message, should be 2
-	emitter.EmitMessageCreated("gemini", "Gemini", "msg2", "model", 1, 100, 50, 50, 0.001, 1*time.Second)
+	emitter.EmitMessageCreated("gemini-0", "gemini", "Gemini", "msg2", "model", 1, 100, 50, 50, 0.001, 1*time.Second)
 	if emitter.sequenceNumber != 2 {
 		t.Errorf("Expected sequence_number=2 after second message, got %d", emitter.sequenceNumber)
 	}
 
 	// After third message, should be 3
-	emitter.EmitMessageCreated("claude", "Claude", "msg3", "model", 2, 100, 50, 50, 0.001, 1*time.Second)
+	emitter.EmitMessageCreated("claude-1", "claude", "Claude", "msg3", "model", 2, 100, 50, 50, 0.001, 1*time.Second)
 	if emitter.sequenceNumber != 3 {
 		t.Errorf("Expected sequence_number=3 after third message, got %d", emitter.sequenceNumber)
 	}

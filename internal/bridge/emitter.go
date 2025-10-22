@@ -1,6 +1,9 @@
 package bridge
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,20 +11,37 @@ import (
 
 // Emitter provides high-level methods for emitting streaming events
 type Emitter struct {
-	client         *Client
-	conversationID string
-	sequenceNumber int
-	systemInfo     SystemInfo
+	client          *Client
+	conversationID  string
+	sequenceNumber  int
+	systemInfo      SystemInfo
+	streamingFailed bool // Tracks if streaming has failed (to avoid repeated warnings)
+	eventStore      *EventStore
 }
 
 // NewEmitter creates a new event emitter for a conversation
 // Automatically sends a bridge.connected event to announce the connection
 func NewEmitter(config *Config, agentpipeVersion string) *Emitter {
+	conversationID := uuid.New().String()
+
+	// Create event store for local logging
+	// Use default directory if not specified in config
+	logDir := filepath.Join(os.Getenv("HOME"), ".agentpipe", "events")
+	eventStore, err := NewEventStore(conversationID, logDir)
+	if err != nil {
+		// Log error but continue without local storage
+		if config.LogLevel == "debug" {
+			fmt.Fprintf(os.Stderr, "Debug: Failed to create event store: %v\n", err)
+		}
+	}
+
 	emitter := &Emitter{
-		client:         NewClient(config),
-		conversationID: uuid.New().String(),
-		sequenceNumber: 0,
-		systemInfo:     CollectSystemInfo(agentpipeVersion),
+		client:          NewClient(config),
+		conversationID:  conversationID,
+		sequenceNumber:  0,
+		systemInfo:      CollectSystemInfo(agentpipeVersion),
+		streamingFailed: false,
+		eventStore:      eventStore,
 	}
 
 	// Emit bridge.connected event to announce the connection
@@ -35,12 +55,33 @@ func (e *Emitter) GetConversationID() string {
 	return e.conversationID
 }
 
+// saveEventLocally saves an event to the local event store
+func (e *Emitter) saveEventLocally(event *Event) {
+	if e.eventStore != nil {
+		if err := e.eventStore.SaveEvent(event); err != nil {
+			// Log error but don't fail
+			if e.client.config.LogLevel == "debug" {
+				fmt.Fprintf(os.Stderr, "Debug: Failed to save event locally: %v\n", err)
+			}
+		}
+	}
+}
+
+// Close closes the emitter and flushes any buffered events
+func (e *Emitter) Close() error {
+	if e.eventStore != nil {
+		return e.eventStore.Close()
+	}
+	return nil
+}
+
 // EmitConversationStarted emits a conversation.started event
 func (e *Emitter) EmitConversationStarted(
 	mode string,
 	initialPrompt string,
 	maxTurns int,
 	agents []AgentParticipant,
+	commandInfo *CommandInfo,
 ) {
 	event := &Event{
 		Type:      EventConversationStarted,
@@ -52,13 +93,16 @@ func (e *Emitter) EmitConversationStarted(
 			MaxTurns:       maxTurns,
 			Participants:   agents,
 			SystemInfo:     e.systemInfo,
+			Command:        commandInfo,
 		},
 	}
+	e.saveEventLocally(event)
 	e.client.SendEventAsync(event)
 }
 
 // EmitMessageCreated emits a message.created event
 func (e *Emitter) EmitMessageCreated(
+	agentID string,
 	agentType string,
 	agentName string,
 	content string,
@@ -77,6 +121,7 @@ func (e *Emitter) EmitMessageCreated(
 		Data: MessageCreatedData{
 			ConversationID: e.conversationID,
 			MessageID:      uuid.New().String(),
+			AgentID:        agentID,
 			AgentType:      agentType,
 			AgentName:      agentName,
 			Content:        content,
@@ -90,6 +135,7 @@ func (e *Emitter) EmitMessageCreated(
 			DurationMs:     duration.Milliseconds(),
 		},
 	}
+	e.saveEventLocally(event)
 	e.client.SendEventAsync(event)
 }
 
@@ -102,6 +148,7 @@ func (e *Emitter) EmitConversationCompleted(
 	totalTokens int,
 	totalCost float64,
 	duration time.Duration,
+	summary *SummaryMetadata,
 ) {
 	event := &Event{
 		Type:      EventConversationCompleted,
@@ -114,8 +161,10 @@ func (e *Emitter) EmitConversationCompleted(
 			TotalTokens:     totalTokens,
 			TotalCost:       totalCost,
 			DurationSeconds: duration.Seconds(),
+			Summary:         summary,
 		},
 	}
+	e.saveEventLocally(event)
 	// Use synchronous send for completion event to ensure it's sent before program exit
 	_ = e.client.SendEvent(event)
 }
@@ -137,6 +186,7 @@ func (e *Emitter) EmitConversationError(
 			AgentType:      agentType,
 		},
 	}
+	e.saveEventLocally(event)
 	// Use synchronous send for error event to ensure it's sent before program exit
 	_ = e.client.SendEvent(event)
 }
@@ -152,6 +202,7 @@ func (e *Emitter) emitBridgeConnected() {
 			ConnectedAt: time.Now().UTC().Format(time.RFC3339),
 		},
 	}
+	e.saveEventLocally(event)
 	// Use synchronous send to ensure connection is announced before proceeding
 	_ = e.client.SendEvent(event)
 }

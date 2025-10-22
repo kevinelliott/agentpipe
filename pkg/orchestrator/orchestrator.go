@@ -15,6 +15,7 @@ import (
 
 	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
+	"github.com/kevinelliott/agentpipe/pkg/config"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 	"github.com/kevinelliott/agentpipe/pkg/logger"
 	"github.com/kevinelliott/agentpipe/pkg/metrics"
@@ -55,6 +56,8 @@ type OrchestratorConfig struct {
 	RetryMaxDelay time.Duration
 	// RetryMultiplier is the multiplier for exponential backoff (typically 2.0)
 	RetryMultiplier float64
+	// Summary defines conversation summary generation settings
+	Summary config.SummaryConfig
 }
 
 // Orchestrator coordinates multi-agent conversations.
@@ -69,10 +72,11 @@ type Orchestrator struct {
 	mu                sync.RWMutex
 	writer            io.Writer
 	logger            *logger.ChatLogger
-	currentTurnNumber int              // tracks the current turn number for middleware context
-	metrics           *metrics.Metrics // Prometheus metrics for monitoring
-	bridgeEmitter     *bridge.Emitter  // optional streaming bridge for real-time updates
-	conversationStart time.Time        // conversation start time for duration tracking
+	currentTurnNumber int                 // tracks the current turn number for middleware context
+	metrics           *metrics.Metrics    // Prometheus metrics for monitoring
+	bridgeEmitter     *bridge.Emitter     // optional streaming bridge for real-time updates
+	conversationStart time.Time           // conversation start time for duration tracking
+	commandInfo       *bridge.CommandInfo // information about the command that started this conversation
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -154,9 +158,18 @@ func (o *Orchestrator) SetBridgeEmitter(emitter *bridge.Emitter) {
 	o.bridgeEmitter = emitter
 }
 
+// SetCommandInfo sets the command information for this conversation.
+// This captures the agentpipe command that was executed.
+// This method is thread-safe.
+func (o *Orchestrator) SetCommandInfo(info *bridge.CommandInfo) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.commandInfo = info
+}
+
 // emitConversationCompleted emits the conversation.completed event if bridge is enabled.
 // This helper method calculates the conversation statistics and duration.
-func (o *Orchestrator) emitConversationCompleted(status string) {
+func (o *Orchestrator) emitConversationCompleted(status string, summary *bridge.SummaryMetadata) {
 	o.mu.RLock()
 	bridgeEmitter := o.bridgeEmitter
 	messageCount := len(o.messages)
@@ -177,6 +190,12 @@ func (o *Orchestrator) emitConversationCompleted(status string) {
 		}
 	}
 
+	// Add summary metrics to totals if summary was generated
+	if summary != nil {
+		totalTokens += summary.TotalTokens
+		totalCost += summary.Cost
+	}
+
 	duration := time.Since(startTime)
 
 	bridgeEmitter.EmitConversationCompleted(
@@ -186,6 +205,7 @@ func (o *Orchestrator) emitConversationCompleted(status string) {
 		totalTokens,
 		totalCost,
 		duration,
+		summary,
 	)
 }
 
@@ -197,6 +217,110 @@ func (o *Orchestrator) emitConversationError(errorMsg, errorType, agentType stri
 
 	if bridgeEmitter != nil {
 		bridgeEmitter.EmitConversationError(errorMsg, errorType, agentType)
+	}
+}
+
+// generateSummary generates a summary of the conversation using the configured summary agent.
+// Returns nil if summary is disabled or if generation fails.
+func (o *Orchestrator) generateSummary(ctx context.Context) *bridge.SummaryMetadata {
+	// Check if summary is enabled
+	if !o.config.Summary.Enabled {
+		return nil
+	}
+
+	// Get conversation messages
+	messages := o.getMessages()
+	if len(messages) == 0 {
+		return nil
+	}
+
+	// Build conversation text for summary
+	var conversationText strings.Builder
+	for _, msg := range messages {
+		// Skip system messages
+		if msg.Role == "system" {
+			continue
+		}
+		conversationText.WriteString(fmt.Sprintf("%s: %s\n\n", msg.AgentName, msg.Content))
+	}
+
+	if conversationText.Len() == 0 {
+		return nil
+	}
+
+	// Create summary prompt
+	summaryPrompt := fmt.Sprintf(`Please provide a concise summary of the following conversation. Focus on the key points and conclusions. Do not include meta-commentary about the nature of the conversation (e.g., "This is a conversation between agents").
+
+Conversation:
+%s
+
+Summary:`, conversationText.String())
+
+	// Create a temporary agent for summary generation
+	summaryAgent, err := agent.CreateAgent(agent.AgentConfig{
+		ID:   "summary-agent",
+		Type: o.config.Summary.Agent,
+		Name: "Summary",
+	})
+
+	if err != nil || summaryAgent == nil {
+		log.WithField("agent_type", o.config.Summary.Agent).WithError(err).Warn("failed to create summary agent")
+		return nil
+	}
+
+	// Initialize the summary agent
+	err = summaryAgent.Initialize(agent.AgentConfig{
+		ID:   "summary-agent",
+		Type: o.config.Summary.Agent,
+		Name: "Summary",
+	})
+	if err != nil {
+		log.WithError(err).Warn("failed to initialize summary agent")
+		return nil
+	}
+
+	// Create summary messages
+	summaryMessages := []agent.Message{
+		{
+			AgentID:   "system",
+			AgentName: "SYSTEM",
+			Content:   summaryPrompt,
+			Timestamp: time.Now().Unix(),
+			Role:      "user",
+		},
+	}
+
+	// Generate summary with a timeout
+	summaryCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// Calculate input tokens from conversation text
+	inputTokens := utils.EstimateTokens(conversationText.String())
+
+	startTime := time.Now()
+	response, err := summaryAgent.SendMessage(summaryCtx, summaryMessages)
+	duration := time.Since(startTime)
+
+	if err != nil {
+		log.WithError(err).Warn("failed to generate conversation summary")
+		return nil
+	}
+
+	// Calculate metrics
+	outputTokens := utils.EstimateTokens(response)
+	totalTokens := inputTokens + outputTokens
+	model := summaryAgent.GetModel()
+	cost := utils.EstimateCost(model, inputTokens, outputTokens)
+
+	return &bridge.SummaryMetadata{
+		Text:         strings.TrimSpace(response),
+		AgentType:    o.config.Summary.Agent,
+		Model:        model,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		TotalTokens:  totalTokens,
+		Cost:         cost,
+		DurationMs:   duration.Milliseconds(),
 	}
 }
 
@@ -292,7 +416,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	// Track return error to determine status
 	var runErr error
 
-	// Emit conversation.completed when function returns
+	// Emit conversation.completed and close bridge when function returns
 	defer func() {
 		// Determine status based on context cancellation or error
 		status := "completed"
@@ -308,7 +432,19 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 			}
 		}
 
-		o.emitConversationCompleted(status)
+		// Generate summary if enabled
+		// Use background context since original ctx may be canceled
+		summary := o.generateSummary(context.Background())
+
+		o.emitConversationCompleted(status, summary)
+
+		// Close bridge emitter to flush events and close event store
+		o.mu.RLock()
+		bridgeEmitter := o.bridgeEmitter
+		o.mu.RUnlock()
+		if bridgeEmitter != nil {
+			_ = bridgeEmitter.Close()
+		}
 	}()
 
 	// Emit conversation.started event if bridge is enabled
@@ -321,6 +457,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		participants := make([]bridge.AgentParticipant, 0, len(o.agents))
 		for _, a := range o.agents {
 			participants = append(participants, bridge.AgentParticipant{
+				AgentID:    a.GetID(),
 				AgentType:  a.GetType(),
 				Model:      a.GetModel(),
 				Name:       a.GetName(),
@@ -334,6 +471,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 			o.config.InitialPrompt,
 			o.config.MaxTurns,
 			participants,
+			o.commandInfo,
 		)
 	}
 
@@ -725,6 +863,7 @@ func (o *Orchestrator) getAgentResponse(ctx context.Context, a agent.Agent) erro
 	// Emit message.created event if bridge is enabled
 	if bridgeEmitter != nil {
 		bridgeEmitter.EmitMessageCreated(
+			a.GetID(),
 			a.GetType(),
 			a.GetName(),
 			response,

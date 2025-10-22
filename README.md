@@ -92,33 +92,35 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.3.0 - Real-time conversation streaming to AgentPipe Web
+**Latest Release**: v0.4.1 - Conversation summarization & unique agent IDs
 
-**What's New in v0.3.0**:
+**What's New in v0.4.1**:
 
-🌐 **Major New Feature - Streaming Bridge:**
-- **Real-Time Conversation Streaming**: Stream live conversations to AgentPipe Web for browser viewing
-  - Four event types: conversation.started, message.created, conversation.completed, conversation.error
-  - Non-blocking async implementation that never interrupts conversations
-  - Rich metrics: agent participants, CLI versions, tokens, costs, duration, system info
-  - Privacy-first: disabled by default, API keys never logged
-- **Bridge CLI Commands**: Easy configuration and management
-  - `agentpipe bridge setup` - Interactive wizard
-  - `agentpipe bridge status` - View config (with `--json` support)
-  - `agentpipe bridge test` - Test connection
-  - `agentpipe bridge disable` - Disable streaming
-- **Production Ready**: Retry logic with exponential backoff, >80% test coverage
+📝 **Conversation Summarization**:
+- **AI-Generated Summaries**: Automatic summaries at conversation completion
+  - Configurable summary agent (default: Gemini, supports all agent types)
+  - `--no-summary` flag to disable summaries
+  - `--summary-agent` flag to override configured agent
+  - Summary metadata includes agent type, model, tokens, cost, duration
+  - Summary tokens and cost factored into conversation totals
+  - Smart prompt design avoiding meta-commentary
 
-⚠️ **Breaking Changes:**
-- Extended Agent interface with `GetCLIVersion()` method
-  - All built-in adapters updated
-  - Custom agent implementations must implement this new method
+👥 **Unique Agent IDs**:
+- **Enhanced Agent Identification**: Support multiple agents of the same type
+  - Agent IDs now unique per instance: `claude-0`, `claude-1`, etc.
+  - AgentID included in all bridge streaming events
+  - Track individual agents in conversations with multiple agents of same type
+  - AgentID in conversation.started participants list
+  - AgentID in all message.created events
 
-⚡ **Improvements:**
-- Added BridgeConfig to support streaming configuration
-- Thread-safe orchestrator with RWMutex for concurrent bridge access
-- Environment variable overrides for bridge settings
+💾 **Local Event Storage**:
+- **Event Persistence**: Events saved to `~/.agentpipe/events/`
+  - One JSON Lines file per conversation
+  - Non-blocking async operation
+  - Debug logging for storage errors
 
+**Previous Release - v0.4.0**: Bridge connection events and cancellation detection
+**Previous Release - v0.3.0**: Real-time conversation streaming to AgentPipe Web
 **Previous Release - v0.2.2**: JSON output support for agents list command
 **Previous Release - v0.2.1**: OpenCode agent and improved package management
 **Previous Release - v0.2.0**: Agent upgrade command and automated version detection

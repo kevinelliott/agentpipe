@@ -12,8 +12,9 @@ import (
 
 // Client is an HTTP client for sending streaming events to AgentPipe Web
 type Client struct {
-	config     *Config
-	httpClient *http.Client
+	config           *Config
+	httpClient       *http.Client
+	suppressWarnings bool // Set to true after first failure to avoid spamming warnings
 }
 
 // NewClient creates a new bridge client with the given configuration
@@ -23,6 +24,7 @@ func NewClient(config *Config) *Client {
 		httpClient: &http.Client{
 			Timeout: time.Duration(config.TimeoutMs) * time.Millisecond,
 		},
+		suppressWarnings: false,
 	}
 }
 
@@ -86,8 +88,16 @@ func (c *Client) SendEvent(event *Event) error {
 	}
 
 	// Log error but don't fail the conversation
-	if c.config.LogLevel == "debug" || c.config.LogLevel == "info" {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to stream event after %d attempts: %v\n",
+	if !c.suppressWarnings {
+		// Show a user-friendly warning only once
+		fmt.Fprintln(os.Stderr, "\n⚠️  Bridge streaming unavailable - conversation will continue normally")
+		fmt.Fprintln(os.Stderr, "   (Events will be saved locally and can be uploaded later)")
+		c.suppressWarnings = true
+	}
+
+	// Log detailed error at debug level only
+	if c.config.LogLevel == "debug" {
+		fmt.Fprintf(os.Stderr, "Debug: Failed to stream event after %d attempts: %v\n",
 			c.config.RetryAttempts+1, lastErr)
 	}
 
