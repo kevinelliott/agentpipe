@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/viper"
 
 	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
+	"github.com/kevinelliott/agentpipe/internal/bridge"
+	"github.com/kevinelliott/agentpipe/internal/version"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
 	"github.com/kevinelliott/agentpipe/pkg/conversation"
@@ -40,6 +42,8 @@ var (
 	watchConfig        bool
 	saveState          bool
 	stateFile          string
+	streamEnabled      bool
+	noStream           bool
 )
 
 var runCmd = &cobra.Command{
@@ -69,6 +73,8 @@ func init() {
 	runCmd.Flags().BoolVar(&watchConfig, "watch-config", false, "Watch config file for changes and hot-reload (requires --config)")
 	runCmd.Flags().BoolVar(&saveState, "save-state", false, "Save conversation state on exit (to ~/.agentpipe/states)")
 	runCmd.Flags().StringVar(&stateFile, "state-file", "", "Specific file path to save conversation state")
+	runCmd.Flags().BoolVar(&streamEnabled, "stream", false, "Enable streaming to AgentPipe Web for this run (overrides config)")
+	runCmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming to AgentPipe Web for this run (overrides config)")
 }
 
 func runConversation(cobraCmd *cobra.Command, args []string) {
@@ -344,6 +350,25 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		orch.SetLogger(chatLogger)
 	}
 
+	// Set up streaming bridge if enabled
+	shouldStream := determineShouldStream(streamEnabled, noStream)
+	if shouldStream {
+		bridgeConfig := bridge.LoadConfig()
+		if bridgeConfig.Enabled || streamEnabled {
+			// Override config enabled setting if --stream was specified
+			if streamEnabled {
+				bridgeConfig.Enabled = true
+			}
+
+			emitter := bridge.NewEmitter(bridgeConfig, version.GetShortVersion())
+			orch.SetBridgeEmitter(emitter)
+
+			if verbose {
+				fmt.Printf("🌐 Streaming enabled (conversation ID: %s)\n", emitter.GetConversationID())
+			}
+		}
+	}
+
 	fmt.Println("🚀 Starting AgentPipe conversation...")
 	fmt.Printf("Mode: %s | Max turns: %d | Agents: %d\n", cfg.Orchestrator.Mode, cfg.Orchestrator.MaxTurns, len(agentsList))
 	if !cfg.Logging.Enabled {
@@ -494,4 +519,28 @@ func printSessionSummary(orch *orchestrator.Orchestrator, cfg *config.Config) {
 
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println("Session ended. All messages logged.")
+}
+
+// determineShouldStream determines if streaming should be enabled based on CLI flags.
+// Priority: --no-stream > --stream > config file setting
+func determineShouldStream(streamEnabled, noStream bool) bool {
+	// If both flags are set, --no-stream takes priority
+	if streamEnabled && noStream {
+		return false
+	}
+
+	// If --no-stream is set, disable streaming
+	if noStream {
+		return false
+	}
+
+	// If --stream is set, enable streaming
+	if streamEnabled {
+		return true
+	}
+
+	// Otherwise, use config file setting (checked later)
+	// We return true here to let the config be checked
+	bridgeConfig := bridge.LoadConfig()
+	return bridgeConfig.Enabled
 }
