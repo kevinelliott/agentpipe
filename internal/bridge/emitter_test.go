@@ -70,7 +70,7 @@ func TestGetConversationID(t *testing.T) {
 }
 
 func TestEmitConversationStarted(t *testing.T) {
-	receivedEvent := make(chan *Event, 1)
+	receivedEvents := make(chan *Event, 10)
 
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func TestEmitConversationStarted(t *testing.T) {
 			return
 		}
 
-		receivedEvent <- &event
+		receivedEvents <- &event
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
@@ -108,33 +108,36 @@ func TestEmitConversationStarted(t *testing.T) {
 
 	emitter.EmitConversationStarted("round-robin", "Hello agents", 10, agents)
 
-	// Wait for async event to be received
-	select {
-	case event := <-receivedEvent:
-		if event.Type != EventConversationStarted {
-			t.Errorf("Expected type=%s, got %s", EventConversationStarted, event.Type)
-		}
+	// Collect both events (bridge.connected and conversation.started)
+	events := collectEvents(t, receivedEvents, 2)
 
-		data, ok := event.Data.(map[string]interface{})
-		if !ok {
-			t.Fatal("Expected data to be a map")
-		}
+	// First event should be bridge.connected
+	if events[0].Type != EventBridgeConnected {
+		t.Errorf("Expected first event type=%s, got %s", EventBridgeConnected, events[0].Type)
+	}
 
-		if data["mode"] != "round-robin" {
-			t.Errorf("Expected mode=round-robin, got %v", data["mode"])
-		}
+	// Second event should be conversation.started
+	event := events[1]
+	if event.Type != EventConversationStarted {
+		t.Errorf("Expected second event type=%s, got %s", EventConversationStarted, event.Type)
+	}
 
-		if data["initial_prompt"] != "Hello agents" {
-			t.Errorf("Expected initial_prompt='Hello agents', got %v", data["initial_prompt"])
-		}
+	data, ok := event.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected data to be a map")
+	}
 
-		// Verify system_info is present
-		if _, ok := data["system_info"]; !ok {
-			t.Error("Expected system_info to be present in conversation.started event")
-		}
+	if data["mode"] != "round-robin" {
+		t.Errorf("Expected mode=round-robin, got %v", data["mode"])
+	}
 
-	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for event")
+	if data["initial_prompt"] != "Hello agents" {
+		t.Errorf("Expected initial_prompt='Hello agents', got %v", data["initial_prompt"])
+	}
+
+	// Verify system_info is present
+	if _, ok := data["system_info"]; !ok {
+		t.Error("Expected system_info to be present in conversation.started event")
 	}
 }
 
@@ -170,11 +173,17 @@ func TestEmitMessageCreated(t *testing.T) {
 	emitter.EmitMessageCreated("claude", "Claude", "Hello", "claude-sonnet-4", 1, 100, 50, 50, 0.001, 1234*time.Millisecond)
 	emitter.EmitMessageCreated("gemini", "Gemini", "Hi", "gemini-pro", 1, 80, 40, 40, 0.0008, 987*time.Millisecond)
 
-	// Collect both events (they may arrive in any order due to async sending)
-	events := collectEvents(t, receivedEvents, 2)
+	// Collect all three events (bridge.connected + two messages)
+	events := collectEvents(t, receivedEvents, 3)
 
-	// Verify both events by sequence number
-	for _, event := range events {
+	// First event should be bridge.connected
+	if events[0].Type != EventBridgeConnected {
+		t.Errorf("Expected first event type=%s, got %s", EventBridgeConnected, events[0].Type)
+	}
+
+	// Verify the two message events by sequence number
+	messageEvents := events[1:]
+	for _, event := range messageEvents {
 		verifyMessageEvent(t, event)
 	}
 }
@@ -234,7 +243,7 @@ func verifyMessageEvent(t *testing.T, event *Event) {
 }
 
 func TestEmitConversationCompleted(t *testing.T) {
-	receivedEvent := make(chan *Event, 1)
+	receivedEvents := make(chan *Event, 10)
 
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +254,7 @@ func TestEmitConversationCompleted(t *testing.T) {
 			return
 		}
 
-		receivedEvent <- &event
+		receivedEvents <- &event
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
@@ -263,37 +272,40 @@ func TestEmitConversationCompleted(t *testing.T) {
 
 	emitter.EmitConversationCompleted("completed", 20, 10, 3000, 0.03, 300*time.Second)
 
-	// Wait for async event to be received
-	select {
-	case event := <-receivedEvent:
-		if event.Type != EventConversationCompleted {
-			t.Errorf("Expected type=%s, got %s", EventConversationCompleted, event.Type)
-		}
+	// Collect both events (bridge.connected and conversation.completed)
+	events := collectEvents(t, receivedEvents, 2)
 
-		data, ok := event.Data.(map[string]interface{})
-		if !ok {
-			t.Fatal("Expected data to be a map")
-		}
+	// First event should be bridge.connected
+	if events[0].Type != EventBridgeConnected {
+		t.Errorf("Expected first event type=%s, got %s", EventBridgeConnected, events[0].Type)
+	}
 
-		if data["status"] != "completed" {
-			t.Errorf("Expected status=completed, got %v", data["status"])
-		}
+	// Second event should be conversation.completed
+	event := events[1]
+	if event.Type != EventConversationCompleted {
+		t.Errorf("Expected second event type=%s, got %s", EventConversationCompleted, event.Type)
+	}
 
-		if data["total_messages"].(float64) != 20 {
-			t.Errorf("Expected total_messages=20, got %v", data["total_messages"])
-		}
+	data, ok := event.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected data to be a map")
+	}
 
-		if data["duration_seconds"].(float64) != 300.0 {
-			t.Errorf("Expected duration_seconds=300.0, got %v", data["duration_seconds"])
-		}
+	if data["status"] != "completed" {
+		t.Errorf("Expected status=completed, got %v", data["status"])
+	}
 
-	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for event")
+	if data["total_messages"].(float64) != 20 {
+		t.Errorf("Expected total_messages=20, got %v", data["total_messages"])
+	}
+
+	if data["duration_seconds"].(float64) != 300.0 {
+		t.Errorf("Expected duration_seconds=300.0, got %v", data["duration_seconds"])
 	}
 }
 
 func TestEmitConversationError(t *testing.T) {
-	receivedEvent := make(chan *Event, 1)
+	receivedEvents := make(chan *Event, 10)
 
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +316,7 @@ func TestEmitConversationError(t *testing.T) {
 			return
 		}
 
-		receivedEvent <- &event
+		receivedEvents <- &event
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
@@ -322,32 +334,35 @@ func TestEmitConversationError(t *testing.T) {
 
 	emitter.EmitConversationError("API rate limit exceeded", "rate_limit", "claude")
 
-	// Wait for async event to be received
-	select {
-	case event := <-receivedEvent:
-		if event.Type != EventConversationError {
-			t.Errorf("Expected type=%s, got %s", EventConversationError, event.Type)
-		}
+	// Collect both events (bridge.connected and conversation.error)
+	events := collectEvents(t, receivedEvents, 2)
 
-		data, ok := event.Data.(map[string]interface{})
-		if !ok {
-			t.Fatal("Expected data to be a map")
-		}
+	// First event should be bridge.connected
+	if events[0].Type != EventBridgeConnected {
+		t.Errorf("Expected first event type=%s, got %s", EventBridgeConnected, events[0].Type)
+	}
 
-		if data["error_message"] != "API rate limit exceeded" {
-			t.Errorf("Expected error_message='API rate limit exceeded', got %v", data["error_message"])
-		}
+	// Second event should be conversation.error
+	event := events[1]
+	if event.Type != EventConversationError {
+		t.Errorf("Expected second event type=%s, got %s", EventConversationError, event.Type)
+	}
 
-		if data["error_type"] != "rate_limit" {
-			t.Errorf("Expected error_type=rate_limit, got %v", data["error_type"])
-		}
+	data, ok := event.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected data to be a map")
+	}
 
-		if data["agent_type"] != "claude" {
-			t.Errorf("Expected agent_type=claude, got %v", data["agent_type"])
-		}
+	if data["error_message"] != "API rate limit exceeded" {
+		t.Errorf("Expected error_message='API rate limit exceeded', got %v", data["error_message"])
+	}
 
-	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for event")
+	if data["error_type"] != "rate_limit" {
+		t.Errorf("Expected error_type=rate_limit, got %v", data["error_type"])
+	}
+
+	if data["agent_type"] != "claude" {
+		t.Errorf("Expected agent_type=claude, got %v", data["agent_type"])
 	}
 }
 
@@ -407,5 +422,73 @@ func TestUniqueConversationIDs(t *testing.T) {
 
 	if emitter2.conversationID == emitter3.conversationID {
 		t.Error("Expected unique conversation IDs for different emitters")
+	}
+}
+
+func TestBridgeConnectedEvent(t *testing.T) {
+	// Track received events
+	receivedEvents := []Event{}
+
+	// Create mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var event Event
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			t.Errorf("Failed to decode event: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		receivedEvents = append(receivedEvents, event)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	config := &Config{
+		Enabled:       true,
+		URL:           server.URL,
+		APIKey:        "sk_test",
+		TimeoutMs:     5000,
+		RetryAttempts: 0,
+		LogLevel:      "debug",
+	}
+
+	// Creating the emitter should automatically send bridge.connected event
+	version := "0.3.8-test"
+	_ = NewEmitter(config, version)
+
+	// Verify we received the bridge.connected event
+	if len(receivedEvents) != 1 {
+		t.Fatalf("Expected 1 event, got %d", len(receivedEvents))
+	}
+
+	event := receivedEvents[0]
+	if event.Type != EventBridgeConnected {
+		t.Errorf("Expected event type=%s, got %s", EventBridgeConnected, event.Type)
+	}
+
+	// Verify data structure
+	dataMap, ok := event.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected data to be a map")
+	}
+
+	// Verify system_info is present
+	systemInfoMap, ok := dataMap["system_info"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected system_info to be present")
+	}
+
+	if systemInfoMap["agentpipe_version"] != version {
+		t.Errorf("Expected agentpipe_version=%s, got %v", version, systemInfoMap["agentpipe_version"])
+	}
+
+	// Verify connected_at is present
+	connectedAt, ok := dataMap["connected_at"].(string)
+	if !ok {
+		t.Fatal("Expected connected_at to be a string")
+	}
+
+	if connectedAt == "" {
+		t.Error("Expected connected_at to be non-empty")
 	}
 }

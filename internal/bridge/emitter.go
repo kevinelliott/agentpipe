@@ -15,13 +15,19 @@ type Emitter struct {
 }
 
 // NewEmitter creates a new event emitter for a conversation
+// Automatically sends a bridge.connected event to announce the connection
 func NewEmitter(config *Config, agentpipeVersion string) *Emitter {
-	return &Emitter{
+	emitter := &Emitter{
 		client:         NewClient(config),
 		conversationID: uuid.New().String(),
 		sequenceNumber: 0,
 		systemInfo:     CollectSystemInfo(agentpipeVersion),
 	}
+
+	// Emit bridge.connected event to announce the connection
+	emitter.emitBridgeConnected()
+
+	return emitter
 }
 
 // GetConversationID returns the conversation ID for this emitter
@@ -88,6 +94,7 @@ func (e *Emitter) EmitMessageCreated(
 }
 
 // EmitConversationCompleted emits a conversation.completed event
+// Uses synchronous send to ensure the event is fully sent before program exit
 func (e *Emitter) EmitConversationCompleted(
 	status string,
 	totalMessages int,
@@ -109,10 +116,12 @@ func (e *Emitter) EmitConversationCompleted(
 			DurationSeconds: duration.Seconds(),
 		},
 	}
-	e.client.SendEventAsync(event)
+	// Use synchronous send for completion event to ensure it's sent before program exit
+	_ = e.client.SendEvent(event)
 }
 
 // EmitConversationError emits a conversation.error event
+// Uses synchronous send to ensure the event is fully sent before program exit
 func (e *Emitter) EmitConversationError(
 	errorMessage string,
 	errorType string,
@@ -128,5 +137,21 @@ func (e *Emitter) EmitConversationError(
 			AgentType:      agentType,
 		},
 	}
-	e.client.SendEventAsync(event)
+	// Use synchronous send for error event to ensure it's sent before program exit
+	_ = e.client.SendEvent(event)
+}
+
+// emitBridgeConnected emits a bridge.connected event to announce the connection
+// This is called automatically when the emitter is created
+func (e *Emitter) emitBridgeConnected() {
+	event := &Event{
+		Type:      EventBridgeConnected,
+		Timestamp: UTCTime{time.Now()},
+		Data: BridgeConnectedData{
+			SystemInfo:  e.systemInfo,
+			ConnectedAt: time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+	// Use synchronous send to ensure connection is announced before proceeding
+	_ = e.client.SendEvent(event)
 }

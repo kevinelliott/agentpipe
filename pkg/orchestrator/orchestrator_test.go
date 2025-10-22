@@ -3,12 +3,17 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 
@@ -80,6 +85,36 @@ func (m *MockAgent) SendMessage(ctx context.Context, messages []agent.Message) (
 func (m *MockAgent) StreamMessage(ctx context.Context, messages []agent.Message, writer io.Writer) error {
 	_, err := writer.Write([]byte(m.sendMessageResp))
 	return err
+}
+
+// MockBridgeEmitter is a test double for bridge.Emitter
+type MockBridgeEmitter struct {
+	conversationStartedCalled   bool
+	conversationCompletedCalled bool
+	completedStatus             string
+	messageCreatedCount         int
+	errorCalled                 bool
+}
+
+func (m *MockBridgeEmitter) GetConversationID() string {
+	return "test-conv-123"
+}
+
+func (m *MockBridgeEmitter) EmitConversationStarted(mode string, initialPrompt string, maxTurns int, agents []bridge.AgentParticipant) {
+	m.conversationStartedCalled = true
+}
+
+func (m *MockBridgeEmitter) EmitMessageCreated(agentType, agentName, content, model string, turnNumber, tokensUsed, inputTokens, outputTokens int, cost float64, duration time.Duration) {
+	m.messageCreatedCount++
+}
+
+func (m *MockBridgeEmitter) EmitConversationCompleted(status string, totalMessages, totalTurns, totalTokens int, totalCost float64, duration time.Duration) {
+	m.conversationCompletedCalled = true
+	m.completedStatus = status
+}
+
+func (m *MockBridgeEmitter) EmitConversationError(errorMessage, errorType, agentType string) {
+	m.errorCalled = true
 }
 
 func TestNewOrchestrator(t *testing.T) {
@@ -827,5 +862,117 @@ func TestRateLimitingUnlimited(t *testing.T) {
 
 	if mockAgent.callCount != 3 {
 		t.Errorf("expected 3 calls, got %d", mockAgent.callCount)
+	}
+}
+
+func TestBridgeEventOnCancellation(t *testing.T) {
+	// Track received events
+	var receivedEvents []bridge.Event
+	var mu sync.Mutex
+
+	// Create mock HTTP server to capture bridge events
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var event bridge.Event
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			t.Errorf("Failed to decode event: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		mu.Lock()
+		receivedEvents = append(receivedEvents, event)
+		mu.Unlock()
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	// Create bridge config pointing to mock server
+	bridgeConfig := &bridge.Config{
+		Enabled:       true,
+		URL:           server.URL,
+		APIKey:        "test-key",
+		TimeoutMs:     5000,
+		RetryAttempts: 0,
+		LogLevel:      "debug",
+	}
+
+	// Create orchestrator config
+	config := OrchestratorConfig{
+		Mode:          ModeRoundRobin,
+		MaxTurns:      100, // High number to ensure we don't finish naturally
+		TurnTimeout:   5 * time.Second,
+		ResponseDelay: 50 * time.Millisecond,
+	}
+	var buf bytes.Buffer
+	orch := NewOrchestrator(config, &buf)
+
+	mockAgent := &MockAgent{
+		id:              "agent-1",
+		name:            "Agent1",
+		agentType:       "mock",
+		available:       true,
+		sendMessageResp: "Response",
+	}
+
+	orch.AddAgent(mockAgent)
+
+	// Create real bridge emitter
+	emitter := bridge.NewEmitter(bridgeConfig, "0.3.7-test")
+	orch.SetBridgeEmitter(emitter)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	err := orch.Start(ctx)
+
+	// Should return context error
+	if err == nil {
+		t.Error("expected context error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context error, got %v", err)
+	}
+
+	// No need to sleep - conversation.completed is sent synchronously before Start() returns
+
+	// Verify we received events
+	mu.Lock()
+	eventCount := len(receivedEvents)
+	mu.Unlock()
+
+	if eventCount == 0 {
+		t.Fatal("expected to receive bridge events, got none")
+	}
+
+	// Find the conversation.completed event
+	mu.Lock()
+	var completedEvent *bridge.Event
+	for i := range receivedEvents {
+		if receivedEvents[i].Type == bridge.EventConversationCompleted {
+			completedEvent = &receivedEvents[i]
+			break
+		}
+	}
+	mu.Unlock()
+
+	if completedEvent == nil {
+		t.Fatal("expected to receive conversation.completed event")
+	}
+
+	// Verify the status is "interrupted"
+	completedData, ok := completedEvent.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected conversation.completed data to be a map")
+	}
+
+	status, ok := completedData["status"].(string)
+	if !ok {
+		t.Fatal("expected status to be a string")
+	}
+
+	if status != "interrupted" {
+		t.Errorf("expected completed status to be 'interrupted', got '%s'", status)
 	}
 }

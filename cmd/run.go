@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
 	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/internal/version"
+	_ "github.com/kevinelliott/agentpipe/pkg/adapters"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 	"github.com/kevinelliott/agentpipe/pkg/config"
 	"github.com/kevinelliott/agentpipe/pkg/conversation"

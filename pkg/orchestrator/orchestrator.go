@@ -4,6 +4,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -288,15 +289,25 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	// Record conversation start time for duration tracking
 	o.conversationStart = time.Now()
 
+	// Track return error to determine status
+	var runErr error
+
 	// Emit conversation.completed when function returns
 	defer func() {
-		// Determine status based on context
+		// Determine status based on context cancellation or error
 		status := "completed"
+
+		// Check if context was canceled
 		select {
 		case <-ctx.Done():
 			status = "interrupted"
 		default:
+			// Also check if the error indicates cancellation
+			if runErr != nil && (errors.Is(runErr, context.Canceled) || errors.Is(runErr, context.DeadlineExceeded)) {
+				status = "interrupted"
+			}
 		}
+
 		o.emitConversationCompleted(status)
 	}()
 
@@ -350,16 +361,20 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 
 	switch o.config.Mode {
 	case ModeRoundRobin:
-		return o.runRoundRobin(ctx)
+		runErr = o.runRoundRobin(ctx)
+		return runErr
 	case ModeReactive:
-		return o.runReactive(ctx)
+		runErr = o.runReactive(ctx)
+		return runErr
 	case ModeFreeForm:
-		return o.runFreeForm(ctx)
+		runErr = o.runFreeForm(ctx)
+		return runErr
 	default:
 		log.WithField("mode", o.config.Mode).Error("unknown conversation mode")
 		errMsg := fmt.Sprintf("unknown conversation mode: %s", o.config.Mode)
 		o.emitConversationError(errMsg, "configuration", "orchestrator")
-		return fmt.Errorf("unknown conversation mode: %s", o.config.Mode)
+		runErr = fmt.Errorf("unknown conversation mode: %s", o.config.Mode)
+		return runErr
 	}
 }
 

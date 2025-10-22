@@ -283,6 +283,54 @@ func TestBridgeTestEvent(t *testing.T) {
 	}
 }
 
+func TestBridgeConnectedEventJSON(t *testing.T) {
+	sysInfo := SystemInfo{
+		AgentPipeVersion: "0.3.8",
+		OS:               "darwin",
+		OSVersion:        "macOS 14.1",
+		GoVersion:        "go1.24.0",
+		Architecture:     "arm64",
+	}
+
+	event := &Event{
+		Type:      EventBridgeConnected,
+		Timestamp: UTCTime{time.Now()},
+		Data: BridgeConnectedData{
+			SystemInfo:  sysInfo,
+			ConnectedAt: "2025-10-21T18:30:00Z",
+		},
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Failed to marshal bridge.connected event: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	if parsed["type"] != string(EventBridgeConnected) {
+		t.Errorf("Expected type=%s, got %v", EventBridgeConnected, parsed["type"])
+	}
+
+	dataMap := parsed["data"].(map[string]interface{})
+	if dataMap["connected_at"] != "2025-10-21T18:30:00Z" {
+		t.Errorf("Expected connected_at='2025-10-21T18:30:00Z', got %v", dataMap["connected_at"])
+	}
+
+	// Verify system_info is present
+	systemInfoMap, ok := dataMap["system_info"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected system_info to be an object")
+	}
+
+	if systemInfoMap["agentpipe_version"] != "0.3.8" {
+		t.Errorf("Expected agentpipe_version=0.3.8, got %v", systemInfoMap["agentpipe_version"])
+	}
+}
+
 func TestTimestampFormat(t *testing.T) {
 	// Test that timestamps are in ISO 8601 format with Z suffix
 	event := &Event{

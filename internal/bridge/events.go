@@ -9,6 +9,8 @@ import (
 type EventType string
 
 const (
+	// EventBridgeConnected is emitted when the bridge connection is established
+	EventBridgeConnected EventType = "bridge.connected"
 	// EventConversationStarted is emitted when a conversation begins
 	EventConversationStarted EventType = "conversation.started"
 	// EventMessageCreated is emitted after each agent completes a message
@@ -104,4 +106,10 @@ type ConversationErrorData struct {
 type BridgeTestData struct {
 	Message    string     `json:"message"`
 	SystemInfo SystemInfo `json:"system_info"`
+}
+
+// BridgeConnectedData contains data for bridge.connected events
+type BridgeConnectedData struct {
+	SystemInfo  SystemInfo `json:"system_info"`
+	ConnectedAt string     `json:"connected_at"`
 }
