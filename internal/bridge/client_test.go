@@ -111,7 +111,7 @@ func TestSendEvent_Success(t *testing.T) {
 			ConversationID: "test-123",
 			Mode:           "round-robin",
 			InitialPrompt:  "Test",
-			Agents:         []AgentParticipant{},
+			Participants:   []AgentParticipant{},
 			SystemInfo:     SystemInfo{},
 		},
 	}

@@ -36,7 +36,7 @@ func TestEventJSONSerialization(t *testing.T) {
 			Mode:           "round-robin",
 			InitialPrompt:  "Hello agents",
 			MaxTurns:       10,
-			Agents:         agents,
+			Participants:   agents,
 			SystemInfo:     sysInfo,
 		},
 	}
@@ -82,19 +82,19 @@ func TestEventJSONSerialization(t *testing.T) {
 		}
 	}
 
-	// Verify agents array is present and has cli_version
-	agentsArray, ok := dataMap["agents"].([]interface{})
-	if !ok || len(agentsArray) == 0 {
-		t.Fatal("Expected agents to be a non-empty array")
+	// Verify participants array is present and has cli_version
+	participantsArray, ok := dataMap["participants"].([]interface{})
+	if !ok || len(participantsArray) == 0 {
+		t.Fatal("Expected participants to be a non-empty array")
 	}
 
-	agentMap, ok := agentsArray[0].(map[string]interface{})
+	participantMap, ok := participantsArray[0].(map[string]interface{})
 	if !ok {
-		t.Fatal("Expected first agent to be an object")
+		t.Fatal("Expected first participant to be an object")
 	}
 
-	if agentMap["cli_version"] != "1.2.0" {
-		t.Errorf("Expected cli_version=1.2.0, got %v", agentMap["cli_version"])
+	if participantMap["cli_version"] != "1.2.0" {
+		t.Errorf("Expected cli_version=1.2.0, got %v", participantMap["cli_version"])
 	}
 }
 
@@ -292,7 +292,7 @@ func TestTimestampFormat(t *testing.T) {
 			ConversationID: "test",
 			Mode:           "round-robin",
 			InitialPrompt:  "test",
-			Agents:         []AgentParticipant{},
+			Participants:   []AgentParticipant{},
 			SystemInfo:     SystemInfo{},
 		},
 	}

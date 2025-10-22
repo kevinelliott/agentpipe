@@ -51,7 +51,7 @@ type ConversationStartedData struct {
 	Mode           string             `json:"mode"`
 	InitialPrompt  string             `json:"initial_prompt"`
 	MaxTurns       int                `json:"max_turns,omitempty"`
-	Agents         []AgentParticipant `json:"agents"`
+	Participants   []AgentParticipant `json:"participants"`
 	SystemInfo     SystemInfo         `json:"system_info"`
 }
 

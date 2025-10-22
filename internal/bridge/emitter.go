@@ -44,7 +44,7 @@ func (e *Emitter) EmitConversationStarted(
 			Mode:           mode,
 			InitialPrompt:  initialPrompt,
 			MaxTurns:       maxTurns,
-			Agents:         agents,
+			Participants:   agents,
 			SystemInfo:     e.systemInfo,
 		},
 	}
