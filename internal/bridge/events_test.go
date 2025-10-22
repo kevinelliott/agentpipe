@@ -30,7 +30,7 @@ func TestEventJSONSerialization(t *testing.T) {
 	// Test conversation.started event
 	startedEvent := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationStartedData{
 			ConversationID: "test-conv-123",
 			Mode:           "round-robin",
@@ -101,7 +101,7 @@ func TestEventJSONSerialization(t *testing.T) {
 func TestMessageCreatedEvent(t *testing.T) {
 	event := &Event{
 		Type:      EventMessageCreated,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: MessageCreatedData{
 			ConversationID: "test-conv-123",
 			MessageID:      "msg-456",
@@ -155,7 +155,7 @@ func TestMessageCreatedEvent(t *testing.T) {
 func TestConversationCompletedEvent(t *testing.T) {
 	event := &Event{
 		Type:      EventConversationCompleted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationCompletedData{
 			ConversationID:  "test-conv-123",
 			Status:          "completed",
@@ -198,7 +198,7 @@ func TestConversationCompletedEvent(t *testing.T) {
 func TestConversationErrorEvent(t *testing.T) {
 	event := &Event{
 		Type:      EventConversationError,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationErrorData{
 			ConversationID: "test-conv-123",
 			ErrorMessage:   "API rate limit exceeded",
@@ -236,10 +236,10 @@ func TestConversationErrorEvent(t *testing.T) {
 }
 
 func TestTimestampFormat(t *testing.T) {
-	// Test that timestamps are in ISO 8601 format
+	// Test that timestamps are in ISO 8601 format with Z suffix
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationStartedData{
 			ConversationID: "test",
 			Mode:           "round-robin",
@@ -272,6 +272,11 @@ func TestTimestampFormat(t *testing.T) {
 		t.Fatal("Expected timestamp to be a string")
 	}
 
+	// Verify timestamp ends with 'Z' for UTC
+	if !strings.HasSuffix(timestampStr, "Z") {
+		t.Errorf("Expected timestamp to end with 'Z', got: %s", timestampStr)
+	}
+
 	// Try parsing it back to verify it's valid RFC3339
 	_, err = time.Parse(time.RFC3339Nano, timestampStr)
 	if err != nil {
@@ -283,7 +288,7 @@ func TestOmitemptyFields(t *testing.T) {
 	// Test that omitempty fields are actually omitted when empty
 	event := &Event{
 		Type:      EventMessageCreated,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: MessageCreatedData{
 			ConversationID: "test-conv",
 			MessageID:      "msg-123",

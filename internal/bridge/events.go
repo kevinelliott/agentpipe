@@ -1,6 +1,9 @@
 package bridge
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // EventType represents the type of streaming event
 type EventType string
@@ -16,10 +19,27 @@ const (
 	EventConversationError EventType = "conversation.error"
 )
 
+// UTCTime wraps time.Time to ensure JSON marshaling always uses UTC with Z suffix
+type UTCTime struct {
+	time.Time
+}
+
+// MarshalJSON implements json.Marshaler to output time in UTC with Z suffix
+func (t UTCTime) MarshalJSON() ([]byte, error) {
+	// Convert to UTC and format with Z suffix
+	utcTime := t.Time.UTC()
+	formatted := utcTime.Format("2006-01-02T15:04:05.999999999Z07:00")
+	// Ensure we use 'Z' for UTC, not '+00:00'
+	if utcTime.Location() == time.UTC {
+		formatted = utcTime.Format("2006-01-02T15:04:05.999999999") + "Z"
+	}
+	return json.Marshal(formatted)
+}
+
 // Event represents a streaming event sent to the web app
 type Event struct {
 	Type      EventType   `json:"type"`
-	Timestamp time.Time   `json:"timestamp"`
+	Timestamp UTCTime     `json:"timestamp"`
 	Data      interface{} `json:"data"`
 }
 

@@ -106,7 +106,7 @@ func TestSendEvent_Success(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationStartedData{
 			ConversationID: "test-123",
 			Mode:           "round-robin",
@@ -133,7 +133,7 @@ func TestSendEvent_Disabled(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -156,7 +156,7 @@ func TestSendEvent_NoAPIKey(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -193,7 +193,7 @@ func TestSendEvent_Unauthorized(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -233,7 +233,7 @@ func TestSendEvent_ServerError(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -273,7 +273,7 @@ func TestSendEvent_Retry(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -311,7 +311,7 @@ func TestSendEvent_NoRetryOn4xx(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 
@@ -349,7 +349,7 @@ func TestSendEventAsync(t *testing.T) {
 
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data:      ConversationStartedData{},
 	}
 

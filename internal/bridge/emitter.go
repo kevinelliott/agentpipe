@@ -38,7 +38,7 @@ func (e *Emitter) EmitConversationStarted(
 ) {
 	event := &Event{
 		Type:      EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationStartedData{
 			ConversationID: e.conversationID,
 			Mode:           mode,
@@ -67,7 +67,7 @@ func (e *Emitter) EmitMessageCreated(
 	e.sequenceNumber++
 	event := &Event{
 		Type:      EventMessageCreated,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: MessageCreatedData{
 			ConversationID: e.conversationID,
 			MessageID:      uuid.New().String(),
@@ -98,7 +98,7 @@ func (e *Emitter) EmitConversationCompleted(
 ) {
 	event := &Event{
 		Type:      EventConversationCompleted,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationCompletedData{
 			ConversationID:  e.conversationID,
 			Status:          status,
@@ -120,7 +120,7 @@ func (e *Emitter) EmitConversationError(
 ) {
 	event := &Event{
 		Type:      EventConversationError,
-		Timestamp: time.Now(),
+		Timestamp: UTCTime{time.Now()},
 		Data: ConversationErrorData{
 			ConversationID: e.conversationID,
 			ErrorMessage:   errorMessage,

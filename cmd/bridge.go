@@ -324,7 +324,7 @@ func runBridgeTest() {
 
 	event := &bridge.Event{
 		Type:      bridge.EventConversationStarted,
-		Timestamp: time.Now(),
+		Timestamp: bridge.UTCTime{Time: time.Now()},
 		Data: bridge.ConversationStartedData{
 			ConversationID: emitter.GetConversationID(),
 			Mode:           "test",
