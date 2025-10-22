@@ -313,6 +313,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 				AgentType:  a.GetType(),
 				Model:      a.GetModel(),
 				Name:       a.GetName(),
+				Prompt:     a.GetPrompt(),
 				CLIVersion: a.GetCLIVersion(),
 			})
 		}

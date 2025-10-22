@@ -102,6 +102,8 @@ type Agent interface {
 	HealthCheck(ctx context.Context) error
 	// GetCLIVersion returns the version of the agent's CLI tool
 	GetCLIVersion() string
+	// GetPrompt returns the system prompt for the agent
+	GetPrompt() string
 }
 
 // BaseAgent provides a default implementation of common Agent interface methods.
@@ -157,6 +159,11 @@ func (b *BaseAgent) GetRateLimitBurst() int {
 		return b.Config.RateLimitBurst
 	}
 	return 1 // Default burst size
+}
+
+// GetPrompt returns the system prompt for the agent.
+func (b *BaseAgent) GetPrompt() string {
+	return b.Config.Prompt
 }
 
 // Announce returns the agent's announcement message.
