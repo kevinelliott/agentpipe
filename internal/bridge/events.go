@@ -87,10 +87,10 @@ type AgentParticipant struct {
 type MessageCreatedData struct {
 	ConversationID string  `json:"conversation_id"`
 	MessageID      string  `json:"message_id"`
-	AgentID        string  `json:"agent_id"`              // Unique identifier for the agent instance
-	AgentType      string  `json:"agent_type"`            // Type of agent (e.g., "claude", "gemini")
-	AgentName      string  `json:"agent_name,omitempty"`  // Display name of the agent
-	Content        string  `json:"content"`               // Message content
+	AgentID        string  `json:"agent_id"`             // Unique identifier for the agent instance
+	AgentType      string  `json:"agent_type"`           // Type of agent (e.g., "claude", "gemini")
+	AgentName      string  `json:"agent_name,omitempty"` // Display name of the agent
+	Content        string  `json:"content"`              // Message content
 	SequenceNumber int     `json:"sequence_number,omitempty"`
 	TurnNumber     int     `json:"turn_number,omitempty"`
 	TokensUsed     int     `json:"tokens_used,omitempty"`
