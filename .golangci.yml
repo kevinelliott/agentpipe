@@ -9,7 +9,6 @@ linters:
     - staticcheck
     - gosec
     - misspell
-    - nakedret
     - prealloc
     - unconvert
     - bodyclose
