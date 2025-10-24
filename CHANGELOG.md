@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.2] - 2025-10-24
+
+### Fixed
+- **Qoder Installation/Upgrade**: Added `--force` flag to Qoder install and upgrade commands
+  - Allows Qoder to be installed/upgraded even if version already exists
+  - Prevents "Version X.X.X already exists" errors
+
 ## [v0.4.1] - 2025-10-22
 
 ### Added
