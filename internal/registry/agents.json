@@ -97,6 +97,30 @@
       "requires_auth": true
     },
     {
+      "name": "Crush",
+      "command": "crush",
+      "description": "Charm's Crush CLI - Terminal-first AI coding assistant",
+      "docs": "https://github.com/charmbracelet/crush",
+      "package_manager": "github",
+      "package_name": "charmbracelet/crush",
+      "install": {
+        "darwin": "brew install charmbracelet/tap/crush",
+        "linux": "go install github.com/charmbracelet/crush@latest",
+        "windows": "go install github.com/charmbracelet/crush@latest"
+      },
+      "uninstall": {
+        "darwin": "brew uninstall crush",
+        "linux": "See https://github.com/charmbracelet/crush for uninstall instructions",
+        "windows": "See https://github.com/charmbracelet/crush for uninstall instructions"
+      },
+      "upgrade": {
+        "darwin": "brew upgrade crush",
+        "linux": "go install github.com/charmbracelet/crush@latest",
+        "windows": "go install github.com/charmbracelet/crush@latest"
+      },
+      "requires_auth": true
+    },
+    {
       "name": "Cursor",
       "command": "cursor-agent",
       "description": "Cursor AI code editor CLI",

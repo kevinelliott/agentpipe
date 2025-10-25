@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.9] - 2025-10-25
+
+### Added
+- **Crush CLI Agent Support (Charmbracelet)**
+  - New adapter for Crush CLI (`crush` command)
+  - Terminal-first AI coding assistant with beautiful TUI
+  - Installation via Homebrew: `brew install charmbracelet/tap/crush`
+  - Installation via Go: `go install github.com/charmbracelet/crush@latest`
+  - Supports stdin-based message passing
+  - Complete integration with standardized three-part prompt system
+  - Comprehensive logging and error handling
+  - Registry entry with install/uninstall/upgrade commands for all platforms
+  - Multi-provider authentication support:
+    - Anthropic (ANTHROPIC_API_KEY)
+    - OpenAI (OPENAI_API_KEY)
+    - Groq (GROQ_API_KEY)
+    - Google Gemini (GEMINI_API_KEY)
+    - AWS Bedrock, Azure OpenAI, and others
+
+### Technical Details
+- Implements all required Agent interface methods
+- Follows established patterns from Claude and Groq adapters
+- Message filtering to prevent echo in multi-agent conversations
+- Output cleaning to remove system messages and prompts
+- Health check via `--version` flag
+- Version detection via GitHub releases API (charmbracelet/crush)
+- Supports both SendMessage and StreamMessage modes
+- Current latest version: v0.12.3
+
+### Benefits
+- Adds another high-quality terminal-first agent option
+- Multi-provider support allows flexibility in LLM choice
+- Beautiful TUI experience from Charmbracelet
+- MCP (Model Context Protocol) and LSP integration support
+
 ## [v0.4.8] - 2025-10-25
 
 ### Fixed

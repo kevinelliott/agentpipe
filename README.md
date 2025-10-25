@@ -30,6 +30,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Claude** (Anthropic) - Advanced reasoning and coding
 - ✅ **Codex** (OpenAI) - Code generation specialist (non-interactive exec mode)
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
+- ✅ **Crush** (Charm/Charmbracelet) - Terminal-first AI coding assistant with multi-provider support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)
 - ✅ **Gemini** (Google) - Multimodal understanding
@@ -96,27 +97,24 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.8 - Fixed GitHub API rate limiting
+**Latest Release**: v0.4.9 - Crush CLI support
 
-**What's New in v0.4.8**:
+**What's New in v0.4.9**:
 
-🚀 **Fixed GitHub API Rate Limiting**:
-- **PyPI Integration for Kimi**: Now uses PyPI API instead of GitHub releases
-  - No more 403 rate limit errors
-  - Fetches from `https://pypi.org/pypi/kimi-cli/json`
-  - More reliable and aligns with actual installation method (uv/pip)
-- **npm Registry for Qwen**: Uses npm registry instead of GitHub releases
-  - Direct API access without rate limiting
-  - Package: `@qwen-code/qwen-code`
-  - Aligns with actual installation method
-- **Benefits**: Faster, more reliable version checking with no rate limits
+💘 **Crush CLI Support (Charmbracelet)**:
+- **New Agent Adapter**: Full support for Charm's Crush CLI
+  - Install: `brew install charmbracelet/tap/crush` (macOS) or `go install github.com/charmbracelet/crush@latest`
+  - Terminal-first AI coding assistant with beautiful TUI
+  - Multi-provider support (Anthropic, OpenAI, Groq, Gemini, and more)
+  - Supports stdin-based message passing
+  - Complete integration with AgentPipe's multi-agent conversation system
+
+**Previous Release - v0.4.8** (2025-10-25): Fixed GitHub API rate limiting
+- PyPI integration for Kimi, npm registry for Qwen
+- No more 403 rate limit errors
 
 **Previous Release - v0.4.7** (2025-10-25): Improved Kimi version detection
-- Initial attempt using GitHub releases (now superseded by PyPI)
-
 **Previous Release - v0.4.6** (2025-10-25): Groq Code CLI support
-- Full support for Groq Code CLI powered by Groq LPUs
-- Fast inference with temperature configuration support
 - Dedicated security workflows (Trivy and CodeQL)
 - Enhanced README badges with downloads and stars metrics
 - Fixed Windows test failures for platform-specific installations
