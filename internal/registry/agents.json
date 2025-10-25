@@ -169,6 +169,30 @@
       "requires_auth": true
     },
     {
+      "name": "Kimi",
+      "command": "kimi",
+      "description": "Kimi CLI by Moonshot AI",
+      "docs": "https://github.com/MoonshotAI/kimi-cli",
+      "package_manager": "uv",
+      "package_name": "kimi-cli",
+      "install": {
+        "darwin": "uv tool install kimi-cli",
+        "linux": "uv tool install kimi-cli",
+        "windows": "See https://github.com/MoonshotAI/kimi-cli (coming soon)"
+      },
+      "uninstall": {
+        "darwin": "uv tool uninstall kimi-cli",
+        "linux": "uv tool uninstall kimi-cli",
+        "windows": "uv tool uninstall kimi-cli"
+      },
+      "upgrade": {
+        "darwin": "uv tool upgrade kimi-cli --no-cache",
+        "linux": "uv tool upgrade kimi-cli --no-cache",
+        "windows": "uv tool upgrade kimi-cli --no-cache"
+      },
+      "requires_auth": true
+    },
+    {
       "name": "Qoder",
       "command": "qodercli",
       "description": "Qoder AI CLI",
