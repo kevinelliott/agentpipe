@@ -197,8 +197,8 @@
       "command": "kimi",
       "description": "Kimi CLI by Moonshot AI",
       "docs": "https://github.com/MoonshotAI/kimi-cli",
-      "package_manager": "uv",
-      "package_name": "kimi-cli",
+      "package_manager": "github",
+      "package_name": "MoonshotAI/kimi-cli",
       "install": {
         "darwin": "uv tool install --python 3.13 kimi-cli",
         "linux": "uv tool install --python 3.13 kimi-cli",
