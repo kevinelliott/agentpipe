@@ -2,11 +2,13 @@
 
 ![AgentPipe Logo](screenshots/agentpipe-logo.png)
 
-[![CI](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml/badge.svg)](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml)
+[![CI](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/kevinelliott/agentpipe/actions/workflows/test.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![License](https://img.shields.io/github/license/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/blob/main/LICENSE)
-[![Release](https://img.shields.io/github/v/release/kevinelliott/agentpipe)](https://github.com/kevinelliott/agentpipe/releases)
+[![Release](https://img.shields.io/github/v/release/kevinelliott/agentpipe?color=success)](https://github.com/kevinelliott/agentpipe/releases)
+[![License](https://img.shields.io/github/license/kevinelliott/agentpipe?color=blue)](https://github.com/kevinelliott/agentpipe/blob/main/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kevinelliott/agentpipe)](https://goreportcard.com/report/github.com/kevinelliott/agentpipe)
+[![Downloads](https://img.shields.io/github/downloads/kevinelliott/agentpipe/total?color=brightgreen)](https://github.com/kevinelliott/agentpipe/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/kevinelliott/agentpipe?color=yellow&logo=github)](https://github.com/kevinelliott/agentpipe)
 
 AgentPipe is a powerful CLI and TUI application that orchestrates conversations between multiple AI agents. It allows different AI CLI tools (like Claude, Cursor, Gemini, Qwen, Ollama) to communicate with each other in a shared "room", creating dynamic multi-agent conversations with real-time metrics, cost tracking, and interactive user participation.
 
