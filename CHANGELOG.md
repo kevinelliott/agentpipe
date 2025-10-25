@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.7] - 2025-10-25
+
+### Changed
+- **Kimi CLI Version Detection**: Updated to use GitHub releases API
+  - Changed package manager from "uv" to "github" in registry
+  - Package name now points to "MoonshotAI/kimi-cli" repository
+  - Uses standard GitHub releases endpoint for version checking
+  - More reliable than previous custom parsing approach
+  - Consistent with other GitHub-based agents (Qwen, etc.)
+
+### Technical Details
+- Reuses existing `getGitHubLatestRelease()` infrastructure
+- Fetches from `https://api.github.com/repos/MoonshotAI/kimi-cli/releases/latest`
+- Properly detects and compares versions for update notifications
+- Tested with `agentpipe agents list --outdated` command
+
+### Benefits
+- Improved reliability for version detection
+- Simpler implementation using existing code
+- Better alignment with standard practices
+- More accurate update notifications for users
+
 ## [v0.4.6] - 2025-10-25
 
 ### Added

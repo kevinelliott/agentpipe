@@ -96,22 +96,23 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.6 - Groq Code CLI support
+**Latest Release**: v0.4.7 - Improved Kimi version detection
 
-**What's New in v0.4.6**:
+**What's New in v0.4.7**:
 
-⚡ **Groq Code CLI Support**:
-- **New Agent Adapter**: Full support for Groq Code CLI powered by Groq's Lightning Processing Units (LPUs)
-  - Install: `npm install -g groq-code-cli@latest`
-  - Fast inference with state-of-the-art language models
-  - Supports temperature configuration and custom system prompts
-  - Interactive CLI with stdin-based message passing
-  - Complete integration with AgentPipe's multi-agent conversation system
+🔍 **Improved Kimi CLI Version Detection**:
+- **GitHub Releases Integration**: Now uses GitHub releases API for reliable version checking
+  - Changed from custom parsing to standard GitHub releases
+  - More reliable and consistent with other agents
+  - Fetches latest version from `MoonshotAI/kimi-cli` releases
+  - Better update notifications and version tracking
+
+**Previous Release - v0.4.6** (2025-10-25): Groq Code CLI support
+- Full support for Groq Code CLI powered by Groq LPUs
+- Fast inference with temperature configuration support
 
 **Previous Release - v0.4.5** (2025-10-25): Enhanced Kimi CLI installation
 - Explicit Python 3.13 specification for Kimi install/upgrade commands
-
-**Previous Release - v0.4.4** (2025-10-25): Enhanced badges and CI/CD improvements
 - Dedicated security workflows (Trivy and CodeQL)
 - Enhanced README badges with downloads and stars metrics
 - Fixed Windows test failures for platform-specific installations
