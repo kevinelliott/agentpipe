@@ -33,6 +33,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)
 - ✅ **Gemini** (Google) - Multimodal understanding
+- ✅ **Groq** - Fast AI code assistant powered by Groq LPUs (Lightning Processing Units)
 - ✅ **Kimi** (Moonshot AI) - Interactive AI agent with advanced reasoning (interactive-first CLI)
 - ✅ **OpenCode** (SST) - AI coding agent built for the terminal (non-interactive run mode)
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
@@ -95,16 +96,20 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.5 - Enhanced Kimi CLI installation
+**Latest Release**: v0.4.6 - Groq Code CLI support
 
-**What's New in v0.4.5**:
+**What's New in v0.4.6**:
 
-🐍 **Improved Kimi Installation**:
-- **Explicit Python 3.13 Specification**: Kimi install/upgrade commands now specify Python version
-  - Install: `uv tool install --python 3.13 kimi-cli`
-  - Upgrade: `uv tool upgrade kimi-cli --python 3.13 --no-cache`
-  - Prevents version conflicts with other Python installations
-  - Ensures reliable deployment across different environments
+⚡ **Groq Code CLI Support**:
+- **New Agent Adapter**: Full support for Groq Code CLI powered by Groq's Lightning Processing Units (LPUs)
+  - Install: `npm install -g groq-code-cli@latest`
+  - Fast inference with state-of-the-art language models
+  - Supports temperature configuration and custom system prompts
+  - Interactive CLI with stdin-based message passing
+  - Complete integration with AgentPipe's multi-agent conversation system
+
+**Previous Release - v0.4.5** (2025-10-25): Enhanced Kimi CLI installation
+- Explicit Python 3.13 specification for Kimi install/upgrade commands
 
 **Previous Release - v0.4.4** (2025-10-25): Enhanced badges and CI/CD improvements
 - Dedicated security workflows (Trivy and CodeQL)

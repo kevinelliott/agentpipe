@@ -169,6 +169,30 @@
       "requires_auth": true
     },
     {
+      "name": "Groq",
+      "command": "groq",
+      "description": "Groq Code CLI - Fast AI code assistant powered by Groq LPUs",
+      "docs": "https://github.com/build-with-groq/groq-code-cli",
+      "package_manager": "npm",
+      "package_name": "groq-code-cli",
+      "install": {
+        "darwin": "npm install -g groq-code-cli@latest",
+        "linux": "npm install -g groq-code-cli@latest",
+        "windows": "npm install -g groq-code-cli@latest"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g groq-code-cli",
+        "linux": "npm uninstall -g groq-code-cli",
+        "windows": "npm uninstall -g groq-code-cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g groq-code-cli",
+        "linux": "npm update -g groq-code-cli",
+        "windows": "npm update -g groq-code-cli"
+      },
+      "requires_auth": true
+    },
+    {
       "name": "Kimi",
       "command": "kimi",
       "description": "Kimi CLI by Moonshot AI",

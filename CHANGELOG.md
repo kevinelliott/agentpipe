@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.6] - 2025-10-25
+
+### Added
+- **Groq Code CLI Agent Support**
+  - New adapter for Groq Code CLI (`groq` command)
+  - Powered by Groq's Lightning Processing Units (LPUs) for ultra-fast inference
+  - Installation via npm: `npm install -g groq-code-cli@latest`
+  - Supports temperature configuration via agent config
+  - Interactive CLI with stdin-based message passing
+  - Complete integration with standardized three-part prompt system
+  - Comprehensive logging and error handling
+  - Registry entry with install/uninstall/upgrade commands for all platforms
+  - Authentication via GROQ_API_KEY environment variable or `/login` command
+
+### Technical Details
+- Implements all required Agent interface methods
+- Follows established patterns from Claude and Gemini adapters
+- Message filtering to prevent echo in multi-agent conversations
+- Output cleaning to remove system messages and authentication prompts
+- Health check via `--version` flag
+- Version detection via registry system
+- Supports both SendMessage and StreamMessage modes
+
 ## [v0.4.5] - 2025-10-25
 
 ### Changed
