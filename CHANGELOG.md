@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.5] - 2025-10-25
+
+### Changed
+- **Kimi Installation**: Enhanced install and upgrade commands to explicitly specify Python 3.13
+  - Install: `uv tool install --python 3.13 kimi-cli`
+  - Upgrade: `uv tool upgrade kimi-cli --python 3.13 --no-cache`
+  - Ensures correct Python version is used for Kimi CLI deployment
+  - Updated README with explicit Python version specification
+  - Prevents version conflicts with other Python installations
+
 ## [v0.4.4] - 2025-10-25
 
 ### Added

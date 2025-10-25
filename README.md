@@ -95,24 +95,21 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.4 - Enhanced badges and CI/CD improvements
+**Latest Release**: v0.4.5 - Enhanced Kimi CLI installation
 
-**What's New in v0.4.4**:
+**What's New in v0.4.5**:
 
-🎯 **CI/CD & Documentation Improvements**:
-- **Dedicated Security Workflows**: Trivy and CodeQL now have their own dedicated workflows
-  - Cleaner separation of concerns in GitHub Actions
-  - Test workflow focuses on testing and linting
-  - Improved workflow organization and clarity
+🐍 **Improved Kimi Installation**:
+- **Explicit Python 3.13 Specification**: Kimi install/upgrade commands now specify Python version
+  - Install: `uv tool install --python 3.13 kimi-cli`
+  - Upgrade: `uv tool upgrade kimi-cli --python 3.13 --no-cache`
+  - Prevents version conflicts with other Python installations
+  - Ensures reliable deployment across different environments
 
-- **Enhanced README Badges**: Better visibility of project metrics
-  - Added downloads badge showing total release downloads
-  - Added GitHub stars badge with icon
-  - Improved visual hierarchy with consistent color coding
-
-- **Fixed Windows Test Failures**: Platform-specific installation handling
-  - Resolved TestIsInstallable issues on Windows runners
-  - Better handling of agents with platform-specific instructions
+**Previous Release - v0.4.4** (2025-10-25): Enhanced badges and CI/CD improvements
+- Dedicated security workflows (Trivy and CodeQL)
+- Enhanced README badges with downloads and stars metrics
+- Fixed Windows test failures for platform-specific installations
 
 **Previous Release - v0.4.3** (2025-10-25): Kimi CLI agent support
 - Full support for Kimi CLI from Moonshot AI
@@ -197,7 +194,8 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - Features: Agent-native development, Code Droid and Knowledge Droid, CI/CD integration
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
 - [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) - `kimi`
-  - Install: `uv tool install kimi-cli` (requires Python 3.13+)
+  - Install: `uv tool install --python 3.13 kimi-cli`
+  - Upgrade: `uv tool upgrade kimi-cli --python 3.13 --no-cache`
   - Authenticate: Run `kimi` and use `.set_api_key` command with Moonshot AI API key
   - Get API Key: [platform.moonshot.cn](https://platform.moonshot.cn/console/api-keys)
   - Features: Advanced reasoning, multi-turn conversations, MCP/ACP protocol support, interactive-first design

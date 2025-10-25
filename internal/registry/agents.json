@@ -176,8 +176,8 @@
       "package_manager": "uv",
       "package_name": "kimi-cli",
       "install": {
-        "darwin": "uv tool install kimi-cli",
-        "linux": "uv tool install kimi-cli",
+        "darwin": "uv tool install --python 3.13 kimi-cli",
+        "linux": "uv tool install --python 3.13 kimi-cli",
         "windows": "See https://github.com/MoonshotAI/kimi-cli (coming soon)"
       },
       "uninstall": {
@@ -186,9 +186,9 @@
         "windows": "uv tool uninstall kimi-cli"
       },
       "upgrade": {
-        "darwin": "uv tool upgrade kimi-cli --no-cache",
-        "linux": "uv tool upgrade kimi-cli --no-cache",
-        "windows": "uv tool upgrade kimi-cli --no-cache"
+        "darwin": "uv tool upgrade kimi-cli --python 3.13 --no-cache",
+        "linux": "uv tool upgrade kimi-cli --python 3.13 --no-cache",
+        "windows": "uv tool upgrade kimi-cli --python 3.13 --no-cache"
       },
       "requires_auth": true
     },
