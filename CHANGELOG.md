@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.3] - 2025-10-24
+
+### Added
+- **Kimi CLI Agent Support** (Moonshot AI)
+  - New adapter for Kimi CLI (`kimi` command)
+  - Installation via `uv tool install kimi-cli` (requires Python 3.13+)
+  - Support for uv package manager-based installation
+  - Upgrade via `uv tool upgrade kimi-cli --no-cache`
+  - Blue-gradient ASCII logo in branding for visual distinction
+  - Health checks and agent verification
+  - Interactive-aware error handling with helpful authentication guidance
+  - Structured prompt building for multi-agent conversations
+  - Message filtering and context management
+  - Stream message support with best-effort implementation
+
+### Changed
+- Updated registry test to expect 12 supported agents (added Kimi)
+- Updated README with Kimi agent documentation and installation instructions
+
 ## [v0.4.2] - 2025-10-24
 
 ### Fixed

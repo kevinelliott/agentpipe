@@ -31,6 +31,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)
 - ✅ **Gemini** (Google) - Multimodal understanding
+- ✅ **Kimi** (Moonshot AI) - Interactive AI agent with advanced reasoning (interactive-first CLI)
 - ✅ **OpenCode** (SST) - AI coding agent built for the terminal (non-interactive run mode)
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
@@ -189,6 +190,12 @@ AgentPipe requires at least one AI CLI tool to be installed:
   - Authenticate: Sign in via browser when prompted
   - Features: Agent-native development, Code Droid and Knowledge Droid, CI/CD integration
 - [Gemini CLI](https://github.com/google/generative-ai-cli) - `gemini`
+- [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) - `kimi`
+  - Install: `uv tool install kimi-cli` (requires Python 3.13+)
+  - Authenticate: Run `kimi` and use `.set_api_key` command with Moonshot AI API key
+  - Get API Key: [platform.moonshot.cn](https://platform.moonshot.cn/console/api-keys)
+  - Features: Advanced reasoning, multi-turn conversations, MCP/ACP protocol support, interactive-first design
+  - ⚠️ Note: Kimi is designed as an interactive CLI tool - best experience running interactively
 - [OpenCode CLI](https://opencode.ai) - `opencode`
   - Install: `npm install -g opencode-ai@latest`
   - Authenticate: Run `opencode auth login` and configure API keys
