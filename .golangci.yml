@@ -79,6 +79,11 @@ issues:
         - gocognit
         - dupl  # Intentional code duplication - each adapter follows same pattern
 
+    # Allow version check duplication in registry (different package managers)
+    - path: 'internal/registry/'
+      linters:
+        - dupl  # Intentional code duplication - each package manager follows same HTTP pattern
+
     # Allow complex orchestrator functions (retry logic, rate limiting)
     - path: 'pkg/orchestrator/'
       linters:

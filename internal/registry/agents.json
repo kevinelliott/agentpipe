@@ -197,8 +197,8 @@
       "command": "kimi",
       "description": "Kimi CLI by Moonshot AI",
       "docs": "https://github.com/MoonshotAI/kimi-cli",
-      "package_manager": "github",
-      "package_name": "MoonshotAI/kimi-cli",
+      "package_manager": "pypi",
+      "package_name": "kimi-cli",
       "install": {
         "darwin": "uv tool install --python 3.13 kimi-cli",
         "linux": "uv tool install --python 3.13 kimi-cli",
@@ -245,8 +245,8 @@
       "command": "qwen",
       "description": "Alibaba's Qwen Code CLI",
       "docs": "https://github.com/QwenLM/qwen-code",
-      "package_manager": "github",
-      "package_name": "QwenLM/qwen-code",
+      "package_manager": "npm",
+      "package_name": "@qwen-code/qwen-code",
       "install": {
         "darwin": "npm install -g @qwen-code/qwen-code",
         "linux": "npm install -g @qwen-code/qwen-code",

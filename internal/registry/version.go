@@ -30,6 +30,8 @@ func (a *AgentDefinition) GetLatestVersion() (string, error) {
 		return getScriptVersion(a.PackageName)
 	case "manifest":
 		return getManifestVersion(a.PackageName)
+	case "pypi":
+		return getPyPILatestVersion(a.PackageName)
 	default:
 		return "", fmt.Errorf("no package manager configured for %s", a.Name)
 	}
@@ -298,6 +300,47 @@ func getManifestVersion(manifestURL string) (string, error) {
 	}
 
 	return data.Latest, nil
+}
+
+// getPyPILatestVersion fetches the latest version of a PyPI package
+func getPyPILatestVersion(packageName string) (string, error) {
+	// Use PyPI JSON API
+	url := fmt.Sprintf("https://pypi.org/pypi/%s/json", packageName)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch PyPI package info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("PyPI API returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read PyPI response: %w", err)
+	}
+
+	var data struct {
+		Info struct {
+			Version string `json:"version"`
+		} `json:"info"`
+	}
+
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", fmt.Errorf("failed to parse PyPI response: %w", err)
+	}
+
+	if data.Info.Version == "" {
+		return "", fmt.Errorf("no version found in PyPI response")
+	}
+
+	return data.Info.Version, nil
 }
 
 // GetInstalledVersion gets the currently installed version of an agent
