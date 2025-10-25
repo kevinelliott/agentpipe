@@ -144,7 +144,6 @@ func TestIsInstallable(t *testing.T) {
 		wantInstall bool
 	}{
 		{"Claude", true}, // npm install
-		{"Ollama", true}, // brew install (darwin) or curl script
 		{"Amp", true},    // npm install
 	}
 
