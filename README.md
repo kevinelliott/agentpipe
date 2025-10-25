@@ -93,32 +93,27 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.1 - Conversation summarization & unique agent IDs
+**Latest Release**: v0.4.3 - Kimi CLI agent support
 
-**What's New in v0.4.1**:
+**What's New in v0.4.3**:
 
-📝 **Conversation Summarization**:
-- **AI-Generated Summaries**: Automatic summaries at conversation completion
-  - Configurable summary agent (default: Gemini, supports all agent types)
-  - `--no-summary` flag to disable summaries
-  - `--summary-agent` flag to override configured agent
-  - Summary metadata includes agent type, model, tokens, cost, duration
-  - Summary tokens and cost factored into conversation totals
-  - Smart prompt design avoiding meta-commentary
+🚀 **Kimi CLI Agent Support** (Moonshot AI):
+- **New Agent Integration**: Full support for Kimi CLI from Moonshot AI
+  - Installation via `uv tool install kimi-cli` (requires Python 3.13+)
+  - Automatic CLI discovery and health checks
+  - Blue-gradient ASCII logo for visual distinction in conversations
+  - Support for custom model configuration
+  - Structured prompt building for multi-agent conversations
+  - Interactive-aware error handling with helpful authentication guidance
+  - Stream message support with best-effort implementation
 
-👥 **Unique Agent IDs**:
-- **Enhanced Agent Identification**: Support multiple agents of the same type
-  - Agent IDs now unique per instance: `claude-0`, `claude-1`, etc.
-  - AgentID included in all bridge streaming events
-  - Track individual agents in conversations with multiple agents of same type
-  - AgentID in conversation.started participants list
-  - AgentID in all message.created events
+**Previous Release - v0.4.2** (2025-10-24): Qoder installation improvements
+- Added `--force` flag to Qoder install and upgrade commands
 
-💾 **Local Event Storage**:
-- **Event Persistence**: Events saved to `~/.agentpipe/events/`
-  - One JSON Lines file per conversation
-  - Non-blocking async operation
-  - Debug logging for storage errors
+**Previous Release - v0.4.1** (2025-10-22): Conversation summarization & unique agent IDs
+- AI-generated summaries at conversation completion
+- Unique agent IDs for multiple agents of same type
+- Local event storage to `~/.agentpipe/events/`
 
 **Previous Release - v0.4.0**: Bridge connection events and cancellation detection
 **Previous Release - v0.3.0**: Real-time conversation streaming to AgentPipe Web

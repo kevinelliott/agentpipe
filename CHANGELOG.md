@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v0.4.3] - 2025-10-24
+## [v0.4.3] - 2025-10-25
 
 ### Added
 - **Kimi CLI Agent Support** (Moonshot AI)
