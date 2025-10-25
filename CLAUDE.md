@@ -167,6 +167,16 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 ```
 
 ## Recent Changes Log
+- **v0.5.0 (2025-10-25)**: Provider Pricing Integration
+  - Added `agentpipe providers` command with list/show/update subcommands
+  - Integrated with Catwalk's provider configs for accurate pricing
+  - Support for 16 AI providers with 100+ models
+  - Smart model matching (exact/prefix/fuzzy) with comprehensive logging
+  - Hybrid config loading: embedded defaults + optional override
+  - Refactored `EstimateCost()` to use provider registry
+  - Build script to regenerate providers.json from Catwalk
+  - >80% test coverage for providers package
+  - 120KB embedded JSON with all pricing data (go:embed)
 - **v0.3.0 (2025-10-21)**: Streaming Bridge feature
   - Added opt-in real-time conversation streaming to AgentPipe Web
   - Created `internal/bridge/` package with comprehensive infrastructure

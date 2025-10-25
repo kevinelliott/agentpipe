@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.0] - 2025-10-25
+
+### Added
+- **Provider Pricing Integration from Catwalk**
+  - Accurate cost estimation using [Catwalk](https://github.com/charmbracelet/catwalk) provider configs
+  - Support for 16 AI providers with comprehensive pricing data:
+    - AIHubMix, Anthropic, Azure OpenAI, AWS Bedrock, Cerebras, Chutes
+    - DeepSeek, Gemini, Groq, Hugging Face, OpenAI, OpenRouter
+    - Venice, Vertex AI, xAI, and more
+  - New `agentpipe providers` command with subcommands:
+    - `list` - Show all providers and models with pricing
+    - `show <provider>` - Display detailed provider information
+    - `update` - Fetch latest pricing from Catwalk GitHub
+  - Smart model matching with exact, prefix, and fuzzy matching
+  - Hybrid config loading: embedded defaults with optional `~/.agentpipe/providers.json` override
+  - Comprehensive test coverage (>80%) for all provider functionality
+
+### Changed
+- **Cost Estimation**: Refactored `EstimateCost()` to use provider registry instead of hardcoded prices
+  - Falls back to $0 with warning for unknown models
+  - Provides detailed debug logging with model and provider information
+  - Legacy function preserved as `EstimateCostLegacy()` for compatibility
+- **Provider Data**: Single consolidated JSON file with all pricing info (120KB embedded)
+  - Auto-generated from Catwalk's 16 provider configs
+  - Includes model pricing, context windows, capabilities, and more
+  - Version-tracked with update timestamps and source attribution
+
+### Technical Details
+- New `internal/providers/` package with complete provider management
+- Provider registry with RWMutex for thread-safe concurrent access
+- HTTP client with retry logic and exponential backoff for Catwalk fetches
+- Build script (`scripts/update-providers.go`) to regenerate providers.json
+- go:embed directive for zero-dependency embedded pricing data
+- Supports both JSON and human-readable table output formats
+
+### Benefits
+- ✅ **Accurate Costs**: Real pricing from Catwalk, not hardcoded approximations
+- 🔄 **Always Current**: Simple `agentpipe providers update` to get latest pricing
+- 🌍 **Comprehensive**: 16 providers with 100+ models covered
+- 🎯 **Smart Matching**: Handles model ID variations automatically
+- 📊 **Better Insights**: More accurate conversation cost tracking
+- 🛡️ **Backwards Compatible**: Legacy pricing still available if needed
+
 ## [v0.4.9] - 2025-10-25
 
 ### Added

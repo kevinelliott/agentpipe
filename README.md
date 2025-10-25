@@ -519,6 +519,67 @@ Use this command to:
 - Troubleshoot missing dependencies
 - Validate authentication status before starting conversations
 
+### `agentpipe providers`
+
+Manage AI provider configurations and pricing data.
+
+**Subcommands:**
+- `list` - List all available providers and models with pricing
+- `show <provider>` - Show detailed information for a specific provider
+- `update` - Update provider pricing data from Catwalk
+
+**Flags:**
+- `--json` - Output in JSON format
+- `-v, --verbose` - Show detailed model information (list command only)
+
+**Examples:**
+```bash
+# List all providers
+agentpipe providers list
+
+# List providers with detailed model info
+agentpipe providers list --verbose
+
+# Show Anthropic provider details
+agentpipe providers show anthropic
+
+# Get provider data as JSON
+agentpipe providers show openai --json
+
+# Update pricing from Catwalk
+agentpipe providers update
+```
+
+**Features:**
+- **Accurate Pricing**: Uses real pricing data from [Catwalk](https://github.com/charmbracelet/catwalk)
+- **16 Providers**: AIHubMix, Anthropic, Azure OpenAI, AWS Bedrock, Cerebras, Chutes, DeepSeek, Gemini, Groq, Hugging Face, OpenAI, OpenRouter, Venice, Vertex AI, xAI, and more
+- **Smart Matching**: Automatically matches model names with exact, prefix, or fuzzy matching
+- **Always Current**: Simple `agentpipe providers update` fetches latest pricing from Catwalk GitHub
+- **Hybrid Loading**: Uses embedded defaults but allows local override via `~/.agentpipe/providers.json`
+
+**Output includes:**
+- Model IDs and display names
+- Input/output pricing per 1M tokens
+- Context window sizes
+- Reasoning capabilities
+- Attachment support
+
+**Example Output:**
+```
+Provider Pricing Data (v1.0)
+Updated: 2025-10-25T21:38:20Z
+Source: https://github.com/charmbracelet/catwalk
+
+PROVIDER          ID           MODELS  DEFAULT LARGE                   DEFAULT SMALL
+--------          --           ------  -------------                   -------------
+AIHubMix          aihubmix     11      claude-sonnet-4-5               claude-3-5-haiku
+Anthropic         anthropic    9       claude-sonnet-4-5-20250929      claude-3-5-haiku-20241022
+Azure OpenAI      azure        14      gpt-5                           gpt-5-mini
+DeepSeek          deepseek     2       deepseek-reasoner               deepseek-chat
+Gemini            gemini       2       gemini-2.5-pro                  gemini-2.5-flash
+OpenAI            openai       14      gpt-5                           gpt-5-mini
+```
+
 ### `agentpipe agents`
 
 Manage AI agent CLI installations with version checking and upgrade capabilities.
