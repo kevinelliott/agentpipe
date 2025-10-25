@@ -95,19 +95,28 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.3 - Kimi CLI agent support
+**Latest Release**: v0.4.4 - Enhanced badges and CI/CD improvements
 
-**What's New in v0.4.3**:
+**What's New in v0.4.4**:
 
-🚀 **Kimi CLI Agent Support** (Moonshot AI):
-- **New Agent Integration**: Full support for Kimi CLI from Moonshot AI
-  - Installation via `uv tool install kimi-cli` (requires Python 3.13+)
-  - Automatic CLI discovery and health checks
-  - Blue-gradient ASCII logo for visual distinction in conversations
-  - Support for custom model configuration
-  - Structured prompt building for multi-agent conversations
-  - Interactive-aware error handling with helpful authentication guidance
-  - Stream message support with best-effort implementation
+🎯 **CI/CD & Documentation Improvements**:
+- **Dedicated Security Workflows**: Trivy and CodeQL now have their own dedicated workflows
+  - Cleaner separation of concerns in GitHub Actions
+  - Test workflow focuses on testing and linting
+  - Improved workflow organization and clarity
+
+- **Enhanced README Badges**: Better visibility of project metrics
+  - Added downloads badge showing total release downloads
+  - Added GitHub stars badge with icon
+  - Improved visual hierarchy with consistent color coding
+
+- **Fixed Windows Test Failures**: Platform-specific installation handling
+  - Resolved TestIsInstallable issues on Windows runners
+  - Better handling of agents with platform-specific instructions
+
+**Previous Release - v0.4.3** (2025-10-25): Kimi CLI agent support
+- Full support for Kimi CLI from Moonshot AI
+- Installation via `uv tool install kimi-cli` (requires Python 3.13+)
 
 **Previous Release - v0.4.2** (2025-10-24): Qoder installation improvements
 - Added `--force` flag to Qoder install and upgrade commands

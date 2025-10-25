@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.4] - 2025-10-25
+
+### Added
+- **Dedicated Security Workflows**: Trivy and CodeQL now have their own workflows
+  - Separated security scanning from test workflow
+  - Improved workflow organization and clarity
+
+### Changed
+- **README Badges**: Enhanced badge section with additional metrics
+  - Added downloads badge showing total release downloads
+  - Added GitHub stars badge with icon
+  - Improved visual hierarchy with consistent color coding
+  - All badges properly linked for easy navigation
+
+### Fixed
+- **Windows Test Failure**: Fixed TestIsInstallable for platform-specific installations
+  - Removed Ollama from test expectations (Windows-only instructions)
+  - Test now only checks agents with actual install commands across all platforms
+  - Resolves GitHub Actions test failures on Windows runners
+
+### Improved
+- **CI/CD Organization**: Cleaner separation of concerns
+  - Test workflow focuses on testing and linting
+  - Security workflows handle vulnerability scanning
+  - Reduced workflow complexity and interdependencies
+
 ## [v0.4.3] - 2025-10-25
 
 ### Added
