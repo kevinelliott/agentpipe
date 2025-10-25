@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.8] - 2025-10-25
+
+### Fixed
+- **GitHub API Rate Limiting (403 Errors)**: Resolved by using proper package managers
+  - Kimi and Qwen were hitting GitHub's API rate limit (60 requests/hour unauthenticated)
+  - Changed to use the correct source for each package instead of GitHub releases
+
+### Added
+- **PyPI Package Manager Support**
+  - New `getPyPILatestVersion()` function in version.go
+  - Fetches from `https://pypi.org/pypi/{package}/json`
+  - No rate limits, highly reliable
+  - Used for Python packages like kimi-cli
+
+### Changed
+- **Kimi CLI Version Detection**
+  - Package manager: `github` → `pypi`
+  - Package name: `MoonshotAI/kimi-cli` → `kimi-cli`
+  - Now fetches from PyPI (aligns with `uv tool install kimi-cli`)
+  - Eliminates GitHub API 403 errors
+
+- **Qwen Version Detection**
+  - Package manager: `github` → `npm`
+  - Package name: `QwenLM/qwen-code` → `@qwen-code/qwen-code`
+  - Now fetches from npm registry (aligns with `npm install -g @qwen-code/qwen-code`)
+  - Eliminates GitHub API 403 errors
+
+- **Linter Configuration**
+  - Added dupl exclusion for `internal/registry/` path
+  - Allows intentional code duplication across package manager HTTP functions
+
+### Benefits
+- No more API rate limit errors when checking versions
+- Faster version checks (no rate limiting delays)
+- More reliable (uses authoritative source for each package)
+- Aligns version detection with actual installation methods
+
+### Technical Details
+- PyPI API endpoint: `https://pypi.org/pypi/{package}/json`
+- npm API endpoint: `https://registry.npmjs.org/{package}/latest` (existing)
+- Both have much higher rate limits than GitHub (60/hour)
+- Tested and verified with `agentpipe agents list --outdated`
+
 ## [v0.4.7] - 2025-10-25
 
 ### Changed

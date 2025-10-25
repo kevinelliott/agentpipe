@@ -96,23 +96,27 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.7 - Improved Kimi version detection
+**Latest Release**: v0.4.8 - Fixed GitHub API rate limiting
 
-**What's New in v0.4.7**:
+**What's New in v0.4.8**:
 
-🔍 **Improved Kimi CLI Version Detection**:
-- **GitHub Releases Integration**: Now uses GitHub releases API for reliable version checking
-  - Changed from custom parsing to standard GitHub releases
-  - More reliable and consistent with other agents
-  - Fetches latest version from `MoonshotAI/kimi-cli` releases
-  - Better update notifications and version tracking
+🚀 **Fixed GitHub API Rate Limiting**:
+- **PyPI Integration for Kimi**: Now uses PyPI API instead of GitHub releases
+  - No more 403 rate limit errors
+  - Fetches from `https://pypi.org/pypi/kimi-cli/json`
+  - More reliable and aligns with actual installation method (uv/pip)
+- **npm Registry for Qwen**: Uses npm registry instead of GitHub releases
+  - Direct API access without rate limiting
+  - Package: `@qwen-code/qwen-code`
+  - Aligns with actual installation method
+- **Benefits**: Faster, more reliable version checking with no rate limits
+
+**Previous Release - v0.4.7** (2025-10-25): Improved Kimi version detection
+- Initial attempt using GitHub releases (now superseded by PyPI)
 
 **Previous Release - v0.4.6** (2025-10-25): Groq Code CLI support
 - Full support for Groq Code CLI powered by Groq LPUs
 - Fast inference with temperature configuration support
-
-**Previous Release - v0.4.5** (2025-10-25): Enhanced Kimi CLI installation
-- Explicit Python 3.13 specification for Kimi install/upgrade commands
 - Dedicated security workflows (Trivy and CodeQL)
 - Enhanced README badges with downloads and stars metrics
 - Fixed Windows test failures for platform-specific installations
