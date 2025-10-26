@@ -72,12 +72,12 @@ type Orchestrator struct {
 	mu                sync.RWMutex
 	writer            io.Writer
 	logger            *logger.ChatLogger
-	currentTurnNumber int                     // tracks the current turn number for middleware context
-	metrics           *metrics.Metrics        // Prometheus metrics for monitoring
-	bridgeEmitter     *bridge.Emitter         // optional streaming bridge for real-time updates
-	conversationStart time.Time               // conversation start time for duration tracking
-	commandInfo       *bridge.CommandInfo     // information about the command that started this conversation
-	summary           *bridge.SummaryMetadata // conversation summary (populated after completion if enabled)
+	currentTurnNumber int                       // tracks the current turn number for middleware context
+	metrics           *metrics.Metrics          // Prometheus metrics for monitoring
+	bridgeEmitter     bridge.BridgeEmitter      // optional streaming bridge for real-time updates
+	conversationStart time.Time                 // conversation start time for duration tracking
+	commandInfo       *bridge.CommandInfo       // information about the command that started this conversation
+	summary           *bridge.SummaryMetadata   // conversation summary (populated after completion if enabled)
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -153,7 +153,7 @@ func (o *Orchestrator) GetMetrics() *metrics.Metrics {
 // SetBridgeEmitter sets the streaming bridge emitter for real-time conversation updates.
 // If set, the orchestrator will emit events for conversation lifecycle and messages.
 // This method is thread-safe.
-func (o *Orchestrator) SetBridgeEmitter(emitter *bridge.Emitter) {
+func (o *Orchestrator) SetBridgeEmitter(emitter bridge.BridgeEmitter) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.bridgeEmitter = emitter

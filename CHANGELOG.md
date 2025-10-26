@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2025-01-26
+
+### Added
+- **JSON-only output format (`--json` flag)**
+  - Output conversation events as streaming JSONL (one JSON object per line) to stdout
+  - Clean programmatic output for CI/CD pipelines, monitoring tools, and automation
+  - Suppresses all UI elements (logo, initialization messages, session summary, agent messages)
+  - Events emitted: `bridge.connected`, `conversation.started`, `message.created`, `conversation.completed`
+  - Matches bridge events format for consistency
+  - Usage: `agentpipe run --json -a gemini:Bot --prompt "test" | jq`
+  - Benefits:
+    - ✅ Real-time streaming (see events as they happen)
+    - ✅ Easy to pipe to `jq`, log aggregators, monitoring tools
+    - ✅ CI/CD friendly
+    - ✅ No breaking changes - opt-in via flag
+
+### Technical Details
+- **New Module**: `internal/bridge/stdout_emitter.go`
+  - Implements `BridgeEmitter` interface for stdout JSON output
+  - Uses same event schemas as HTTP bridge emitter
+- **New Interface**: `internal/bridge/interface.go`
+  - `BridgeEmitter` interface allows both HTTP and stdout emitters
+- **Updated**: `pkg/orchestrator/orchestrator.go`
+  - Changed `bridgeEmitter` field to use `BridgeEmitter` interface
+- **Updated**: `cmd/run.go`
+  - Added `--json` flag
+  - Suppresses UI output when `--json` is set
+  - Passes `nil` writers to logger and orchestrator in JSON mode
+
 ## [0.5.2] - 2025-01-26
 
 ### Fixed

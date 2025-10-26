@@ -47,6 +47,7 @@ var (
 	noStream           bool
 	noSummary          bool
 	summaryAgent       string
+	jsonOutput         bool
 )
 
 var runCmd = &cobra.Command{
@@ -80,6 +81,7 @@ func init() {
 	runCmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming to AgentPipe Web for this run (overrides config)")
 	runCmd.Flags().BoolVar(&noSummary, "no-summary", false, "Disable conversation summary generation (overrides config)")
 	runCmd.Flags().StringVar(&summaryAgent, "summary-agent", "", "Agent to use for summary generation (default: gemini, overrides config)")
+	runCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output events in JSON format (JSONL)")
 }
 
 func runConversation(cobraCmd *cobra.Command, args []string) {
@@ -243,7 +245,9 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 	verbose := viper.GetBool("verbose")
 
-	fmt.Println("🔍 Initializing agents...")
+	if !jsonOutput {
+		fmt.Println("🔍 Initializing agents...")
+	}
 
 	for _, agentCfg := range cfg.Agents {
 		if verbose {
@@ -319,7 +323,9 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		return fmt.Errorf("no agents configured")
 	}
 
-	fmt.Printf("✅ All %d agents initialized successfully\n\n", len(agentsList))
+	if !jsonOutput {
+		fmt.Printf("✅ All %d agents initialized successfully\n\n", len(agentsList))
+	}
 
 	orchConfig := orchestrator.OrchestratorConfig{
 		Mode:          orchestrator.ConversationMode(cfg.Orchestrator.Mode),
@@ -334,7 +340,12 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	var chatLogger *logger.ChatLogger
 	if cfg.Logging.Enabled {
 		var err error
-		chatLogger, err = logger.NewChatLogger(cfg.Logging.ChatLogDir, cfg.Logging.LogFormat, os.Stdout, cfg.Logging.ShowMetrics)
+		// Suppress console output when --json is set
+		var consoleWriter io.Writer = os.Stdout
+		if jsonOutput {
+			consoleWriter = nil
+		}
+		chatLogger, err = logger.NewChatLogger(cfg.Logging.ChatLogDir, cfg.Logging.LogFormat, consoleWriter, cfg.Logging.ShowMetrics)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to create chat logger: %v\n", err)
 			// Continue without logging
@@ -345,8 +356,8 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 	// Create orchestrator with appropriate writer
 	var writer io.Writer = os.Stdout
-	if chatLogger != nil {
-		writer = nil // Logger will handle console output
+	if chatLogger != nil || jsonOutput {
+		writer = nil // Logger will handle console output, or suppress for JSON mode
 	}
 
 	orch := orchestrator.NewOrchestrator(orchConfig, writer)
@@ -358,31 +369,40 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	commandInfo := buildCommandInfo(cmd, cfg)
 	orch.SetCommandInfo(commandInfo)
 
-	// Set up streaming bridge if enabled
-	shouldStream := determineShouldStream(streamEnabled, noStream)
-	if shouldStream {
-		bridgeConfig := bridge.LoadConfig()
-		if bridgeConfig.Enabled || streamEnabled {
-			// Override config enabled setting if --stream was specified
-			if streamEnabled {
-				bridgeConfig.Enabled = true
-			}
+	// Set up JSON stdout emitter if --json flag is set
+	if jsonOutput {
+		stdoutEmitter := bridge.NewStdoutEmitter(version.GetShortVersion())
+		orch.SetBridgeEmitter(stdoutEmitter)
+	} else {
+		// Set up streaming bridge if enabled (only when not in JSON mode)
+		shouldStream := determineShouldStream(streamEnabled, noStream)
+		if shouldStream {
+			bridgeConfig := bridge.LoadConfig()
+			if bridgeConfig.Enabled || streamEnabled {
+				// Override config enabled setting if --stream was specified
+				if streamEnabled {
+					bridgeConfig.Enabled = true
+				}
 
-			emitter := bridge.NewEmitter(bridgeConfig, version.GetShortVersion())
-			orch.SetBridgeEmitter(emitter)
+				emitter := bridge.NewEmitter(bridgeConfig, version.GetShortVersion())
+				orch.SetBridgeEmitter(emitter)
 
-			if verbose {
-				fmt.Printf("🌐 Streaming enabled (conversation ID: %s)\n", emitter.GetConversationID())
+				if verbose {
+					fmt.Printf("🌐 Streaming enabled (conversation ID: %s)\n", emitter.GetConversationID())
+				}
 			}
 		}
 	}
 
-	fmt.Println("🚀 Starting AgentPipe conversation...")
-	fmt.Printf("Mode: %s | Max turns: %d | Agents: %d\n", cfg.Orchestrator.Mode, cfg.Orchestrator.MaxTurns, len(agentsList))
-	if !cfg.Logging.Enabled {
-		fmt.Println("📝 Chat logging disabled (use --log-dir to enable)")
+	// Only show UI elements when not in JSON output mode
+	if !jsonOutput {
+		fmt.Println("🚀 Starting AgentPipe conversation...")
+		fmt.Printf("Mode: %s | Max turns: %d | Agents: %d\n", cfg.Orchestrator.Mode, cfg.Orchestrator.MaxTurns, len(agentsList))
+		if !cfg.Logging.Enabled {
+			fmt.Println("📝 Chat logging disabled (use --log-dir to enable)")
+		}
+		fmt.Println(strings.Repeat("=", 60))
 	}
-	fmt.Println(strings.Repeat("=", 60))
 
 	log.WithFields(map[string]interface{}{
 		"mode":         cfg.Orchestrator.Mode,
@@ -404,8 +424,10 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		log.Info("conversation completed successfully")
 	}
 
-	// Print summary
-	fmt.Println("\n" + strings.Repeat("=", 60))
+	// Only print UI summary when not in JSON mode
+	if !jsonOutput {
+		fmt.Println("\n" + strings.Repeat("=", 60))
+	}
 
 	// Save conversation state if requested
 	if saveState || stateFile != "" {
@@ -415,16 +437,19 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 		}
 	}
 
-	// Always print session summary (whether interrupted or completed normally)
-	if gracefulShutdown {
-		fmt.Println("📊 Session Summary (Interrupted)")
-	} else if err != nil {
-		fmt.Println("📊 Session Summary (Ended with Error)")
-	} else {
-		fmt.Println("📊 Session Summary (Completed)")
+	// Only print session summary when not in JSON output mode
+	if !jsonOutput {
+		// Always print session summary (whether interrupted or completed normally)
+		if gracefulShutdown {
+			fmt.Println("📊 Session Summary (Interrupted)")
+		} else if err != nil {
+			fmt.Println("📊 Session Summary (Ended with Error)")
+		} else {
+			fmt.Println("📊 Session Summary (Completed)")
+		}
+		fmt.Println(strings.Repeat("=", 60))
+		printSessionSummary(orch, cfg)
 	}
-	fmt.Println(strings.Repeat("=", 60))
-	printSessionSummary(orch, cfg)
 
 	if err != nil {
 		return fmt.Errorf("orchestrator error: %w", err)
