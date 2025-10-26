@@ -11,17 +11,19 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
 )
 
 type ChatLogger struct {
-	logFile     *os.File
-	logFormat   string
-	console     io.Writer
-	agentColors map[string]lipgloss.Style
-	colorIndex  int
-	termWidth   int
-	showMetrics bool
+	logFile      *os.File
+	logFormat    string
+	console      io.Writer
+	agentColors  map[string]lipgloss.Style
+	colorIndex   int
+	termWidth    int
+	showMetrics  bool
+	jsonEmitter  *bridge.StdoutEmitter // For JSON mode output
 }
 
 var colors = []lipgloss.Color{
@@ -123,6 +125,11 @@ func NewChatLogger(logDir string, logFormat string, console io.Writer, showMetri
 	return logger, nil
 }
 
+// SetJSONEmitter sets the JSON emitter for JSON-only output mode
+func (l *ChatLogger) SetJSONEmitter(emitter *bridge.StdoutEmitter) {
+	l.jsonEmitter = emitter
+}
+
 func (l *ChatLogger) getAgentColor(agentName string) lipgloss.Style {
 	if style, exists := l.agentColors[agentName]; exists {
 		return style
@@ -161,6 +168,30 @@ func (l *ChatLogger) getAgentBadgeStyle(agentName string) lipgloss.Style {
 
 func (l *ChatLogger) LogMessage(msg agent.Message) {
 	timestamp := time.Unix(msg.Timestamp, 0).Format("15:04:05")
+
+	// If JSON emitter is set, emit as JSON event
+	if l.jsonEmitter != nil {
+		var metrics *bridge.LogEntryMetrics
+		if msg.Metrics != nil {
+			metrics = &bridge.LogEntryMetrics{
+				DurationSeconds: msg.Metrics.Duration.Seconds(),
+				TotalTokens:     msg.Metrics.TotalTokens,
+				Cost:            msg.Metrics.Cost,
+			}
+		}
+
+		l.jsonEmitter.EmitLogEntry(
+			"message",
+			msg.AgentID,
+			msg.AgentName,
+			msg.AgentType,
+			msg.Content,
+			msg.Role,
+			metrics,
+			nil, // metadata
+		)
+		return
+	}
 
 	// Write to file
 	if l.logFile != nil {
@@ -261,6 +292,21 @@ func (l *ChatLogger) LogMessage(msg agent.Message) {
 
 func (l *ChatLogger) LogError(agentName string, err error) {
 	timestamp := time.Now().Format("15:04:05")
+
+	// If JSON emitter is set, emit as JSON event
+	if l.jsonEmitter != nil {
+		l.jsonEmitter.EmitLogEntry(
+			"error",
+			"",
+			agentName,
+			"",
+			err.Error(),
+			"",
+			nil,
+			nil,
+		)
+		return
+	}
 
 	// Write to file
 	if l.logFile != nil {

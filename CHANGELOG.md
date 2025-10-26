@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2025-01-26
+
+### Added
+- **Complete JSON-only output mode**
+  - ALL output (logs, messages, events) now emitted as JSON to stdout when using `--json` flag
+  - Includes agent messages, system messages, diagnostic logs, and metadata
+  - Pure JSONL stream - every line is a valid JSON object
+  - Two event types:
+    - Conversation events: `bridge.connected`, `conversation.started`, `message.created`, `conversation.completed`
+    - Log events: `log.entry` for all messages and diagnostic logs
+  - Enables complete conversation replay and analysis from JSON stream alone
+  - Perfect for log aggregators, monitoring tools, CI/CD pipelines, and automation
+
+### Enhanced
+- **Diagnostic logs as JSON events**
+  - All zerolog diagnostic logs (INF, WRN, ERR, DBG) emitted as `log.entry` events with `role: "diagnostic"`
+  - Includes metadata from log fields (agent_id, duration, tokens, etc.)
+  - Clean separation: `role: "diagnostic"` for system logs vs `role: "agent"/"system"/"user"` for chat messages
+
+### Technical Details
+- **New Event Type**: `log.entry` in `internal/bridge/events.go`
+  - `LogEntryData` struct with level, agent info, content, role, metadata, and metrics
+  - `LogEntryMetrics` struct for duration, tokens, cost
+  - Supports both chat messages and diagnostic logs in unified format
+- **New Module**: `internal/bridge/zerolog_json_writer.go`
+  - Custom zerolog writer that parses zerolog JSON output
+  - Emits diagnostic logs as `log.entry` events to stdout
+  - Extracts level, message, and metadata from zerolog fields
+- **Updated**: `internal/bridge/stdout_emitter.go`
+  - Added `EmitLogEntry()` method for log event emission
+- **Updated**: `pkg/logger/logger.go`
+  - Added `jsonEmitter` field to `ChatLogger`
+  - Added `SetJSONEmitter()` method
+  - Modified `LogMessage()`, `LogError()`, and `LogSystem()` to emit JSON events when JSON emitter is set
+  - Falls back to console/file output when JSON emitter is not set
+- **Updated**: `cmd/run.go`
+  - Set JSON emitter on logger when `--json` flag is used
+  - Reinitialize zerolog with `ZerologJSONWriter` for diagnostic log conversion
+  - Ensures all output becomes JSON events
+
 ## [0.5.3] - 2025-01-26
 
 ### Added

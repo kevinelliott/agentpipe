@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -373,6 +374,19 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 	if jsonOutput {
 		stdoutEmitter := bridge.NewStdoutEmitter(version.GetShortVersion())
 		orch.SetBridgeEmitter(stdoutEmitter)
+
+		// Set JSON emitter on logger to emit log.entry events
+		if chatLogger != nil {
+			chatLogger.SetJSONEmitter(stdoutEmitter)
+		}
+
+		// Reinitialize zerolog to use JSON writer for diagnostic logs
+		jsonWriter := bridge.NewZerologJSONWriter(stdoutEmitter)
+		level := zerolog.InfoLevel
+		if verbose {
+			level = zerolog.DebugLevel
+		}
+		log.InitLogger(jsonWriter, level, false) // false = don't use pretty console output
 	} else {
 		// Set up streaming bridge if enabled (only when not in JSON mode)
 		shouldStream := determineShouldStream(streamEnabled, noStream)

@@ -21,6 +21,8 @@ const (
 	EventConversationError EventType = "conversation.error"
 	// EventBridgeTest is emitted when testing the bridge connection
 	EventBridgeTest EventType = "bridge.test"
+	// EventLogEntry is emitted for log messages (messages, errors, system messages)
+	EventLogEntry EventType = "log.entry"
 )
 
 // UTCTime wraps time.Time to ensure JSON marshaling always uses UTC with Z suffix
@@ -144,4 +146,24 @@ type BridgeTestData struct {
 type BridgeConnectedData struct {
 	SystemInfo  SystemInfo `json:"system_info"`
 	ConnectedAt string     `json:"connected_at"`
+}
+
+// LogEntryData contains data for log.entry events
+type LogEntryData struct {
+	ConversationID string                 `json:"conversation_id"`
+	Level          string                 `json:"level"`           // "message", "error", "system"
+	AgentID        string                 `json:"agent_id,omitempty"`
+	AgentName      string                 `json:"agent_name,omitempty"`
+	AgentType      string                 `json:"agent_type,omitempty"`
+	Content        string                 `json:"content"`
+	Role           string                 `json:"role,omitempty"`  // "assistant", "system", "user"
+	Metrics        *LogEntryMetrics       `json:"metrics,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"` // Additional context
+}
+
+// LogEntryMetrics contains metrics for log entries (if applicable)
+type LogEntryMetrics struct {
+	DurationSeconds float64 `json:"duration_seconds,omitempty"`
+	TotalTokens     int     `json:"total_tokens,omitempty"`
+	Cost            float64 `json:"cost,omitempty"`
 }

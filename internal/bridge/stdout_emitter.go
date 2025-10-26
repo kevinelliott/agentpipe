@@ -193,3 +193,35 @@ func (e *StdoutEmitter) EmitConversationError(errorMessage string, errorType str
 
 	_ = e.emitEvent(event)
 }
+
+// EmitLogEntry emits a log.entry event for log messages
+func (e *StdoutEmitter) EmitLogEntry(
+	level string,
+	agentID string,
+	agentName string,
+	agentType string,
+	content string,
+	role string,
+	metrics *LogEntryMetrics,
+	metadata map[string]interface{},
+) {
+	data := LogEntryData{
+		ConversationID: e.conversationID,
+		Level:          level,
+		AgentID:        agentID,
+		AgentName:      agentName,
+		AgentType:      agentType,
+		Content:        content,
+		Role:           role,
+		Metrics:        metrics,
+		Metadata:       metadata,
+	}
+
+	event := Event{
+		Type:      EventLogEntry,
+		Timestamp: UTCTime{Time: time.Now()},
+		Data:      data,
+	}
+
+	_ = e.emitEvent(event)
+}
