@@ -72,13 +72,19 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
    - Deprecated methods: Updated viewport scroll methods
 
 ### Agent Adapters
-Each agent adapter must implement:
-- `Initialize(config)` - Setup with config
-- `IsAvailable()` - Check if CLI exists
-- `HealthCheck(ctx)` - Verify CLI works
-- `SendMessage(ctx, messages)` - Send and receive
-- `GetMetrics()` - Return usage metrics
-- `GetCLIVersion()` - Return CLI tool version (added in v0.3.0 for streaming bridge)
+AgentPipe supports two types of agent adapters:
+
+**CLI-Based Adapters** (Claude, Gemini, Qwen, etc.):
+- Execute external CLI tools via `exec.Command`
+- Each adapter must implement full `Agent` interface
+- Methods: `Initialize(config)`, `IsAvailable()`, `HealthCheck(ctx)`, `SendMessage(ctx, messages)`, `StreamMessage(ctx, messages, writer)`, `GetCLIVersion()`
+
+**API-Based Adapters** (OpenRouter, v0.6.0+):
+- Direct HTTP API integration without CLI dependencies
+- Same `Agent` interface but uses HTTP client instead of exec
+- `IsAvailable()` checks for API key instead of CLI binary
+- `GetCLIVersion()` returns "N/A (API)" for API-based agents
+- Benefits: No CLI installation, lower latency, real token counts from API
 
 ### TUI Features
 - Three panels: agents list, conversation, user input
@@ -167,6 +173,19 @@ goimports -local github.com/kevinelliott/agentpipe -w .
 ```
 
 ## Recent Changes Log
+- **v0.6.0 (2025-10-25)**: OpenRouter API Support - First API-Based Agent
+  - New `openrouter` agent type for direct API integration
+  - Created `pkg/client/` package with OpenAI-compatible HTTP client
+  - Implemented `pkg/adapters/openrouter.go` with complete Agent interface via HTTP
+  - Access 400+ models from multiple providers without CLI installation
+  - Streaming (SSE) and non-streaming message support
+  - Retry logic with exponential backoff (1s, 2s, 4s)
+  - Real token usage and accurate cost tracking from API responses
+  - Example configurations: `examples/openrouter-conversation.yaml`, `examples/openrouter-solo.yaml`
+  - Comprehensive test coverage (>80%) with mocked HTTP responses
+  - Foundation for future API-based agents (Anthropic API, Google AI API, etc.)
+  - Environment variable: `OPENROUTER_API_KEY`
+  - README section: "Using OpenRouter (API-Based Agents)"
 - **v0.5.0 (2025-10-25)**: Provider Pricing Integration
   - Added `agentpipe providers` command with list/show/update subcommands
   - Integrated with Catwalk's provider configs for accurate pricing

@@ -117,8 +117,16 @@ func (c *ClaudeAgent) SendMessage(ctx context.Context, messages []agent.Message)
 	// Build prompt with structured format
 	prompt := c.buildPrompt(relevantMessages, true)
 
+	// Build command args
+	args := []string{}
+
+	// Add model flag if specified
+	if c.Config.Model != "" {
+		args = append(args, "--model", c.Config.Model)
+	}
+
 	// Claude CLI takes prompt via stdin
-	cmd := exec.CommandContext(ctx, c.execPath)
+	cmd := exec.CommandContext(ctx, c.execPath, args...)
 	cmd.Stdin = strings.NewReader(prompt)
 
 	startTime := time.Now()
@@ -166,8 +174,16 @@ func (c *ClaudeAgent) StreamMessage(ctx context.Context, messages []agent.Messag
 	// Build prompt with structured format
 	prompt := c.buildPrompt(relevantMessages, true)
 
+	// Build command args
+	args := []string{}
+
+	// Add model flag if specified
+	if c.Config.Model != "" {
+		args = append(args, "--model", c.Config.Model)
+	}
+
 	// Claude CLI takes prompt via stdin
-	cmd := exec.CommandContext(ctx, c.execPath)
+	cmd := exec.CommandContext(ctx, c.execPath, args...)
 	cmd.Stdin = strings.NewReader(prompt)
 
 	stdout, err := cmd.StdoutPipe()

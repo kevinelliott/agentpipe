@@ -120,6 +120,11 @@ func (c *CrushAgent) SendMessage(ctx context.Context, messages []agent.Message) 
 	// Using stdin for consistency with other adapters
 	args := []string{}
 
+	// Add model flag if specified
+	if c.Config.Model != "" {
+		args = append(args, "--model", c.Config.Model)
+	}
+
 	// Crush CLI takes prompt via stdin or command-line argument
 	cmd := exec.CommandContext(ctx, c.execPath, args...)
 	cmd.Stdin = strings.NewReader(prompt)
@@ -173,8 +178,13 @@ func (c *CrushAgent) StreamMessage(ctx context.Context, messages []agent.Message
 	// Build prompt with structured format
 	prompt := c.buildPrompt(relevantMessages, true)
 
-	// Build command
+	// Build command args
 	args := []string{}
+
+	// Add model flag if specified
+	if c.Config.Model != "" {
+		args = append(args, "--model", c.Config.Model)
+	}
 
 	// Crush CLI takes prompt via stdin
 	cmd := exec.CommandContext(ctx, c.execPath, args...)

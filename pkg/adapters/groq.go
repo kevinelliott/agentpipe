@@ -119,6 +119,11 @@ func (g *GroqAgent) SendMessage(ctx context.Context, messages []agent.Message) (
 	// Build command args
 	args := []string{}
 
+	// Add model flag if specified
+	if g.Config.Model != "" {
+		args = append(args, "--model", g.Config.Model)
+	}
+
 	// Add temperature flag if specified and valid
 	if g.Config.Temperature > 0 {
 		args = append(args, "--temperature", fmt.Sprintf("%.1f", g.Config.Temperature))
@@ -177,8 +182,15 @@ func (g *GroqAgent) StreamMessage(ctx context.Context, messages []agent.Message,
 	// Build prompt with structured format
 	prompt := g.buildPrompt(relevantMessages, true)
 
-	// Build command with temperature flag if specified
+	// Build command args
 	args := []string{}
+
+	// Add model flag if specified
+	if g.Config.Model != "" {
+		args = append(args, "--model", g.Config.Model)
+	}
+
+	// Add temperature flag if specified
 	if g.Config.Temperature > 0 {
 		args = append(args, "--temperature", fmt.Sprintf("%.1f", g.Config.Temperature))
 	}
