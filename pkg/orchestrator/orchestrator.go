@@ -405,8 +405,8 @@ Conversation:
 	cost := utils.EstimateCost(model, inputTokens, outputTokens)
 
 	summaryMetadata := &bridge.SummaryMetadata{
-		ShortSummary: shortSummary,
-		Summary:      fullSummary,
+		ShortText:    shortSummary,
+		Text:         fullSummary,
 		AgentType:    o.config.Summary.Agent,
 		Model:        model,
 		InputTokens:  inputTokens,

@@ -1,0 +1,53 @@
+version: "1.0"
+
+# OpenRouter Multi-Agent Conversation Example
+#
+# This example demonstrates using OpenRouter's unified API to access multiple
+# AI models from different providers in a single conversation.
+#
+# Requirements:
+#   - Set OPENROUTER_API_KEY environment variable
+#   - OpenRouter account with credits (https://openrouter.ai)
+#
+# Run with:
+#   export OPENROUTER_API_KEY=your-api-key-here
+#   agentpipe run -c examples/openrouter-conversation.yaml
+
+agents:
+  - id: claude-via-openrouter
+    type: openrouter
+    name: "Claude (OpenRouter)"
+    prompt: "You are Claude, an AI assistant created by Anthropic. You are thoughtful, analytical, and enjoy deep discussions."
+    announcement: "🤖 Claude has joined via OpenRouter API!"
+    model: anthropic/claude-sonnet-4-5
+    temperature: 0.7
+    max_tokens: 500
+
+  - id: gemini-via-openrouter
+    type: openrouter
+    name: "Gemini (OpenRouter)"
+    prompt: "You are Gemini, Google's AI assistant. You are curious, factual, and love to explore new ideas."
+    announcement: "✨ Gemini has joined via OpenRouter API!"
+    model: google/gemini-2.5-pro
+    temperature: 0.6
+    max_tokens: 500
+
+  - id: gpt-via-openrouter
+    type: openrouter
+    name: "GPT (OpenRouter)"
+    prompt: "You are GPT, OpenAI's language model. You are helpful, creative, and enjoy collaborative problem-solving."
+    announcement: "🧠 GPT has joined via OpenRouter API!"
+    model: openai/gpt-5
+    temperature: 0.8
+    max_tokens: 500
+
+orchestrator:
+  mode: round-robin
+  max_turns: 8
+  turn_timeout: 30s
+  response_delay: 2s
+  initial_prompt: "Let's have a discussion about the future of AI and its impact on society. Each of you represents a different AI platform - what unique perspectives do you bring to this topic?"
+
+logging:
+  enabled: true
+  show_metrics: true

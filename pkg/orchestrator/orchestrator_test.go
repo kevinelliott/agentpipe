@@ -1156,10 +1156,10 @@ func TestGetSummary(t *testing.T) {
 
 	// Manually set a summary (simulating what generateSummary does)
 	testSummary := &bridge.SummaryMetadata{
-		ShortSummary: "Short test summary.",
-		Summary:      "Full test summary with more details.",
-		AgentType:    "test",
-		Model:        "test-model",
+		ShortText: "Short test summary.",
+		Text:      "Full test summary with more details.",
+		AgentType: "test",
+		Model:     "test-model",
 	}
 
 	orch.mu.Lock()
@@ -1172,11 +1172,11 @@ func TestGetSummary(t *testing.T) {
 		t.Fatal("expected summary but got nil")
 	}
 
-	if retrievedSummary.ShortSummary != testSummary.ShortSummary {
-		t.Errorf("short summary mismatch: expected %q, got %q", testSummary.ShortSummary, retrievedSummary.ShortSummary)
+	if retrievedSummary.ShortText != testSummary.ShortText {
+		t.Errorf("short summary mismatch: expected %q, got %q", testSummary.ShortText, retrievedSummary.ShortText)
 	}
 
-	if retrievedSummary.Summary != testSummary.Summary {
-		t.Errorf("summary mismatch: expected %q, got %q", testSummary.Summary, retrievedSummary.Summary)
+	if retrievedSummary.Text != testSummary.Text {
+		t.Errorf("summary mismatch: expected %q, got %q", testSummary.Text, retrievedSummary.Text)
 	}
 }

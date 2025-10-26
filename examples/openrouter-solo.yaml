@@ -1,0 +1,36 @@
+version: "1.0"
+
+# OpenRouter Solo Agent Example
+#
+# This example shows how to use a single OpenRouter agent for a conversation.
+# This is useful for testing or when you want to use a specific model via API
+# without installing its CLI tool.
+#
+# Requirements:
+#   - Set OPENROUTER_API_KEY environment variable
+#   - OpenRouter account with credits (https://openrouter.ai)
+#
+# Run with:
+#   export OPENROUTER_API_KEY=your-api-key-here
+#   agentpipe run -c examples/openrouter-solo.yaml
+
+agents:
+  - id: deepseek-reasoner
+    type: openrouter
+    name: "DeepSeek Reasoner"
+    prompt: "You are DeepSeek-R1, a powerful reasoning model. When solving problems, break down your thinking step by step and show your reasoning process clearly."
+    announcement: "🧪 DeepSeek-R1 has joined via OpenRouter API!"
+    model: deepseek/deepseek-r1
+    temperature: 0.5
+    max_tokens: 2000
+
+orchestrator:
+  mode: round-robin
+  max_turns: 3
+  turn_timeout: 60s
+  response_delay: 1s
+  initial_prompt: "Solve this logic puzzle: You have 12 balls that look identical. One ball is slightly heavier or lighter than the others. Using a balance scale only 3 times, how can you identify which ball is different and whether it's heavier or lighter?"
+
+logging:
+  enabled: true
+  show_metrics: true

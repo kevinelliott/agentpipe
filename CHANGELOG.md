@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2025-01-26
+
+### Fixed
+- **Summary Field Naming Consistency**
+  - Reverted field naming from `ShortSummary`/`Summary` back to `ShortText`/`Text` in `SummaryMetadata`
+  - Rationale: "Summary" is redundant when fields are already in `SummaryMetadata` struct
+  - Updated field naming in `StateMetadata` from `ShortSummary`/`Summary` to `ShortText`/`Text` for consistency
+  - JSON field names: `short_text` and `text` (inside parent `summary` object)
+  - This provides cleaner naming: `SummaryMetadata.Text` vs `SummaryMetadata.Summary`
+  - Updated all references across:
+    - `internal/bridge/events.go` - Event data structures
+    - `pkg/conversation/state.go` - Conversation state persistence
+    - `pkg/orchestrator/orchestrator.go` - Summary metadata initialization
+    - `cmd/run.go` - State metadata population
+    - All test files updated accordingly
+  - All tests pass, no breaking changes to external APIs
+
 ## [0.5.1] - 2025-01-26
 
 ### Added

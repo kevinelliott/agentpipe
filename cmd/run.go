@@ -440,8 +440,8 @@ func saveConversationState(orch *orchestrator.Orchestrator, cfg *config.Config, 
 
 	// Populate summary fields if available
 	if summary := orch.GetSummary(); summary != nil {
-		state.Metadata.ShortSummary = summary.ShortSummary
-		state.Metadata.Summary = summary.Summary
+		state.Metadata.ShortText = summary.ShortText
+		state.Metadata.Text = summary.Text
 	}
 
 	// Determine save path
