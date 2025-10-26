@@ -49,6 +49,12 @@ type StateMetadata struct {
 
 	// Description is an optional description of the conversation
 	Description string `json:"description,omitempty"`
+
+	// ShortSummary is an AI-generated 1-2 sentence summary of the conversation (optional)
+	ShortSummary string `json:"short_summary,omitempty"`
+
+	// Summary is an AI-generated comprehensive summary of the conversation (optional)
+	Summary string `json:"summary,omitempty"`
 }
 
 // NewState creates a new conversation state.

@@ -103,7 +103,8 @@ type MessageCreatedData struct {
 
 // SummaryMetadata contains information about the AI-generated conversation summary
 type SummaryMetadata struct {
-	Text         string  `json:"text"`                    // The summary text
+	ShortSummary string  `json:"short_summary"`           // Short 1-2 sentence summary
+	Summary      string  `json:"summary"`                 // Comprehensive detailed summary
 	AgentType    string  `json:"agent_type"`              // Type of agent used to generate summary (e.g., "gemini")
 	Model        string  `json:"model,omitempty"`         // Model used for summary generation
 	InputTokens  int     `json:"input_tokens,omitempty"`  // Tokens used for input (conversation)

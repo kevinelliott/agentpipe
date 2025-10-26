@@ -72,11 +72,12 @@ type Orchestrator struct {
 	mu                sync.RWMutex
 	writer            io.Writer
 	logger            *logger.ChatLogger
-	currentTurnNumber int                 // tracks the current turn number for middleware context
-	metrics           *metrics.Metrics    // Prometheus metrics for monitoring
-	bridgeEmitter     *bridge.Emitter     // optional streaming bridge for real-time updates
-	conversationStart time.Time           // conversation start time for duration tracking
-	commandInfo       *bridge.CommandInfo // information about the command that started this conversation
+	currentTurnNumber int                     // tracks the current turn number for middleware context
+	metrics           *metrics.Metrics        // Prometheus metrics for monitoring
+	bridgeEmitter     *bridge.Emitter         // optional streaming bridge for real-time updates
+	conversationStart time.Time               // conversation start time for duration tracking
+	commandInfo       *bridge.CommandInfo     // information about the command that started this conversation
+	summary           *bridge.SummaryMetadata // conversation summary (populated after completion if enabled)
 }
 
 // NewOrchestrator creates a new Orchestrator with the given configuration.
@@ -220,6 +221,71 @@ func (o *Orchestrator) emitConversationError(errorMsg, errorType, agentType stri
 	}
 }
 
+// parseDualSummary extracts short and full summaries from a structured response.
+// Expected format:
+//
+//	SHORT: [1-2 sentence summary]
+//	FULL: [detailed summary]
+//
+// Returns the extracted summaries or an error if parsing fails.
+func parseDualSummary(response string) (shortText, fullText string, err error) {
+	lines := strings.Split(response, "\n")
+	var short, full strings.Builder
+
+	inShort, inFull := false, false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Check for SHORT marker
+		if strings.HasPrefix(trimmed, "SHORT:") {
+			inShort = true
+			inFull = false
+			// Extract content after "SHORT:"
+			content := strings.TrimSpace(strings.TrimPrefix(trimmed, "SHORT:"))
+			if content != "" {
+				short.WriteString(content)
+			}
+			continue
+		}
+
+		// Check for FULL marker
+		if strings.HasPrefix(trimmed, "FULL:") {
+			inFull = true
+			inShort = false
+			// Extract content after "FULL:"
+			content := strings.TrimSpace(strings.TrimPrefix(trimmed, "FULL:"))
+			if content != "" {
+				full.WriteString(content)
+			}
+			continue
+		}
+
+		// Append to current section
+		if inShort && trimmed != "" {
+			if short.Len() > 0 {
+				short.WriteString(" ")
+			}
+			short.WriteString(trimmed)
+		} else if inFull && trimmed != "" {
+			if full.Len() > 0 {
+				full.WriteString(" ")
+			}
+			full.WriteString(trimmed)
+		}
+	}
+
+	shortText = strings.TrimSpace(short.String())
+	fullText = strings.TrimSpace(full.String())
+
+	// Validation
+	if shortText == "" || fullText == "" {
+		return "", "", fmt.Errorf("failed to parse dual summary format: short=%d chars, full=%d chars", len(shortText), len(fullText))
+	}
+
+	return shortText, fullText, nil
+}
+
 // generateSummary generates a summary of the conversation using the configured summary agent.
 // Returns nil if summary is disabled or if generation fails.
 func (o *Orchestrator) generateSummary(ctx context.Context) *bridge.SummaryMetadata {
@@ -248,13 +314,20 @@ func (o *Orchestrator) generateSummary(ctx context.Context) *bridge.SummaryMetad
 		return nil
 	}
 
-	// Create summary prompt
-	summaryPrompt := fmt.Sprintf(`Please provide a concise summary of the following conversation. Focus on the key points and conclusions. Do not include meta-commentary about the nature of the conversation (e.g., "This is a conversation between agents").
+	// Create summary prompt for dual summaries
+	summaryPrompt := fmt.Sprintf(`Please provide two summaries of the following conversation:
+
+1. SHORT SUMMARY (1-2 sentences): A brief, high-level overview capturing the main topic and outcome.
+2. FULL SUMMARY: A comprehensive summary including key points, insights, and conclusions.
+
+Format your response EXACTLY as follows:
+SHORT: [your 1-2 sentence summary here]
+FULL: [your detailed summary here]
+
+Do not include meta-commentary about the conversation structure (e.g., "This is a conversation between agents").
 
 Conversation:
-%s
-
-Summary:`, conversationText.String())
+%s`, conversationText.String())
 
 	// Create a temporary agent for summary generation
 	summaryAgent, err := agent.CreateAgent(agent.AgentConfig{
@@ -306,14 +379,34 @@ Summary:`, conversationText.String())
 		return nil
 	}
 
+	// Parse dual summary from response
+	shortSummary, fullSummary, parseErr := parseDualSummary(response)
+	if parseErr != nil {
+		log.WithError(parseErr).Warn("failed to parse dual summary format, using fallback")
+		// Fallback: use entire response as full summary, extract first 1-2 sentences for short
+		fullSummary = strings.TrimSpace(response)
+		sentences := strings.Split(fullSummary, ".")
+		if len(sentences) >= 2 {
+			shortSummary = strings.TrimSpace(sentences[0] + ". " + sentences[1] + ".")
+		} else if len(sentences) == 1 {
+			shortSummary = strings.TrimSpace(sentences[0])
+			if !strings.HasSuffix(shortSummary, ".") {
+				shortSummary += "."
+			}
+		} else {
+			shortSummary = fullSummary
+		}
+	}
+
 	// Calculate metrics
 	outputTokens := utils.EstimateTokens(response)
 	totalTokens := inputTokens + outputTokens
 	model := summaryAgent.GetModel()
 	cost := utils.EstimateCost(model, inputTokens, outputTokens)
 
-	return &bridge.SummaryMetadata{
-		Text:         strings.TrimSpace(response),
+	summaryMetadata := &bridge.SummaryMetadata{
+		ShortSummary: shortSummary,
+		Summary:      fullSummary,
 		AgentType:    o.config.Summary.Agent,
 		Model:        model,
 		InputTokens:  inputTokens,
@@ -322,6 +415,13 @@ Summary:`, conversationText.String())
 		Cost:         cost,
 		DurationMs:   duration.Milliseconds(),
 	}
+
+	// Store summary in orchestrator for later access
+	o.mu.Lock()
+	o.summary = summaryMetadata
+	o.mu.Unlock()
+
+	return summaryMetadata
 }
 
 // AddMiddleware adds a middleware to the orchestrator's processing chain.
@@ -966,4 +1066,13 @@ func shouldRespond(messages []agent.Message, a agent.Agent) bool {
 // This method is thread-safe.
 func (o *Orchestrator) GetMessages() []agent.Message {
 	return o.getMessages()
+}
+
+// GetSummary returns the conversation summary if one was generated.
+// Returns nil if summary generation was disabled or hasn't been completed yet.
+// This method is thread-safe.
+func (o *Orchestrator) GetSummary() *bridge.SummaryMetadata {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.summary
 }

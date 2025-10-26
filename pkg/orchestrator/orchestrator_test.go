@@ -15,6 +15,7 @@ import (
 
 	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/pkg/agent"
+	"github.com/kevinelliott/agentpipe/pkg/config"
 )
 
 // MockAgent is a test double for agent.Agent
@@ -978,5 +979,204 @@ func TestBridgeEventOnCancellation(t *testing.T) {
 
 	if status != "interrupted" {
 		t.Errorf("expected completed status to be 'interrupted', got '%s'", status)
+	}
+}
+
+// TestParseDualSummary_ValidFormat tests parsing correctly formatted dual summaries
+func TestParseDualSummary_ValidFormat(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		expectShort string
+		expectFull  string
+		expectError bool
+	}{
+		{
+			name: "basic format",
+			response: `SHORT: This is a short summary.
+FULL: This is a comprehensive full summary with multiple details.`,
+			expectShort: "This is a short summary.",
+			expectFull:  "This is a comprehensive full summary with multiple details.",
+			expectError: false,
+		},
+		{
+			name: "multiline content",
+			response: `SHORT: This is a short summary.
+FULL: This is a comprehensive summary.
+It has multiple lines.
+With more details here.`,
+			expectShort: "This is a short summary.",
+			expectFull:  "This is a comprehensive summary. It has multiple lines. With more details here.",
+			expectError: false,
+		},
+		{
+			name: "content on same line as marker",
+			response: `SHORT: Short summary here.
+FULL: Full summary with details and insights.`,
+			expectShort: "Short summary here.",
+			expectFull:  "Full summary with details and insights.",
+			expectError: false,
+		},
+		{
+			name: "content on next line after marker",
+			response: `SHORT:
+This is a short summary on the next line.
+FULL:
+This is a full summary.
+With multiple sentences.`,
+			expectShort: "This is a short summary on the next line.",
+			expectFull:  "This is a full summary. With multiple sentences.",
+			expectError: false,
+		},
+		{
+			name: "extra whitespace",
+			response: `  SHORT:   Extra spaces here.
+
+  FULL:   Full summary with  spaces.  `,
+			expectShort: "Extra spaces here.",
+			expectFull:  "Full summary with  spaces.",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			short, full, err := parseDualSummary(tt.response)
+
+			if tt.expectError && err == nil {
+				t.Error("expected error but got nil")
+				return
+			}
+
+			if !tt.expectError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			if !tt.expectError {
+				if short != tt.expectShort {
+					t.Errorf("short summary mismatch:\nexpected: %q\ngot:      %q", tt.expectShort, short)
+				}
+				if full != tt.expectFull {
+					t.Errorf("full summary mismatch:\nexpected: %q\ngot:      %q", tt.expectFull, full)
+				}
+			}
+		})
+	}
+}
+
+// TestParseDualSummary_ErrorCases tests error handling in dual summary parsing
+func TestParseDualSummary_ErrorCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+	}{
+		{
+			name:     "missing SHORT marker",
+			response: "FULL: This has no short summary.",
+		},
+		{
+			name:     "missing FULL marker",
+			response: "SHORT: This has no full summary.",
+		},
+		{
+			name:     "empty response",
+			response: "",
+		},
+		{
+			name:     "only markers no content",
+			response: "SHORT:\nFULL:",
+		},
+		{
+			name:     "SHORT with empty content",
+			response: "SHORT:   \nFULL: Full summary here.",
+		},
+		{
+			name:     "FULL with empty content",
+			response: "SHORT: Short summary.\nFULL:   ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			short, full, err := parseDualSummary(tt.response)
+
+			if err == nil {
+				t.Errorf("expected error but got nil (short=%q, full=%q)", short, full)
+			}
+		})
+	}
+}
+
+// TestParseDualSummary_RealWorldExamples tests with realistic LLM responses
+func TestParseDualSummary_RealWorldExamples(t *testing.T) {
+	response := `SHORT: The agents discussed the implementation of a new feature for user authentication, concluding with a consensus to use OAuth 2.0 with JWT tokens.
+
+FULL: The conversation began with Agent1 proposing different authentication methods for the application. Agent2 analyzed the security implications of each approach, highlighting the benefits of OAuth 2.0. Agent3 contributed implementation details and best practices for JWT token management. After thorough discussion of pros and cons, all agents reached a consensus to implement OAuth 2.0 with JWT tokens, citing security, scalability, and industry standard adoption as key factors.`
+
+	short, full, err := parseDualSummary(response)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedShortPrefix := "The agents discussed the implementation"
+	if !strings.HasPrefix(short, expectedShortPrefix) {
+		t.Errorf("short summary doesn't start as expected:\nexpected prefix: %q\ngot: %q", expectedShortPrefix, short)
+	}
+
+	expectedFullPrefix := "The conversation began with Agent1"
+	if !strings.HasPrefix(full, expectedFullPrefix) {
+		t.Errorf("full summary doesn't start as expected:\nexpected prefix: %q\ngot: %q", expectedFullPrefix, full)
+	}
+
+	if len(short) >= len(full) {
+		t.Errorf("short summary should be shorter than full summary (short=%d, full=%d)", len(short), len(full))
+	}
+}
+
+// TestGetSummary tests the GetSummary method
+func TestGetSummary(t *testing.T) {
+	cfg := OrchestratorConfig{
+		Mode:          "round-robin",
+		MaxTurns:      1,
+		ResponseDelay: 0,
+		Summary: config.SummaryConfig{
+			Enabled: false, // Disabled for this test
+			Agent:   "gemini",
+		},
+	}
+
+	orch := NewOrchestrator(cfg, io.Discard)
+
+	// Initially should be nil
+	if summary := orch.GetSummary(); summary != nil {
+		t.Error("expected nil summary before generation")
+	}
+
+	// Manually set a summary (simulating what generateSummary does)
+	testSummary := &bridge.SummaryMetadata{
+		ShortSummary: "Short test summary.",
+		Summary:      "Full test summary with more details.",
+		AgentType:    "test",
+		Model:        "test-model",
+	}
+
+	orch.mu.Lock()
+	orch.summary = testSummary
+	orch.mu.Unlock()
+
+	// Should return the summary
+	retrievedSummary := orch.GetSummary()
+	if retrievedSummary == nil {
+		t.Fatal("expected summary but got nil")
+	}
+
+	if retrievedSummary.ShortSummary != testSummary.ShortSummary {
+		t.Errorf("short summary mismatch: expected %q, got %q", testSummary.ShortSummary, retrievedSummary.ShortSummary)
+	}
+
+	if retrievedSummary.Summary != testSummary.Summary {
+		t.Errorf("summary mismatch: expected %q, got %q", testSummary.Summary, retrievedSummary.Summary)
 	}
 }

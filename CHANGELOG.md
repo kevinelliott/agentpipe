@@ -7,6 +7,152 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2025-01-26
+
+### Added
+- **Dual Summary Generation (Short + Full)**
+  - Conversations now generate both short (1-2 sentences) and full summaries in a single LLM query
+  - Structured prompt format: `SHORT: [summary]` and `FULL: [summary]` for reliable parsing
+  - Consistent field naming across bridge events and conversation state:
+    - `ShortSummary` - Concise 1-2 sentence summary ideal for list views
+    - `Summary` - Comprehensive detailed summary for detail pages
+  - Fallback logic: If parsing fails, extracts first 1-2 sentences for short summary
+  - Summary data persisted in conversation state files (`~/.agentpipe/states/`)
+  - New `GetSummary()` method on Orchestrator for programmatic access
+  - Benefits:
+    - ✅ Single API call generates both summaries (cost & time efficient)
+    - ✅ Easy parsing with structured markers
+    - ✅ Graceful degradation on parse failures
+    - ✅ Ready for AgentPipe Web UI integration
+
+- **CLI Model Specification for --agents Flag**
+  - Three flexible formats for specifying agents via CLI:
+    - `type` - Auto-generated name with default model
+    - `type:name` - Custom name with default model (existing format)
+    - `type:model:name` - Custom name with specific model (NEW)
+  - Model validation with comprehensive error handling:
+    - Validates agent types against registry
+    - Checks if agent supports model specification
+    - Enforces required model for OpenRouter
+    - Prevents model specification for unsupported agents (kimi, cursor, amp)
+  - Model support matrix:
+    - ✅ **Optional**: claude, gemini, copilot, qwen, factory, qoder, codex, groq, crush
+    - ✅ **Required**: openrouter (API-based agent)
+    - ❌ **Not supported**: kimi, cursor, amp, opencode
+  - All CLI adapters updated to use `--model` flag when Config.Model is set
+  - Examples:
+    ```bash
+    # Use default models
+    agentpipe run -a claude:Alice -a gemini:Bob
+
+    # Specify models explicitly
+    agentpipe run -a claude:claude-sonnet-4-5:Architect \
+      -a gemini:gemini-2.5-pro:Reviewer
+
+    # OpenRouter with provider/model format
+    agentpipe run -a openrouter:anthropic/claude-sonnet-4-5:Assistant \
+      -a openrouter:google/gemini-2.5-pro:Critic
+    ```
+
+### Technical Details
+- **New Module**: `cmd/model_validation.go`
+  - `ModelSupport` struct defining support and requirement status
+  - `agentModelSupport` map for all agent types
+  - Validation functions:
+    - `validateAgentType()` - Checks agent type exists
+    - `validateModelForAgent()` - Validates model specification for agent
+    - `validateModelInRegistry()` - Warns if model not in provider registry
+    - `checkModelRequired()` - Enforces required model for certain agents
+    - `parseAgentSpecWithModel()` - Parses all three formats with validation
+- **Updated**: `cmd/run.go`
+  - `parseAgentSpec()` now uses `parseAgentSpecWithModel()`
+  - Populates `agent.AgentConfig.Model` field from CLI input
+  - Comprehensive error messages for invalid specifications
+- **Updated Adapters** (9 total):
+  - `pkg/adapters/claude.go` - Added --model flag support (SendMessage + StreamMessage)
+  - `pkg/adapters/groq.go` - Added --model flag support (SendMessage + StreamMessage)
+  - `pkg/adapters/crush.go` - Added --model flag support (SendMessage + StreamMessage)
+  - Already had support: qwen, factory, qoder, codex, copilot, gemini
+- **Comprehensive Tests**: `cmd/run_test.go`
+  - `TestParseAgentSpec()` - 30+ test cases covering all formats
+  - `TestParseAgentSpecWithModel()` - Format parsing validation
+  - `TestValidateAgentType()` - Agent type validation
+  - `TestValidateModelForAgent()` - Model support validation
+  - Tests for error cases: empty specs, unknown types, unsupported models, required models
+
+### Benefits
+- 🚀 **Simplified Model Selection**: Specify models directly via CLI without YAML
+- 🔍 **Smart Validation**: Immediate feedback for invalid agent/model combinations
+- 📝 **Clear Error Messages**: Actionable error messages for misconfigurations
+- 🎯 **Type Safety**: Compile-time and runtime validation of agent specifications
+- 🔄 **Backward Compatible**: Existing `type:name` format still works
+- 🌐 **OpenRouter Integration**: Seamless model specification for API-based agents
+
+### Documentation
+- README.md: New "Agent specification formats" section with:
+  - Format descriptions and examples
+  - Model support matrix table
+  - Comprehensive CLI examples
+  - Error examples showing what not to do
+- Updated run command flags documentation to show all three formats
+
+## [v0.6.0] - 2025-10-25
+
+### Added
+- **OpenRouter API Support - First API-Based Agent**
+  - New `openrouter` agent type for direct API integration without CLI dependencies
+  - Access 400+ models from multiple providers through a unified API
+  - No CLI installation required - just set `OPENROUTER_API_KEY` environment variable
+  - Support for models from Anthropic, OpenAI, Google, DeepSeek, Groq, and many more
+  - Real-time token usage and accurate cost tracking from API responses
+  - Streaming and non-streaming message support via Server-Sent Events (SSE)
+  - Smart model matching with provider registry integration
+  - Example configurations:
+    - `examples/openrouter-conversation.yaml` - Multi-provider conversation
+    - `examples/openrouter-solo.yaml` - Single agent reasoning task
+
+### Technical Details
+- **New Package**: `pkg/client/` for HTTP client infrastructure
+  - `openai_compat.go` - Generic HTTP client for OpenAI-compatible APIs
+  - Support for streaming (SSE) and non-streaming requests
+  - Retry logic with exponential backoff (1s, 2s, 4s)
+  - Bearer token authentication
+  - Comprehensive error handling with retry strategies
+  - Context cancellation support
+- **New Adapter**: `pkg/adapters/openrouter.go`
+  - Implements complete Agent interface using HTTP API
+  - Converts AgentPipe messages to OpenAI Chat Completions format
+  - Integrates with provider registry for cost calculation
+  - Automatic API key detection from `$OPENROUTER_API_KEY`
+  - Health check via minimal API request
+  - GetCLIVersion() returns "N/A (API)" for API-based agents
+- **Comprehensive Test Coverage**:
+  - `pkg/client/openai_compat_test.go` - HTTP client tests with mocked responses
+  - `pkg/adapters/openrouter_test.go` - Agent adapter tests
+  - Integration tests (skipped without API key)
+  - >80% code coverage
+
+### Benefits
+- ✅ **No CLI Dependencies**: Use models without installing any CLI tools
+- 🚀 **Direct API Access**: Lower latency, more reliable than CLI execution
+- 🌍 **Comprehensive Model Support**: 400+ models from multiple providers
+- 💰 **Accurate Pricing**: Real token counts from API responses for precise cost tracking
+- 📡 **Streaming Support**: Real-time response streaming via SSE
+- 🔌 **Unified Architecture**: Same Agent interface for both CLI and API-based agents
+- 🛤️ **Foundation for Future**: Paves the way for direct Anthropic API, Google AI API, Groq API, etc.
+
+### Architecture Impact
+- Establishes pattern for API-based agents separate from CLI-based agents
+- Creates reusable HTTP client for future OpenAI-compatible providers
+- Maintains backward compatibility - all existing CLI-based agents unchanged
+- Demonstrates hybrid approach: AgentPipe can use both CLI tools and direct APIs
+
+### Documentation
+- README.md: New "Using OpenRouter (API-Based Agents)" section
+- Detailed setup instructions with environment variable configuration
+- Model examples and use case recommendations
+- Links to OpenRouter documentation and model list
+
 ## [v0.5.0] - 2025-10-25
 
 ### Added

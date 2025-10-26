@@ -160,32 +160,22 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 }
 
 func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
-	var agentType, name string
-
-	if n := len(spec); n > 0 {
-		for i := 0; i < n; i++ {
-			if spec[i] == ':' {
-				agentType = spec[:i]
-				if i+1 < n {
-					name = spec[i+1:]
-				}
-				break
-			}
-		}
+	// Parse the spec using the new model-aware parser
+	agentType, model, name, err := parseAgentSpecWithModel(spec)
+	if err != nil {
+		return agent.AgentConfig{}, fmt.Errorf("invalid agent specification '%s': %w", spec, err)
 	}
 
-	if agentType == "" {
-		agentType = spec
-	}
-
+	// Auto-generate name if not provided
 	if name == "" {
 		name = fmt.Sprintf("%s-agent-%d", agentType, index+1)
 	}
 
 	return agent.AgentConfig{
-		ID:   fmt.Sprintf("%s-%d", agentType, index),
-		Type: agentType,
-		Name: name,
+		ID:    fmt.Sprintf("%s-%d", agentType, index),
+		Type:  agentType,
+		Name:  name,
+		Model: model,
 	}, nil
 }
 
@@ -447,6 +437,12 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 func saveConversationState(orch *orchestrator.Orchestrator, cfg *config.Config, startedAt time.Time) error {
 	messages := orch.GetMessages()
 	state := conversation.NewState(messages, cfg, startedAt)
+
+	// Populate summary fields if available
+	if summary := orch.GetSummary(); summary != nil {
+		state.Metadata.ShortSummary = summary.ShortSummary
+		state.Metadata.Summary = summary.Summary
+	}
 
 	// Determine save path
 	var savePath string

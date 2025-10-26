@@ -37,6 +37,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Groq** - Fast AI code assistant powered by Groq LPUs (Lightning Processing Units)
 - ✅ **Kimi** (Moonshot AI) - Interactive AI agent with advanced reasoning (interactive-first CLI)
 - ✅ **OpenCode** (SST) - AI coding agent built for the terminal (non-interactive run mode)
+- ✅ **OpenRouter** - Unified API access to 400+ models from multiple providers (API-based, no CLI required) 🌐 **API-based**
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
 - ✅ **Ollama** - Local LLM support (planned)
@@ -97,17 +98,25 @@ All agents now use a **standardized interaction pattern** with structured three-
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
-**Latest Release**: v0.4.9 - Crush CLI support
+**Latest Release**: v0.6.0 - OpenRouter API Support
 
-**What's New in v0.4.9**:
+**What's New in v0.6.0**:
 
-💘 **Crush CLI Support (Charmbracelet)**:
-- **New Agent Adapter**: Full support for Charm's Crush CLI
-  - Install: `brew install charmbracelet/tap/crush` (macOS) or `go install github.com/charmbracelet/crush@latest`
-  - Terminal-first AI coding assistant with beautiful TUI
-  - Multi-provider support (Anthropic, OpenAI, Groq, Gemini, and more)
-  - Supports stdin-based message passing
-  - Complete integration with AgentPipe's multi-agent conversation system
+🌐 **OpenRouter API Support - First API-Based Agent**:
+- **New Agent Type**: Direct API integration without CLI dependencies
+  - Access 400+ models from multiple providers through a unified API
+  - No CLI installation required - just set `OPENROUTER_API_KEY`
+  - Support for models from Anthropic, OpenAI, Google, DeepSeek, and more
+  - Real-time token usage and accurate cost tracking from API responses
+  - Streaming and non-streaming message support
+  - Smart model matching with provider registry integration
+- **Example Configurations**:
+  - `examples/openrouter-conversation.yaml` - Multi-provider conversation
+  - `examples/openrouter-solo.yaml` - Single agent testing
+- **Foundation for Future API Agents**: Paves the way for direct Anthropic API, Google AI API, etc.
+
+**Previous Release - v0.4.9** (2025-10-25): Crush CLI support
+- Full support for Charm's Crush CLI with multi-provider capabilities
 
 **Previous Release - v0.4.8** (2025-10-25): Fixed GitHub API rate limiting
 - PyPI integration for Kimi, npm registry for Qwen
@@ -260,6 +269,80 @@ agentpipe run -a claude:Agent1 -a gemini:Agent2 \
   --max-turns 10 \
   --timeout 45 \
   --prompt "What is consciousness?"
+
+# Specify models for agents that support it
+agentpipe run -a claude:claude-sonnet-4-5:Alice -a gemini:gemini-2.5-pro:Bob
+
+# Use OpenRouter with specific models
+agentpipe run -a openrouter:anthropic/claude-sonnet-4-5:Assistant \
+  -a openrouter:google/gemini-2.5-pro:Reviewer \
+  --prompt "Design a microservices architecture"
+```
+
+### Agent specification formats
+
+AgentPipe supports three formats for specifying agents via the `--agents` / `-a` flag:
+
+1. **`type`** - Use agent type with auto-generated name
+   ```bash
+   agentpipe run -a claude -a gemini
+   # Creates: claude-agent-1, gemini-agent-2
+   ```
+
+2. **`type:name`** - Use agent type with custom name (uses default model)
+   ```bash
+   agentpipe run -a claude:Alice -a gemini:Bob
+   # Creates: Alice (Claude), Bob (Gemini)
+   ```
+
+3. **`type:model:name`** - Use agent type with specific model and custom name
+   ```bash
+   agentpipe run -a claude:claude-sonnet-4-5:Architect \
+     -a gemini:gemini-2.5-pro:Reviewer
+   # Creates: Architect (Claude Sonnet 4.5), Reviewer (Gemini 2.5 Pro)
+   ```
+
+**Model Support by Agent Type:**
+
+| Agent Type | Model Support | Required | Example Models |
+|------------|--------------|----------|----------------|
+| `claude` | ✅ Optional | No | `claude-sonnet-4-5`, `claude-opus-4` |
+| `gemini` | ✅ Optional | No | `gemini-2.5-pro`, `gemini-2.5-flash` |
+| `copilot` | ✅ Optional | No | `gpt-4o`, `gpt-4-turbo` |
+| `qwen` | ✅ Optional | No | `qwen-plus`, `qwen-turbo` |
+| `factory` | ✅ Optional | No | `claude-sonnet-4-5`, `gpt-4o` |
+| `qoder` | ✅ Optional | No | `claude-sonnet-4-5`, `gpt-4o` |
+| `codex` | ✅ Optional | No | `gpt-4o`, `gpt-4-turbo` |
+| `groq` | ✅ Optional | No | `llama3-70b`, `mixtral-8x7b` |
+| `crush` | ✅ Optional | No | `deepseek-r1`, `qwen-2.5` |
+| `openrouter` | ✅ **Required** | Yes | `anthropic/claude-sonnet-4-5`, `google/gemini-2.5-pro` |
+| `kimi` | ❌ Not supported | No | N/A |
+| `cursor` | ❌ Not supported | No | N/A |
+| `amp` | ❌ Not supported | No | N/A |
+
+**Examples:**
+
+```bash
+# Use default models
+agentpipe run -a claude:Alice -a gemini:Bob
+
+# Specify models explicitly
+agentpipe run -a claude:claude-sonnet-4-5:Alice \
+  -a gemini:gemini-2.5-pro:Bob
+
+# Mix default and explicit models
+agentpipe run -a claude:Architect \
+  -a gemini:gemini-2.5-flash:Reviewer
+
+# OpenRouter requires model specification
+agentpipe run -a openrouter:anthropic/claude-sonnet-4-5:Claude \
+  -a openrouter:google/gemini-2.5-pro:Gemini
+
+# Error: OpenRouter without model
+agentpipe run -a openrouter:Assistant  # ❌ Will fail
+
+# Error: Agents that don't support models
+agentpipe run -a kimi:some-model:Assistant  # ❌ Will fail
 ```
 
 ### Using configuration files
@@ -327,7 +410,7 @@ Start a conversation between agents.
 
 **Flags:**
 - `-c, --config`: Path to YAML configuration file
-- `-a, --agents`: List of agents (format: `type:name`)
+- `-a, --agents`: List of agents (formats: `type`, `type:name`, or `type:model:name`)
 - `-m, --mode`: Conversation mode (default: round-robin)
 - `--max-turns`: Maximum conversation turns (default: 10)
 - `--timeout`: Response timeout in seconds (default: 30)
@@ -579,6 +662,60 @@ DeepSeek          deepseek     2       deepseek-reasoner               deepseek-
 Gemini            gemini       2       gemini-2.5-pro                  gemini-2.5-flash
 OpenAI            openai       14      gpt-5                           gpt-5-mini
 ```
+
+### Using OpenRouter (API-Based Agents)
+
+OpenRouter provides unified API access to 400+ models from multiple providers without requiring CLI installations. This is AgentPipe's first API-based agent type.
+
+**Setup:**
+
+1. **Get an API Key**: Sign up at [openrouter.ai](https://openrouter.ai) and obtain your API key
+2. **Set Environment Variable**:
+   ```bash
+   export OPENROUTER_API_KEY=your-api-key-here
+   ```
+3. **Create a Configuration**:
+   ```yaml
+   version: "1.0"
+
+   agents:
+     - id: claude-agent
+       type: openrouter
+       name: "Claude via OpenRouter"
+       model: anthropic/claude-sonnet-4-5
+       prompt: "You are a helpful assistant"
+       temperature: 0.7
+       max_tokens: 1000
+   ```
+4. **Run**:
+   ```bash
+   agentpipe run -c your-config.yaml
+   ```
+
+**Available Models** (examples):
+- `anthropic/claude-sonnet-4-5` - Claude Sonnet 4.5
+- `google/gemini-2.5-pro` - Gemini 2.5 Pro
+- `openai/gpt-5` - GPT-5
+- `deepseek/deepseek-r1` - DeepSeek R1
+- And 400+ more - see [openrouter.ai/docs/models](https://openrouter.ai/docs/models)
+
+**Features:**
+- ✅ No CLI installation required
+- ✅ Real-time token usage from API responses
+- ✅ Accurate cost tracking via provider registry
+- ✅ Streaming support for real-time responses
+- ✅ Access to latest models without CLI updates
+- ✅ Multi-provider conversations in a single config
+
+**Example Configurations:**
+- `examples/openrouter-conversation.yaml` - Multi-provider conversation
+- `examples/openrouter-solo.yaml` - Single agent reasoning task
+
+**Use Cases:**
+- Testing models without installing multiple CLIs
+- Production deployments with consistent API access
+- Cross-provider comparisons in single conversations
+- Access to models not available via CLI
 
 ### `agentpipe agents`
 
@@ -861,6 +998,16 @@ The summary includes:
 - Total tokens used
 - Total time spent (formatted as ms/s/m:s)
 - Total estimated cost
+
+**AI-Generated Conversation Summaries:**
+AgentPipe automatically generates dual summaries of conversations:
+- **Short Summary**: Concise 1-2 sentence overview ideal for list views
+- **Full Summary**: Comprehensive detailed summary capturing key points and insights
+- **Single API Call**: Both summaries generated efficiently in one LLM query
+- **Structured Parsing**: Reliable extraction using `SHORT:` and `FULL:` markers
+- **Graceful Fallback**: Auto-extracts short summary from first sentences if parsing fails
+- **Persisted**: Summaries saved in conversation state files and bridge events
+- **Programmatic Access**: `GetSummary()` method on Orchestrator for custom integrations
 
 ## TUI Interface
 
@@ -1356,8 +1503,9 @@ AgentPipe can stream live conversation events to AgentPipe Web for browser viewi
 - **Four Event Types**:
   - `conversation.started` - Conversation begins with agent participants and system info
   - `message.created` - Agent sends a message with full metrics (tokens, cost, duration)
-  - `conversation.completed` - Conversation ends with summary statistics
+  - `conversation.completed` - Conversation ends with dual summaries (short + full) and statistics
   - `conversation.error` - Agent or orchestration errors
+- **AI-Generated Summaries**: Dual summaries (short & full) automatically generated and included in completion events
 - **Comprehensive Metrics**: Track turns, tokens, costs, and duration in real-time
 - **System Information**: OS, version, architecture, AgentPipe version, agent CLI versions
 - **Production-Ready**: Retry logic with exponential backoff, >80% test coverage
