@@ -271,7 +271,8 @@ func TestEmitConversationCompleted(t *testing.T) {
 	emitter := NewEmitter(config, "0.2.4")
 
 	summary := &SummaryMetadata{
-		Text:         "Test summary of the conversation",
+		ShortSummary: "Test summary.",
+		Summary:      "Test summary of the conversation",
 		AgentType:    "gemini",
 		Model:        "gemini-2.0-flash",
 		InputTokens:  2500,
