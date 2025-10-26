@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.5] - 2025-10-26
+
+### Fixed
+- **Pure JSON output from first line**
+  - Fixed issue where initial config log appeared as console format instead of JSON
+  - Moved JSON emitter initialization to `cmd/root.go:initConfig()` (before any log calls)
+  - ALL output now pure JSONL from the very first line when using `--json` flag
+  - No more mixed console/JSON output - every line is valid JSON
+  - Global `stdoutEmitter` shared across root and run commands
+
+### Technical Details
+- **Updated**: `cmd/root.go`
+  - Added `globalJSONEmitter` package variable to share emitter across commands
+  - Modified `initConfig()` to detect `--json` flag and initialize JSON emitter immediately
+  - Zerolog initialized with `ZerologJSONWriter` before any log calls in JSON mode
+- **Updated**: `cmd/run.go`
+  - Simplified JSON initialization to use `globalJSONEmitter` from root
+  - Removed duplicate emitter creation (now created once in `initConfig`)
+  - Passes shared emitter to orchestrator and chat logger
+
 ## [0.5.4] - 2025-01-26
 
 ### Added

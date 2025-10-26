@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -88,6 +87,12 @@ func init() {
 func runConversation(cobraCmd *cobra.Command, args []string) {
 	var cfg *config.Config
 	var err error
+	var stdoutEmitter *bridge.StdoutEmitter
+
+	// If --json mode, use the globalJSONEmitter created in initConfig
+	if jsonOutput {
+		stdoutEmitter = globalJSONEmitter
+	}
 
 	if configPath != "" {
 		log.WithField("config_path", configPath).Debug("loading configuration from file")
@@ -156,7 +161,7 @@ func runConversation(cobraCmd *cobra.Command, args []string) {
 		cfg.Orchestrator.Summary.Agent = summaryAgent
 	}
 
-	if err := startConversation(cobraCmd, cfg); err != nil {
+	if err := startConversation(cobraCmd, cfg, stdoutEmitter); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -182,7 +187,7 @@ func parseAgentSpec(spec string, index int) (agent.AgentConfig, error) {
 	}, nil
 }
 
-func startConversation(cmd *cobra.Command, cfg *config.Config) error {
+func startConversation(cmd *cobra.Command, cfg *config.Config, stdoutEmitter *bridge.StdoutEmitter) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -372,21 +377,14 @@ func startConversation(cmd *cobra.Command, cfg *config.Config) error {
 
 	// Set up JSON stdout emitter if --json flag is set
 	if jsonOutput {
-		stdoutEmitter := bridge.NewStdoutEmitter(version.GetShortVersion())
+		// stdoutEmitter was already created at the beginning of this function
 		orch.SetBridgeEmitter(stdoutEmitter)
 
 		// Set JSON emitter on logger to emit log.entry events
 		if chatLogger != nil {
 			chatLogger.SetJSONEmitter(stdoutEmitter)
 		}
-
-		// Reinitialize zerolog to use JSON writer for diagnostic logs
-		jsonWriter := bridge.NewZerologJSONWriter(stdoutEmitter)
-		level := zerolog.InfoLevel
-		if verbose {
-			level = zerolog.DebugLevel
-		}
-		log.InitLogger(jsonWriter, level, false) // false = don't use pretty console output
+		// Note: zerolog was already reinitialized at the start of runConversation
 	} else {
 		// Set up streaming bridge if enabled (only when not in JSON mode)
 		shouldStream := determineShouldStream(streamEnabled, noStream)

@@ -8,13 +8,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/kevinelliott/agentpipe/internal/bridge"
 	"github.com/kevinelliott/agentpipe/internal/version"
 	"github.com/kevinelliott/agentpipe/pkg/log"
 )
 
 var (
-	cfgFile     string
-	showVersion bool
+	cfgFile          string
+	showVersion      bool
+	globalJSONEmitter *bridge.StdoutEmitter // Shared across root and run commands for --json mode
 )
 
 var rootCmd = &cobra.Command{
@@ -75,12 +77,30 @@ func init() {
 }
 
 func initConfig() {
+	// Check if --json flag is present
+	isJSONMode := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--json" {
+			isJSONMode = true
+			break
+		}
+	}
+
 	// Initialize logger first
 	level := zerolog.InfoLevel
 	if viper.GetBool("verbose") {
 		level = zerolog.DebugLevel
 	}
-	log.InitLogger(os.Stderr, level, true) // Use pretty console output for CLI
+
+	if isJSONMode {
+		// JSON mode: create emitter and JSON writer for zerolog
+		globalJSONEmitter = bridge.NewStdoutEmitter(version.GetShortVersion())
+		jsonWriter := bridge.NewZerologJSONWriter(globalJSONEmitter)
+		log.InitLogger(jsonWriter, level, false) // false = don't use pretty console output
+	} else {
+		// Normal mode: use pretty console output
+		log.InitLogger(os.Stderr, level, true) // Use pretty console output for CLI
+	}
 
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
