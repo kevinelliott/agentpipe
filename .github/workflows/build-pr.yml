@@ -41,7 +41,7 @@ jobs:
           zip agentpipe_windows_amd64.zip agentpipe_windows_amd64.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pr-artifacts-${{ steps.pr_info.outputs.PR_NUMBER }}
           path: |
