@@ -24,6 +24,7 @@ agents:
     name: "System Architect"
     prompt: "You are a system architect who thinks about overall design, scalability, and patterns."
     announcement: "🏗️ System Architect has joined to provide design insights!"
+    model: "gemini-2.0-flash"
     temperature: 0.7
     max_tokens: 1500
 
