@@ -1,0 +1,22 @@
+version: "1.0"
+
+agents:
+  - id: aider-1
+    type: aider
+    name: "Code Assistant"
+    prompt: "You are an AI pair programmer helping with code review and suggestions."
+    announcement: "🤖 Aider has joined to help with code!"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+
+orchestrator:
+  mode: round-robin
+  max_turns: 5
+  turn_timeout: 90s
+  response_delay: 2s
+  initial_prompt: "Let's discuss the best practices for implementing error handling in Go."
+
+logging:
+  enabled: true
+  show_metrics: true

@@ -335,6 +335,30 @@
         "windows": "npm update -g opencode-ai"
       },
       "requires_auth": true
+    },
+    {
+      "name": "Aider",
+      "command": "aider",
+      "description": "AI pair programming in your terminal",
+      "docs": "https://aider.chat/docs/install.html",
+      "package_manager": "pypi",
+      "package_name": "aider-chat",
+      "install": {
+        "darwin": "pip install aider-chat",
+        "linux": "pip install aider-chat",
+        "windows": "pip install aider-chat"
+      },
+      "uninstall": {
+        "darwin": "pip uninstall aider-chat",
+        "linux": "pip uninstall aider-chat",
+        "windows": "pip uninstall aider-chat"
+      },
+      "upgrade": {
+        "darwin": "pip install --upgrade aider-chat",
+        "linux": "pip install --upgrade aider-chat",
+        "windows": "pip install --upgrade aider-chat"
+      },
+      "requires_auth": true
     }
   ]
 }
