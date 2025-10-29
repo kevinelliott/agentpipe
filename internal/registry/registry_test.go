@@ -199,3 +199,68 @@ func TestOllamaDoesNotRequireAuth(t *testing.T) {
 		t.Error("Ollama should not require authentication")
 	}
 }
+
+func TestClaudePackageNameConsistency(t *testing.T) {
+	agent, err := GetByName("Claude")
+	if err != nil {
+		t.Fatalf("Failed to get Claude agent: %v", err)
+	}
+
+	expectedPackage := "@anthropic-ai/claude-code"
+
+	// Verify package_name field
+	if agent.PackageName != expectedPackage {
+		t.Errorf("Expected package_name '%s', got '%s'", expectedPackage, agent.PackageName)
+	}
+
+	// Verify all install commands use the correct package
+	for os, cmd := range agent.Install {
+		if cmd == "" {
+			continue
+		}
+		// Check if command contains the expected package name
+		if !containsPackage(cmd, expectedPackage) {
+			t.Errorf("Install command for %s doesn't contain expected package '%s': %s", os, expectedPackage, cmd)
+		}
+		// Ensure it doesn't contain the wrong package name
+		wrongPackage := "@anthropic-ai/claude-cli"
+		if containsPackage(cmd, wrongPackage) {
+			t.Errorf("Install command for %s contains incorrect package '%s': %s", os, wrongPackage, cmd)
+		}
+	}
+
+	// Verify all uninstall commands use the correct package
+	for os, cmd := range agent.Uninstall {
+		if cmd == "" || cmd[:3] == "See" { // Skip manual instructions
+			continue
+		}
+		if !containsPackage(cmd, expectedPackage) {
+			t.Errorf("Uninstall command for %s doesn't contain expected package '%s': %s", os, expectedPackage, cmd)
+		}
+	}
+
+	// Verify all upgrade commands use the correct package
+	for os, cmd := range agent.Upgrade {
+		if cmd == "" || cmd[:3] == "See" { // Skip manual instructions
+			continue
+		}
+		if !containsPackage(cmd, expectedPackage) {
+			t.Errorf("Upgrade command for %s doesn't contain expected package '%s': %s", os, expectedPackage, cmd)
+		}
+	}
+}
+
+// containsPackage checks if a command string contains the given package name
+func containsPackage(cmd, pkg string) bool {
+	// Simple string contains check
+	return len(cmd) >= len(pkg) && findSubstring(cmd, pkg)
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
