@@ -118,9 +118,9 @@ func (a *AiderAgent) SendMessage(ctx context.Context, messages []agent.Message) 
 
 	// Build command args - Aider uses --message for non-interactive mode
 	args := []string{
-		"--yes",        // Auto-confirm changes
-		"--no-git",     // Don't use git (we're in a conversation, not editing files)
-		"--no-stream",  // Don't stream output for non-interactive mode
+		"--yes",       // Auto-confirm changes
+		"--no-git",    // Don't use git (we're in a conversation, not editing files)
+		"--no-stream", // Don't stream output for non-interactive mode
 		"--message", prompt,
 	}
 
@@ -179,8 +179,8 @@ func (a *AiderAgent) StreamMessage(ctx context.Context, messages []agent.Message
 
 	// Build command args for streaming mode
 	args := []string{
-		"--yes",       // Auto-confirm changes
-		"--no-git",    // Don't use git
+		"--yes",    // Auto-confirm changes
+		"--no-git", // Don't use git
 		"--message", prompt,
 	}
 
