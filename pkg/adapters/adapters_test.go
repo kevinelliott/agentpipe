@@ -256,6 +256,37 @@ func TestAmpAgentInitialization(t *testing.T) {
 	}
 }
 
+func TestAiderAgentInitialization(t *testing.T) {
+	aiderAgent := NewAiderAgent()
+
+	config := agent.AgentConfig{
+		ID:           "aider-1",
+		Type:         "aider",
+		Name:         "Aider",
+		Prompt:       "You are Aider",
+		Announcement: "Aider has joined!",
+		Model:        "gpt-4",
+	}
+
+	err := aiderAgent.Initialize(config)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("aider CLI not available, skipping test")
+		}
+		t.Fatalf("initialization failed: %v", err)
+	}
+
+	if aiderAgent.GetID() != "aider-1" {
+		t.Errorf("expected ID 'aider-1', got '%s'", aiderAgent.GetID())
+	}
+	if aiderAgent.GetName() != "Aider" {
+		t.Errorf("expected name 'Aider', got '%s'", aiderAgent.GetName())
+	}
+	if aiderAgent.GetType() != "aider" {
+		t.Errorf("expected type 'aider', got '%s'", aiderAgent.GetType())
+	}
+}
+
 func TestAgentAnnouncement(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -270,6 +301,7 @@ func TestAgentAnnouncement(t *testing.T) {
 		{"qwen", NewQwenAgent, "Qwen", "Qwen active!"},
 		{"codex", NewCodexAgent, "Codex", "Codex ready!"},
 		{"amp", NewAmpAgent, "Amp", "Amp is live!"},
+		{"aider", NewAiderAgent, "Aider", "Aider in the house!"},
 	}
 
 	for _, tt := range tests {
@@ -338,6 +370,7 @@ func TestAgentHealthCheckTimeout(t *testing.T) {
 		{"qwen", NewQwenAgent()},
 		{"codex", NewCodexAgent()},
 		{"amp", NewAmpAgent()},
+		{"aider", NewAiderAgent()},
 	}
 
 	for _, tt := range agents {
