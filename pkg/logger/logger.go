@@ -16,14 +16,14 @@ import (
 )
 
 type ChatLogger struct {
-	logFile      *os.File
-	logFormat    string
-	console      io.Writer
-	agentColors  map[string]lipgloss.Style
-	colorIndex   int
-	termWidth    int
-	showMetrics  bool
-	jsonEmitter  *bridge.StdoutEmitter // For JSON mode output
+	logFile     *os.File
+	logFormat   string
+	console     io.Writer
+	agentColors map[string]lipgloss.Style
+	colorIndex  int
+	termWidth   int
+	showMetrics bool
+	jsonEmitter *bridge.StdoutEmitter // For JSON mode output
 }
 
 var colors = []lipgloss.Color{
@@ -171,123 +171,153 @@ func (l *ChatLogger) LogMessage(msg agent.Message) {
 
 	// If JSON emitter is set, emit as JSON event
 	if l.jsonEmitter != nil {
-		var metrics *bridge.LogEntryMetrics
-		if msg.Metrics != nil {
-			metrics = &bridge.LogEntryMetrics{
-				DurationSeconds: msg.Metrics.Duration.Seconds(),
-				TotalTokens:     msg.Metrics.TotalTokens,
-				Cost:            msg.Metrics.Cost,
-			}
-		}
-
-		l.jsonEmitter.EmitLogEntry(
-			"message",
-			msg.AgentID,
-			msg.AgentName,
-			msg.AgentType,
-			msg.Content,
-			msg.Role,
-			metrics,
-			nil, // metadata
-		)
+		l.emitJSONLog(msg)
 		return
 	}
 
 	// Write to file
-	if l.logFile != nil {
-		if l.logFormat == "json" {
-			data, err := json.Marshal(msg)
-			if err == nil {
-				l.writeToFile(string(data) + "\n")
-			}
-		} else {
-			l.writeToFile(fmt.Sprintf("[%s] %s (%s): %s\n\n",
-				timestamp, msg.AgentName, msg.Role, msg.Content))
-		}
-	}
+	l.writeFileLog(msg, timestamp)
 
 	// Write to console with colors
-	if l.console != nil {
-		var output strings.Builder
+	l.writeConsoleLog(msg, timestamp)
+}
 
-		// Add a subtle separator line
-		output.WriteString(separatorStyle.Render(strings.Repeat("─", min(l.termWidth, 80))))
-		output.WriteString("\n")
-
-		// Format timestamp with icon
-		output.WriteString(timestampStyle.Render("🕐 " + timestamp + " "))
-
-		// Format agent name with badge
-		isHost := msg.Role == "system" && (msg.AgentID == "host" || msg.AgentName == "HOST")
-		isSystemMsg := msg.Role == "system" && !isHost
-
-		if isSystemMsg {
-			// Regular SYSTEM messages (agent join announcements, etc.)
-			output.WriteString(systemBadgeStyle.Render(" SYSTEM "))
-			output.WriteString(systemStyle.Render(msg.Content))
-		} else {
-			// Agent messages or HOST message (format the same way)
-			var badgeStyle lipgloss.Style
-			var contentStyle lipgloss.Style
-
-			if isHost {
-				// HOST message (orchestrator's initial prompt)
-				badgeStyle = lipgloss.NewStyle().
-					Background(lipgloss.Color("99")). // Purple
-					Foreground(lipgloss.Color("0")).
-					Bold(true).
-					Padding(0, 1).
-					MarginRight(1)
-				contentStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color("99")).
-					Bold(true)
-				output.WriteString(badgeStyle.Render(" HOST "))
-			} else {
-				// Regular agent message
-				// Ensure agent color is assigned first (this populates l.agentColors)
-				contentStyle = l.getAgentColor(msg.AgentName)
-				badgeStyle = l.getAgentBadgeStyle(msg.AgentName)
-
-				// Include agent type in parentheses if available
-				displayName := msg.AgentName
-				if msg.AgentType != "" {
-					displayName = fmt.Sprintf("%s (%s)", msg.AgentName, msg.AgentType)
-				}
-				output.WriteString(badgeStyle.Render(" " + displayName + " "))
-			}
-
-			// Add metrics if enabled and available
-			if l.showMetrics && msg.Metrics != nil {
-				metricsStyle := lipgloss.NewStyle().
-					Foreground(lipgloss.Color("240")).
-					Italic(true)
-
-				metricsStr := fmt.Sprintf("(%.2fs, %d tokens, $%.6f)",
-					msg.Metrics.Duration.Seconds(),
-					msg.Metrics.TotalTokens,
-					msg.Metrics.Cost)
-
-				output.WriteString(" ")
-				output.WriteString(metricsStyle.Render(metricsStr))
-			}
-
-			output.WriteString("\n\n")
-
-			// Format and wrap message content with nice indentation
-			wrappedContent := l.wrapText(msg.Content, 2)
-
-			// Apply color to each line
-			lines := strings.Split(wrappedContent, "\n")
-			for _, line := range lines {
-				output.WriteString(contentStyle.Render(line))
-				output.WriteString("\n")
-			}
+// emitJSONLog emits a message as a JSON log entry
+func (l *ChatLogger) emitJSONLog(msg agent.Message) {
+	var metrics *bridge.LogEntryMetrics
+	if msg.Metrics != nil {
+		metrics = &bridge.LogEntryMetrics{
+			DurationSeconds: msg.Metrics.Duration.Seconds(),
+			TotalTokens:     msg.Metrics.TotalTokens,
+			Cost:            msg.Metrics.Cost,
 		}
-
-		output.WriteString("\n")
-
-		fmt.Fprint(l.console, output.String())
 	}
+
+	l.jsonEmitter.EmitLogEntry(
+		"message",
+		msg.AgentID,
+		msg.AgentName,
+		msg.AgentType,
+		msg.Content,
+		msg.Role,
+		metrics,
+		nil, // metadata
+	)
+}
+
+// writeFileLog writes a message to the log file
+func (l *ChatLogger) writeFileLog(msg agent.Message, timestamp string) {
+	if l.logFile == nil {
+		return
+	}
+
+	if l.logFormat == "json" {
+		data, err := json.Marshal(msg)
+		if err == nil {
+			l.writeToFile(string(data) + "\n")
+		}
+	} else {
+		l.writeToFile(fmt.Sprintf("[%s] %s (%s): %s\n\n",
+			timestamp, msg.AgentName, msg.Role, msg.Content))
+	}
+}
+
+// writeConsoleLog writes a formatted message to the console
+func (l *ChatLogger) writeConsoleLog(msg agent.Message, timestamp string) {
+	if l.console == nil {
+		return
+	}
+
+	var output strings.Builder
+
+	// Add a subtle separator line
+	output.WriteString(separatorStyle.Render(strings.Repeat("─", min(l.termWidth, 80))))
+	output.WriteString("\n")
+
+	// Format timestamp with icon
+	output.WriteString(timestampStyle.Render("🕐 " + timestamp + " "))
+
+	// Format agent name with badge
+	isHost := msg.Role == "system" && (msg.AgentID == "host" || msg.AgentName == "HOST")
+	isSystemMsg := msg.Role == "system" && !isHost
+
+	if isSystemMsg {
+		l.writeSystemMessage(&output, msg)
+	} else {
+		l.writeAgentMessage(&output, msg, isHost)
+	}
+
+	output.WriteString("\n")
+	fmt.Fprint(l.console, output.String())
+}
+
+// writeSystemMessage formats and writes a system message
+func (l *ChatLogger) writeSystemMessage(output *strings.Builder, msg agent.Message) {
+	output.WriteString(systemBadgeStyle.Render(" SYSTEM "))
+	output.WriteString(systemStyle.Render(msg.Content))
+}
+
+// writeAgentMessage formats and writes an agent message
+func (l *ChatLogger) writeAgentMessage(output *strings.Builder, msg agent.Message, isHost bool) {
+	var badgeStyle, contentStyle lipgloss.Style
+
+	if isHost {
+		badgeStyle, contentStyle = l.getHostStyles()
+		output.WriteString(badgeStyle.Render(" HOST "))
+	} else {
+		contentStyle = l.getAgentColor(msg.AgentName)
+		badgeStyle = l.getAgentBadgeStyle(msg.AgentName)
+
+		displayName := msg.AgentName
+		if msg.AgentType != "" {
+			displayName = fmt.Sprintf("%s (%s)", msg.AgentName, msg.AgentType)
+		}
+		output.WriteString(badgeStyle.Render(" " + displayName + " "))
+	}
+
+	// Add metrics if enabled and available
+	if l.showMetrics && msg.Metrics != nil {
+		l.writeMetrics(output, msg.Metrics)
+	}
+
+	output.WriteString("\n\n")
+
+	// Format and wrap message content with nice indentation
+	wrappedContent := l.wrapText(msg.Content, 2)
+	lines := strings.Split(wrappedContent, "\n")
+	for _, line := range lines {
+		output.WriteString(contentStyle.Render(line))
+		output.WriteString("\n")
+	}
+}
+
+// getHostStyles returns the badge and content styles for host messages
+func (l *ChatLogger) getHostStyles() (lipgloss.Style, lipgloss.Style) {
+	badgeStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("99")). // Purple
+		Foreground(lipgloss.Color("0")).
+		Bold(true).
+		Padding(0, 1).
+		MarginRight(1)
+	contentStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("99")).
+		Bold(true)
+	return badgeStyle, contentStyle
+}
+
+// writeMetrics formats and writes metrics to the output
+func (l *ChatLogger) writeMetrics(output *strings.Builder, metrics *agent.ResponseMetrics) {
+	metricsStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Italic(true)
+
+	metricsStr := fmt.Sprintf("(%.2fs, %d tokens, $%.6f)",
+		metrics.Duration.Seconds(),
+		metrics.TotalTokens,
+		metrics.Cost)
+
+	output.WriteString(" ")
+	output.WriteString(metricsStyle.Render(metricsStr))
 }
 
 func (l *ChatLogger) LogError(agentName string, err error) {
