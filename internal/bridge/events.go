@@ -151,12 +151,12 @@ type BridgeConnectedData struct {
 // LogEntryData contains data for log.entry events
 type LogEntryData struct {
 	ConversationID string                 `json:"conversation_id"`
-	Level          string                 `json:"level"`           // "message", "error", "system"
+	Level          string                 `json:"level"` // "message", "error", "system"
 	AgentID        string                 `json:"agent_id,omitempty"`
 	AgentName      string                 `json:"agent_name,omitempty"`
 	AgentType      string                 `json:"agent_type,omitempty"`
 	Content        string                 `json:"content"`
-	Role           string                 `json:"role,omitempty"`  // "assistant", "system", "user"
+	Role           string                 `json:"role,omitempty"` // "assistant", "system", "user"
 	Metrics        *LogEntryMetrics       `json:"metrics,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"` // Additional context
 }
