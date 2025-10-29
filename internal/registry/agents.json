@@ -32,19 +32,19 @@
       "package_manager": "npm",
       "package_name": "@anthropic-ai/claude-code",
       "install": {
-        "darwin": "npm install -g @anthropic-ai/claude-cli",
-        "linux": "npm install -g @anthropic-ai/claude-cli",
-        "windows": "npm install -g @anthropic-ai/claude-cli"
+        "darwin": "npm install -g @anthropic-ai/claude-code",
+        "linux": "npm install -g @anthropic-ai/claude-code",
+        "windows": "npm install -g @anthropic-ai/claude-code"
       },
       "uninstall": {
-        "darwin": "npm uninstall -g @anthropic-ai/claude-cli",
-        "linux": "npm uninstall -g @anthropic-ai/claude-cli",
-        "windows": "npm uninstall -g @anthropic-ai/claude-cli"
+        "darwin": "npm uninstall -g @anthropic-ai/claude-code",
+        "linux": "npm uninstall -g @anthropic-ai/claude-code",
+        "windows": "npm uninstall -g @anthropic-ai/claude-code"
       },
       "upgrade": {
-        "darwin": "npm update -g @anthropic-ai/claude-cli",
-        "linux": "npm update -g @anthropic-ai/claude-cli",
-        "windows": "npm update -g @anthropic-ai/claude-cli"
+        "darwin": "npm update -g @anthropic-ai/claude-code",
+        "linux": "npm update -g @anthropic-ai/claude-code",
+        "windows": "npm update -g @anthropic-ai/claude-code"
       },
       "requires_auth": true
     },
