@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	cfgFile          string
-	showVersion      bool
+	cfgFile           string
+	showVersion       bool
 	globalJSONEmitter *bridge.StdoutEmitter // Shared across root and run commands for --json mode
 )
 

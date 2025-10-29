@@ -2,6 +2,7 @@ package registry
 
 import (
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -198,4 +199,49 @@ func TestOllamaDoesNotRequireAuth(t *testing.T) {
 	if agent.RequiresAuth {
 		t.Error("Ollama should not require authentication")
 	}
+}
+
+func TestClaudePackageNameConsistency(t *testing.T) {
+	agent, err := GetByName("Claude")
+	if err != nil {
+		t.Fatalf("Failed to get Claude agent: %v", err)
+	}
+
+	expectedPackage := "@anthropic-ai/claude-code"
+	wrongPackage := "@anthropic-ai/claude-cli"
+
+	// Verify package_name field
+	if agent.PackageName != expectedPackage {
+		t.Errorf("Expected package_name '%s', got '%s'", expectedPackage, agent.PackageName)
+	}
+
+	// Verify all install commands use the correct package
+	verifyCommandMap(t, agent.Install, "Install", expectedPackage, wrongPackage)
+
+	// Verify all uninstall commands use the correct package
+	verifyCommandMap(t, agent.Uninstall, "Uninstall", expectedPackage, "")
+
+	// Verify all upgrade commands use the correct package
+	verifyCommandMap(t, agent.Upgrade, "Upgrade", expectedPackage, "")
+}
+
+// verifyCommandMap checks that commands in a map contain the expected package
+func verifyCommandMap(t *testing.T, commands map[string]string, cmdType, expectedPkg, wrongPkg string) {
+	t.Helper()
+	for os, cmd := range commands {
+		if shouldSkipCommand(cmd) {
+			continue
+		}
+		if !strings.Contains(cmd, expectedPkg) {
+			t.Errorf("%s command for %s doesn't contain expected package '%s': %s", cmdType, os, expectedPkg, cmd)
+		}
+		if wrongPkg != "" && strings.Contains(cmd, wrongPkg) {
+			t.Errorf("%s command for %s contains incorrect package '%s': %s", cmdType, os, wrongPkg, cmd)
+		}
+	}
+}
+
+// shouldSkipCommand returns true if the command should be skipped in verification
+func shouldSkipCommand(cmd string) bool {
+	return cmd == "" || (len(cmd) >= 3 && cmd[:3] == "See")
 }

@@ -10,8 +10,8 @@ import (
 
 // ZerologJSONWriter is a zerolog writer that emits log entries as log.entry JSON events
 type ZerologJSONWriter struct {
-	emitter        *StdoutEmitter
-	mu             sync.Mutex
+	emitter *StdoutEmitter
+	mu      sync.Mutex
 }
 
 // NewZerologJSONWriter creates a new zerolog writer that emits JSON events
@@ -49,14 +49,14 @@ func (w *ZerologJSONWriter) Write(p []byte) (n int, err error) {
 	defer w.mu.Unlock()
 
 	w.emitter.EmitLogEntry(
-		level,           // level (debug, info, warn, error, etc.)
-		"",              // agent_id (not applicable for system logs)
-		"",              // agent_name (not applicable for system logs)
-		"",              // agent_type (not applicable for system logs)
-		message,         // content
-		"diagnostic",    // role (use "diagnostic" to distinguish from agent messages)
-		nil,             // metrics
-		metadata,        // metadata (all other fields from zerolog)
+		level,        // level (debug, info, warn, error, etc.)
+		"",           // agent_id (not applicable for system logs)
+		"",           // agent_name (not applicable for system logs)
+		"",           // agent_type (not applicable for system logs)
+		message,      // content
+		"diagnostic", // role (use "diagnostic" to distinguish from agent messages)
+		nil,          // metrics
+		metadata,     // metadata (all other fields from zerolog)
 	)
 
 	return len(p), nil
