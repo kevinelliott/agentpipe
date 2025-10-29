@@ -1,0 +1,39 @@
+version: "1.0"
+
+agents:
+  - id: aider-coder
+    type: aider
+    name: "Aider Coder"
+    prompt: "You are an expert pair programmer who focuses on clean, maintainable code and best practices."
+    announcement: "🤖 Aider has joined the coding session!"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+
+  - id: reviewer-1
+    type: claude
+    name: "Code Reviewer"
+    prompt: "You are a senior code reviewer who looks for potential issues, edge cases, and improvements."
+    announcement: "👁️ Code Reviewer is ready to analyze!"
+    model: "claude-sonnet-4.5"
+    temperature: 0.6
+    max_tokens: 1500
+
+  - id: architect-1
+    type: gemini
+    name: "System Architect"
+    prompt: "You are a system architect who thinks about overall design, scalability, and patterns."
+    announcement: "🏗️ System Architect has joined to provide design insights!"
+    temperature: 0.7
+    max_tokens: 1500
+
+orchestrator:
+  mode: round-robin
+  max_turns: 8
+  turn_timeout: 90s
+  response_delay: 2s
+  initial_prompt: "Let's design and implement a new feature for handling concurrent API requests with rate limiting in a Go application. We need to consider error handling, retry logic, and observability."
+
+logging:
+  enabled: true
+  show_metrics: true
