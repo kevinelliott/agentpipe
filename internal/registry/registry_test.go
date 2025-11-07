@@ -268,14 +268,11 @@ func verifyBashCommandFormat(t *testing.T, cmdType, os, cmd string) {
 	if shouldSkipCommand(cmd) {
 		return
 	}
-	// Verify the command contains "bash -s --" not "bash --" for piped scripts
+	// Verify the command uses "bash -s --" for piped bash scripts
 	if !strings.Contains(cmd, "|") || !strings.Contains(cmd, "bash") {
 		return
 	}
-	if strings.Contains(cmd, "bash --") && !strings.Contains(cmd, "bash -s --") {
-		t.Errorf("%s command for %s uses incorrect format 'bash --' instead of 'bash -s --': %s", cmdType, os, cmd)
-	}
 	if !strings.Contains(cmd, "bash -s --") {
-		t.Errorf("%s command for %s should use 'bash -s --' for piped scripts: %s", cmdType, os, cmd)
+		t.Errorf("%s command for %s should use 'bash -s --' for piped scripts (got: %s)", cmdType, os, cmd)
 	}
 }
