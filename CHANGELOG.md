@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Qoder install/upgrade commands**
+  - Fixed exit status 127 error when running `agentpipe agents install qoder` or `agentpipe agents upgrade qoder`
+  - Changed from `bash --` to `bash -s --` in install/upgrade commands for proper stdin handling
+  - Updated commands: `curl -fsSL https://qoder.com/install | bash -s -- --force`
+  - Added test to verify bash command format in agent registry
+  - Fixes #26
+
 ## [0.5.5] - 2025-10-26
 
 ### Fixed

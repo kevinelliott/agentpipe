@@ -245,3 +245,43 @@ func verifyCommandMap(t *testing.T, commands map[string]string, cmdType, expecte
 func shouldSkipCommand(cmd string) bool {
 	return cmd == "" || (len(cmd) >= 3 && cmd[:3] == "See")
 }
+
+func TestQoderBashCommandFormat(t *testing.T) {
+	agent, err := GetByName("Qoder")
+	if err != nil {
+		t.Fatalf("Failed to get Qoder agent: %v", err)
+	}
+
+	// Test install commands
+	for os, cmd := range agent.Install {
+		verifyBashCommandFormat(t, "Install", os, cmd)
+	}
+
+	// Test upgrade commands
+	for os, cmd := range agent.Upgrade {
+		verifyBashCommandFormat(t, "Upgrade", os, cmd)
+	}
+}
+
+func verifyBashCommandFormat(t *testing.T, cmdType, os, cmd string) {
+	t.Helper()
+	if shouldSkipCommand(cmd) {
+		return
+	}
+	// Only check piped bash commands
+	if !strings.Contains(cmd, "|") || !strings.Contains(cmd, "bash") {
+		return
+	}
+
+	// Extract what comes after "bash" in the command
+	bashIndex := strings.Index(cmd, "bash")
+	afterBash := cmd[bashIndex+4:] // Everything after "bash"
+	afterBash = strings.TrimSpace(afterBash)
+
+	// If there are arguments after bash (starts with -- or -), require -s flag
+	if len(afterBash) > 0 && (strings.HasPrefix(afterBash, "--") || strings.HasPrefix(afterBash, "-")) {
+		if !strings.Contains(cmd, "bash -s") {
+			t.Errorf("%s command for %s passes arguments to bash without '-s' flag: %s\nWhen passing arguments to a piped script, use 'bash -s -- <args>' instead of 'bash -- <args>'", cmdType, os, cmd)
+		}
+	}
+}

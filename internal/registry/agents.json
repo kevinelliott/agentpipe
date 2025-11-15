@@ -248,8 +248,8 @@
       "package_manager": "manifest",
       "package_name": "https://qoder-ide.oss-ap-southeast-1.aliyuncs.com/qodercli/channels/manifest.json",
       "install": {
-        "darwin": "curl -fsSL https://qoder.com/install | bash -- --force",
-        "linux": "curl -fsSL https://qoder.com/install | bash -- --force",
+        "darwin": "curl -fsSL https://qoder.com/install | bash -s -- --force",
+        "linux": "curl -fsSL https://qoder.com/install | bash -s -- --force",
         "windows": "See https://qoder.com/cli"
       },
       "uninstall": {
@@ -258,8 +258,8 @@
         "windows": "See https://qoder.com/cli for uninstall instructions"
       },
       "upgrade": {
-        "darwin": "curl -fsSL https://qoder.com/install | bash -- --force",
-        "linux": "curl -fsSL https://qoder.com/install | bash -- --force",
+        "darwin": "curl -fsSL https://qoder.com/install | bash -s -- --force",
+        "linux": "curl -fsSL https://qoder.com/install | bash -s -- --force",
         "windows": "See https://qoder.com/cli for upgrade instructions"
       },
       "requires_auth": true
