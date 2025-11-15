@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Changed from `bash --` to `bash -s --` in install/upgrade commands for proper stdin handling
   - Updated commands: `curl -fsSL https://qoder.com/install | bash -s -- --force`
   - Added test to verify bash command format in agent registry
-  - Fixes #[issue_number]
+  - Fixes #26
 
 ## [0.5.5] - 2025-10-26
 
