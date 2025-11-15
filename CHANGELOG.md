@@ -7,7 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-10-26
+
+### Added
+- **Complete JSON-Only Output Mode (`--json` flag)**
+  - Pure JSONL stream - every line is a valid JSON object from the very first line
+  - ALL output (logs, messages, events, diagnostics) emitted as JSON to stdout
+  - Includes agent messages, system messages, diagnostic logs, and metadata
+  - Two event types:
+    - Conversation events: `bridge.connected`, `conversation.started`, `message.created`, `conversation.completed`
+    - Log events: `log.entry` for all messages and diagnostic logs
+  - Enables complete conversation replay and analysis from JSON stream alone
+  - Perfect for log aggregators, monitoring tools, CI/CD pipelines, and automation
+  - Usage: `agentpipe run --json -a gemini:Bot --prompt "test" | jq`
+  - Benefits:
+    - ✅ Real-time streaming (see events as they happen)
+    - ✅ Pure JSON from line 1 (no console format logs)
+    - ✅ Easy to pipe to `jq`, log aggregators, monitoring tools
+    - ✅ CI/CD friendly
+    - ✅ No breaking changes - opt-in via flag
+
+- **Diagnostic Logs as JSON Events**
+  - All zerolog diagnostic logs (INF, WRN, ERR, DBG) emitted as `log.entry` events with `role: "diagnostic"`
+  - Includes metadata from log fields (agent_id, duration, tokens, etc.)
+  - Clean separation: `role: "diagnostic"` for system logs vs `role: "agent"/"system"/"user"` for chat messages
+
 ### Fixed
+- **Pure JSON output from first line**
+  - Fixed issue where initial config log appeared as console format instead of JSON
+  - Moved JSON emitter initialization to `cmd/root.go:initConfig()` (before any log calls)
+  - Global `stdoutEmitter` shared across root and run commands
+  - No more mixed console/JSON output
+
 - **Qoder install/upgrade commands**
   - Fixed exit status 127 error when running `agentpipe agents install qoder` or `agentpipe agents upgrade qoder`
   - Changed from `bash --` to `bash -s --` in install/upgrade commands for proper stdin handling
@@ -15,7 +46,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added test to verify bash command format in agent registry
   - Fixes #26
 
-## [0.5.5] - 2025-10-26
+### Technical Details
+- **New Event Type**: `log.entry` in `internal/bridge/events.go`
+  - `LogEntryData` struct with level, agent info, content, role, metadata, and metrics
+  - `LogEntryMetrics` struct for duration, tokens, cost
+  - Supports both chat messages and diagnostic logs in unified format
+- **New Module**: `internal/bridge/zerolog_json_writer.go`
+  - Custom zerolog writer that parses zerolog JSON output
+  - Emits diagnostic logs as `log.entry` events to stdout
+  - Extracts level, message, and metadata from zerolog fields
+- **New Module**: `internal/bridge/stdout_emitter.go`
+  - Implements `BridgeEmitter` interface for stdout JSON output
+  - Uses same event schemas as HTTP bridge emitter
+  - Added `EmitLogEntry()` method for log event emission
+- **New Interface**: `internal/bridge/interface.go`
+  - `BridgeEmitter` interface allows both HTTP and stdout emitters
+- **Updated**: `cmd/root.go`
+  - Added `globalJSONEmitter` package variable to share emitter across commands
+  - Modified `initConfig()` to detect `--json` flag and initialize JSON emitter immediately
+  - Zerolog initialized with `ZerologJSONWriter` before any log calls in JSON mode
+- **Updated**: `cmd/run.go`
+  - Added `--json` flag
+  - Suppresses UI output when `--json` is set
+  - Uses `globalJSONEmitter` from root
+  - Set JSON emitter on logger when `--json` flag is used
+  - Passes `nil` writers to logger and orchestrator in JSON mode
+- **Updated**: `pkg/logger/logger.go`
+  - Added `jsonEmitter` field to `ChatLogger`
+  - Added `SetJSONEmitter()` method
+  - Modified `LogMessage()`, `LogError()`, and `LogSystem()` to emit JSON events when JSON emitter is set
+- **Updated**: `pkg/orchestrator/orchestrator.go`
+  - Changed `bridgeEmitter` field to use `BridgeEmitter` interface
+
+### Migration Notes
+- This release consolidates and supersedes v0.5.3, v0.5.4, and v0.5.5
+- No breaking changes - `--json` flag is opt-in
+- All existing functionality remains unchanged
+
+## [0.5.5] - 2025-10-26 (superseded by v0.6.0)
 
 ### Fixed
 - **Pure JSON output from first line**
@@ -35,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed duplicate emitter creation (now created once in `initConfig`)
   - Passes shared emitter to orchestrator and chat logger
 
-## [0.5.4] - 2025-01-26
+## [0.5.4] - 2025-01-26 (superseded by v0.6.0)
 
 ### Added
 - **Complete JSON-only output mode**
@@ -75,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reinitialize zerolog with `ZerologJSONWriter` for diagnostic log conversion
   - Ensures all output becomes JSON events
 
-## [0.5.3] - 2025-01-26
+## [0.5.3] - 2025-01-26 (superseded by v0.6.0)
 
 ### Added
 - **JSON-only output format (`--json` flag)**
