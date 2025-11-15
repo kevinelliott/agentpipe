@@ -268,11 +268,20 @@ func verifyBashCommandFormat(t *testing.T, cmdType, os, cmd string) {
 	if shouldSkipCommand(cmd) {
 		return
 	}
-	// Verify the command uses "bash -s --" for piped bash scripts
+	// Only check piped bash commands
 	if !strings.Contains(cmd, "|") || !strings.Contains(cmd, "bash") {
 		return
 	}
-	if !strings.Contains(cmd, "bash -s --") {
-		t.Errorf("%s command for %s should use 'bash -s --' for piped scripts (got: %s)", cmdType, os, cmd)
+
+	// Extract what comes after "bash" in the command
+	bashIndex := strings.Index(cmd, "bash")
+	afterBash := cmd[bashIndex+4:] // Everything after "bash"
+	afterBash = strings.TrimSpace(afterBash)
+
+	// If there are arguments after bash (starts with -- or -), require -s flag
+	if len(afterBash) > 0 && (strings.HasPrefix(afterBash, "--") || strings.HasPrefix(afterBash, "-")) {
+		if !strings.Contains(cmd, "bash -s") {
+			t.Errorf("%s command for %s passes arguments to bash without '-s' flag: %s\nWhen passing arguments to a piped script, use 'bash -s -- <args>' instead of 'bash -- <args>'", cmdType, os, cmd)
+		}
 	}
 }
