@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-01-27
+
+### Added
+- **Continue CLI Agent Support**
+  - New adapter for Continue CLI (@continuedev/cli) - AI coding assistant with TUI and headless modes
+  - Command: `cn` (not `continue`)
+  - Installation via npm: `npm install -g @continuedev/cli`
+  - Version tested: 1.5.12
+  - Key features:
+    - `-p` flag for prompt input (different pattern from Claude/Gemini's stdin approach)
+    - `--model` flag for model specification (e.g., gpt-4, claude-sonnet-4-5)
+    - `--silent` flag to strip `<think></think>` tags from output
+    - Authentication via `cn login` to Continue Mission Control
+  - Full Agent interface implementation with structured prompts
+  - Message filtering to prevent echo in multi-agent conversations
+  - Streaming and non-streaming message support
+  - Example configurations:
+    - `examples/continue-coding.yaml` - Single Continue agent for refactoring
+    - `examples/continue-team-coding.yaml` - Multi-agent team (Continue + Claude + Gemini)
+  - Complete test coverage and documentation
+  - Now supporting 16 AI agent CLIs (up from 15)
+
+### Technical Details
+- **New Module**: `pkg/adapters/continue.go`
+  - Flag-based prompt pattern: `cn -p "prompt"` instead of stdin
+  - Implements structured three-part prompts (identity, context, instruction)
+  - `filterRelevantMessages()` excludes agent's own messages
+  - `filterStatusMessages()` removes Continue CLI status output
+  - `isStatusMessage()` detects and filters loading/initialization messages
+  - Health check with `--version` flag, fallback to `--help`
+- **Updated**: `internal/registry/agents.json`
+  - Added Continue entry with npm install/upgrade/uninstall commands
+  - Marked `requires_auth: true`
+  - Documentation: https://docs.continue.dev/cli
+- **Updated Tests**:
+  - `pkg/adapters/adapters_test.go` - Added TestContinueAgentInitialization
+  - `internal/registry/registry_test.go` - Updated agent count from 15 to 16
+- **Documentation Updates**:
+  - README.md - Added Continue to supported agents list
+  - CLAUDE.md - Added Continue CLI technical details
+
+### Benefits
+- ✅ **TUI and Headless Modes**: Works in both interactive and automated contexts
+- 🚀 **Model Flexibility**: Specify any supported model via `--model` flag
+- 🔇 **Clean Output**: `--silent` flag removes internal reasoning tags
+- 🔐 **Secure Authentication**: Centralized auth via Continue Mission Control
+- 🎯 **Multi-Agent Ready**: Filters messages for clean conversation participation
+- 📝 **Well Documented**: Complete examples and troubleshooting guides
+
 ## [0.6.0] - 2025-10-26
 
 ### Added
@@ -1099,7 +1148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean Message Display**: Smart consolidation of headers and proper paragraph formatting
 - **Cost Transparency**: See exactly how much each conversation costs
 
-[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/kevinelliott/agentpipe/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/kevinelliott/agentpipe/compare/v0.6.0...v0.7.0
 [v0.2.1]: https://github.com/kevinelliott/agentpipe/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/kevinelliott/agentpipe/compare/v0.1.5...v0.2.0
 [v0.1.5]: https://github.com/kevinelliott/agentpipe/compare/v0.1.4...v0.1.5
