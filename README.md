@@ -30,6 +30,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Claude** (Anthropic) - Advanced reasoning and coding
 - ✅ **Codex** (OpenAI) - Code generation specialist (non-interactive exec mode)
 - ✅ **Copilot** (GitHub) - Terminal-based coding agent with multiple model support
+- ✅ **Continue** - AI coding assistant with TUI and headless modes for development workflows
 - ✅ **Crush** (Charm/Charmbracelet) - Terminal-first AI coding assistant with multi-provider support
 - ✅ **Cursor** (Cursor AI) - IDE-integrated AI assistance
 - ✅ **Factory** (Factory.ai) - Agent-native software development with Droid (non-interactive exec mode)

@@ -74,10 +74,11 @@ AgentPipe is a CLI and TUI application that orchestrates conversations between m
 ### Agent Adapters
 AgentPipe supports two types of agent adapters:
 
-**CLI-Based Adapters** (Claude, Gemini, Qwen, etc.):
+**CLI-Based Adapters** (Claude, Gemini, Qwen, Continue, etc.):
 - Execute external CLI tools via `exec.Command`
 - Each adapter must implement full `Agent` interface
 - Methods: `Initialize(config)`, `IsAvailable()`, `HealthCheck(ctx)`, `SendMessage(ctx, messages)`, `StreamMessage(ctx, messages, writer)`, `GetCLIVersion()`
+- **Continue CLI** (`cn`): Uses `-p` flag for prompt, `--model` for model selection, `--silent` to strip think tags
 
 **API-Based Adapters** (OpenRouter, v0.6.0+):
 - Direct HTTP API integration without CLI dependencies

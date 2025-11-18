@@ -287,6 +287,37 @@ func TestAiderAgentInitialization(t *testing.T) {
 	}
 }
 
+func TestContinueAgentInitialization(t *testing.T) {
+	continueAgent := NewContinueAgent()
+
+	config := agent.AgentConfig{
+		ID:           "continue-1",
+		Type:         "continue",
+		Name:         "Continue",
+		Prompt:       "You are Continue AI",
+		Announcement: "Continue has joined!",
+		Model:        "gpt-4",
+	}
+
+	err := continueAgent.Initialize(config)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			t.Skip("continue CLI not available, skipping test")
+		}
+		t.Fatalf("initialization failed: %v", err)
+	}
+
+	if continueAgent.GetID() != "continue-1" {
+		t.Errorf("expected ID 'continue-1', got '%s'", continueAgent.GetID())
+	}
+	if continueAgent.GetName() != "Continue" {
+		t.Errorf("expected name 'Continue', got '%s'", continueAgent.GetName())
+	}
+	if continueAgent.GetType() != "continue" {
+		t.Errorf("expected type 'continue', got '%s'", continueAgent.GetType())
+	}
+}
+
 func TestAgentAnnouncement(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -297,6 +328,7 @@ func TestAgentAnnouncement(t *testing.T) {
 		{"claude", NewClaudeAgent, "Claude", "Claude has arrived!"},
 		{"gemini", NewGeminiAgent, "Gemini", "Gemini is here!"},
 		{"copilot", NewCopilotAgent, "Copilot", "Copilot ready!"},
+		{"continue", NewContinueAgent, "Continue", "Continue ready!"},
 		{"cursor", NewCursorAgent, "Cursor", "Cursor online!"},
 		{"qwen", NewQwenAgent, "Qwen", "Qwen active!"},
 		{"codex", NewCodexAgent, "Codex", "Codex ready!"},
@@ -366,6 +398,7 @@ func TestAgentHealthCheckTimeout(t *testing.T) {
 		{"claude", NewClaudeAgent()},
 		{"gemini", NewGeminiAgent()},
 		{"copilot", NewCopilotAgent()},
+		{"continue", NewContinueAgent()},
 		{"cursor", NewCursorAgent()},
 		{"qwen", NewQwenAgent()},
 		{"codex", NewCodexAgent()},

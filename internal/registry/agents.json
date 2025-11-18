@@ -97,6 +97,30 @@
       "requires_auth": true
     },
     {
+      "name": "Continue",
+      "command": "cn",
+      "description": "Continue AI coding assistant with TUI and headless modes",
+      "docs": "https://docs.continue.dev/cli",
+      "package_manager": "npm",
+      "package_name": "@continuedev/cli",
+      "install": {
+        "darwin": "npm install -g @continuedev/cli",
+        "linux": "npm install -g @continuedev/cli",
+        "windows": "npm install -g @continuedev/cli"
+      },
+      "uninstall": {
+        "darwin": "npm uninstall -g @continuedev/cli",
+        "linux": "npm uninstall -g @continuedev/cli",
+        "windows": "npm uninstall -g @continuedev/cli"
+      },
+      "upgrade": {
+        "darwin": "npm update -g @continuedev/cli",
+        "linux": "npm update -g @continuedev/cli",
+        "windows": "npm update -g @continuedev/cli"
+      },
+      "requires_auth": true
+    },
+    {
       "name": "Crush",
       "command": "crush",
       "description": "Charm's Crush CLI - Terminal-first AI coding assistant",

@@ -29,7 +29,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	// Verify we have the expected agents
-	expectedCount := 15 // Aider, Amp, Claude, Codex, Copilot, Crush, Cursor, Factory, Gemini, Groq, Kimi, OpenCode, Qoder, Qwen, Ollama
+	expectedCount := 16 // Aider, Amp, Claude, Codex, Copilot, Continue, Crush, Cursor, Factory, Gemini, Groq, Kimi, OpenCode, Qoder, Qwen, Ollama
 	if len(agents) != expectedCount {
 		t.Errorf("Expected %d agents, got %d", expectedCount, len(agents))
 	}

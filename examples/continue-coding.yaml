@@ -1,0 +1,22 @@
+version: "1.0"
+
+agents:
+  - id: continue-dev
+    type: continue
+    name: "Continue AI"
+    prompt: "You are an experienced AI coding assistant focused on helping developers write better code through intelligent suggestions and analysis."
+    announcement: "Continue AI has joined the conversation!"
+    # Optional: Specify model (e.g., gpt-4, claude-sonnet-4.5)
+    # model: "gpt-4"
+
+orchestrator:
+  mode: free-form
+  max_turns: 5
+  turn_timeout: 60s
+  response_delay: 1s
+  initial_prompt: "Help me refactor this code to use async/await patterns instead of callbacks."
+
+logging:
+  enabled: true
+  show_metrics: true
+  log_format: text

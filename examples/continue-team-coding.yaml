@@ -1,0 +1,34 @@
+version: "1.0"
+
+agents:
+  - id: continue-dev
+    type: continue
+    name: "Continue Developer"
+    prompt: "You are a skilled developer focusing on implementation details and code quality. You provide practical coding suggestions and identify potential improvements."
+    announcement: "🔄 Continue Developer has joined the coding session!"
+    # Continue supports model specification via --model flag
+    # model: "gpt-4"
+
+  - id: claude-architect
+    type: claude
+    name: "System Architect"
+    prompt: "You are a software architect who thinks about system design, scalability, and maintainability. You focus on high-level architecture and design patterns."
+    announcement: "🏗️ System Architect is here to ensure solid design!"
+
+  - id: gemini-reviewer
+    type: gemini
+    name: "Code Reviewer"
+    prompt: "You are a thorough code reviewer who identifies bugs, security issues, and opportunities for optimization. You provide constructive feedback."
+    announcement: "👀 Code Reviewer ready to ensure quality!"
+
+orchestrator:
+  mode: round-robin
+  max_turns: 10
+  turn_timeout: 60s
+  response_delay: 2s
+  initial_prompt: "Let's design and implement a real-time collaborative code editor. Discuss the architecture, technologies, and implementation approach."
+
+logging:
+  enabled: true
+  show_metrics: true
+  log_format: text
