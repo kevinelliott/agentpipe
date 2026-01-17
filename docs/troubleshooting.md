@@ -338,7 +338,7 @@ logging:
 ```yaml
 agents:
   - type: claude
-    model: claude-3-haiku  # Faster than opus/sonnet
+    model: claude-3-5-haiku-20241022  # Faster than opus/sonnet
 ```
 
 4. **Check system resources:**
