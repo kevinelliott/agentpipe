@@ -73,6 +73,10 @@ type EnhancedModel struct {
 	healthCheckTimeout int
 	configPath         string // Path to config file if used
 
+	// Polling state - prevent duplicate goroutines
+	waitingForMessage bool
+	waitingForLog     bool
+
 	// Styles
 	agentColors map[string]lipgloss.Color
 }
@@ -382,18 +386,15 @@ func RunEnhanced(ctx context.Context, cfg *config.Config, agents []agent.Agent, 
 func (m EnhancedModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		textarea.Blink,
-		m.waitForLog(), // Start polling for log messages
+		m.waitForLog(),
 	}
 
 	if !m.initialized {
-		// Send initialization message first
 		cmds = append(cmds, func() tea.Msg {
 			return agentInitMsg{message: "🔍 Initializing agents..."}
 		})
-		// Start agent initialization
 		cmds = append(cmds, m.initializeAgents())
 	} else {
-		// Agents already initialized, start conversation
 		cmds = append(cmds, m.startConversation(), m.waitForMessage())
 	}
 
@@ -406,7 +407,6 @@ func (m EnhancedModel) initializeAgents() tea.Cmd {
 		agentsList := make([]agent.Agent, 0)
 
 		for _, agentCfg := range m.config.Agents {
-			// Create agent
 			a, err := agent.CreateAgent(agentCfg)
 			if err != nil {
 				return agentInitComplete{
@@ -420,7 +420,6 @@ func (m EnhancedModel) initializeAgents() tea.Cmd {
 				}
 			}
 
-			// Perform health check unless skipped
 			if !m.skipHealthCheck {
 				timeout := time.Duration(m.healthCheckTimeout) * time.Second
 				if timeout == 0 {
@@ -447,22 +446,18 @@ func (m EnhancedModel) initializeAgents() tea.Cmd {
 			}
 		}
 
-		return agentInitComplete{
-			agents: agentsList,
-		}
+		return agentInitComplete{agents: agentsList}
 	}
 }
 
 // waitForMessage polls for new messages from the orchestrator
 func (m EnhancedModel) waitForMessage() tea.Cmd {
 	return func() tea.Msg {
-		// Check if there's a message waiting
 		select {
 		case msg := <-m.msgChan:
 			return messageUpdate{message: msg}
 		case <-time.After(100 * time.Millisecond):
-			// No message, return a tick to check again
-			return tickMsg{}
+			return msgTickMsg{}
 		}
 	}
 }
@@ -470,18 +465,18 @@ func (m EnhancedModel) waitForMessage() tea.Cmd {
 // waitForLog polls for new log messages
 func (m EnhancedModel) waitForLog() tea.Cmd {
 	return func() tea.Msg {
-		// Check if there's a log message waiting
 		select {
 		case msg := <-m.logChan:
 			return logUpdate{message: msg}
 		case <-time.After(100 * time.Millisecond):
-			// No log message, return a tick to check again
-			return tickMsg{}
+			return logTickMsg{}
 		}
 	}
 }
 
 type tickMsg struct{}
+type msgTickMsg struct{} // Tick from waitForMessage timeout
+type logTickMsg struct{} // Tick from waitForLog timeout
 
 type agentInitMsg struct {
 	message string
@@ -501,7 +496,6 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Global keys
 		if m.showModal {
 			if msg.Type == tea.KeyEsc || msg.Type == tea.KeyEnter {
 				m.showModal = false
@@ -643,11 +637,10 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case agentInitComplete:
 		if msg.err != nil {
-			// Add error message to chat
 			errMsg := agent.Message{
 				AgentID:   "error",
 				AgentName: "System",
-				Content:   fmt.Sprintf("Failed to initialize agents: %v", msg.err),
+				Content:   fmt.Sprintf("❌ Failed to initialize agents: %v\n\nPress 'q' to quit and check your agent configuration.", msg.err),
 				Timestamp: time.Now().Unix(),
 				Role:      "system",
 			}
@@ -655,15 +648,14 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.conversation.SetContent(m.renderConversation())
 			m.conversation.GotoBottom()
 			m.err = msg.err
-			return m, nil
+			m.initializing = false
+			return m, m.waitForLog()
 		}
 
-		// Successfully initialized agents
 		m.agents = msg.agents
 		m.initialized = true
 		m.initializing = false
 
-		// Update agent list
 		items := make([]list.Item, len(m.agents))
 		for i, a := range m.agents {
 			color := agentColors[i%len(agentColors)]
@@ -675,7 +667,6 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.agentList.SetItems(items)
 
-		// Add success message
 		successMsg := agent.Message{
 			AgentID:   "info",
 			AgentName: "System",
@@ -687,13 +678,17 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.conversation.SetContent(m.renderConversation())
 		m.conversation.GotoBottom()
 
-		// Don't add agents here - they'll be added in startConversation
-		// Mark as running before starting conversation
 		m.running = true
-		// Start the conversation
 		cmds = append(cmds, m.startConversation(), m.waitForMessage())
 
 	case messageUpdate:
+		// Message received - waiter completed, spawn next one
+		m.waitingForMessage = false
+		if m.running {
+			m.waitingForMessage = true
+			cmds = append(cmds, m.waitForMessage())
+		}
+
 		if msg.message.Role == "active" {
 			// This is just an indicator that an agent is actively typing
 			m.activeAgent = msg.message.AgentName
@@ -734,20 +729,40 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.conversation.SetContent(m.renderConversation())
 			m.conversation.GotoBottom()
 		}
-		// Continue polling for messages only if still running
+		// DON'T spawn waitForMessage here - let tickMsg handle continuations
+		// This prevents exponential growth of goroutines
+
+	case tickMsg:
+		// Legacy tick - spawn both if not already waiting
+		if m.running && !m.waitingForMessage {
+			m.waitingForMessage = true
+			cmds = append(cmds, m.waitForMessage())
+		}
+		if !m.waitingForLog {
+			m.waitingForLog = true
+			cmds = append(cmds, m.waitForLog())
+		}
+
+	case msgTickMsg:
+		// Message poll timeout - spawn only message waiter
+		m.waitingForMessage = false
 		if m.running {
+			m.waitingForMessage = true
 			cmds = append(cmds, m.waitForMessage())
 		}
 
-	case tickMsg:
-		// Continue polling for messages only if still running
-		if m.running {
-			cmds = append(cmds, m.waitForMessage())
-		}
-		// Always continue polling for logs
+	case logTickMsg:
+		// Log poll timeout - spawn only log waiter
+		m.waitingForLog = false
+		m.waitingForLog = true
 		cmds = append(cmds, m.waitForLog())
 
 	case logUpdate:
+		// Log received - waiter completed, spawn next one
+		m.waitingForLog = false
+		m.waitingForLog = true
+		cmds = append(cmds, m.waitForLog())
+
 		// Add log message to the list
 		m.logMessages = append(m.logMessages, msg.message)
 
@@ -762,8 +777,7 @@ func (m EnhancedModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logPanel.GotoBottom()
 		}
 
-		// Continue polling for logs
-		cmds = append(cmds, m.waitForLog())
+		// DON'T spawn waitForLog here - let tickMsg handle continuations
 
 	case conversationDone:
 		m.running = false
@@ -1358,12 +1372,12 @@ func (m *EnhancedModel) renderModal() string {
 	)
 }
 
-func (m *EnhancedModel) sendUserMessage() tea.Cmd {
-	return func() tea.Msg {
-		text := m.userInput.Value()
-		m.userInput.Reset()
-		m.userInput.CursorStart()
+func (m EnhancedModel) sendUserMessage() tea.Cmd {
+	// Capture the current input value before the closure runs
+	// The input is already reset in Update, so we capture it here
+	text := m.userInput.Value()
 
+	return func() tea.Msg {
 		msg := agent.Message{
 			AgentID:   "user",
 			AgentName: "User",
@@ -1562,30 +1576,36 @@ func (w *messageWriter) flushCurrentMessage() {
 	}
 }
 
-func (m *EnhancedModel) startConversation() tea.Cmd {
+func (m EnhancedModel) startConversation() tea.Cmd {
+	// Capture values needed by closures to avoid capturing pointer to stack variable
+	orch := m.orch
+	ctx := m.ctx
+	msgChan := m.msgSendChan
+	mode := m.config.Orchestrator.Mode
+	agents := m.agents
+
 	return func() tea.Msg {
-		// Add initial system message
 		startMsg := agent.Message{
 			AgentID:   "system",
 			AgentName: "System",
-			Content:   fmt.Sprintf("🚀 Starting AgentPipe conversation in %s mode...", m.config.Orchestrator.Mode),
+			Content:   fmt.Sprintf("🚀 Starting AgentPipe conversation in %s mode...", mode),
 			Timestamp: time.Now().Unix(),
 			Role:      "system",
 		}
 
 		// Add agents to orchestrator and announce them
-		for _, a := range m.agents {
-			m.orch.AddAgent(a)
+		for _, a := range agents {
+			orch.AddAgent(a)
 		}
 
 		// Start the orchestrator in a background goroutine
 		// It will write to msgChan through the messageWriter
 		go func() {
 			// Use a longer timeout context for the entire conversation
-			orchCtx, cancel := context.WithTimeout(m.ctx, 10*time.Minute)
+			orchCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 			defer cancel()
 
-			convErr := m.orch.Start(orchCtx)
+			convErr := orch.Start(orchCtx)
 
 			// Send a done message when orchestrator finishes
 			doneMsg := agent.Message{
@@ -1604,7 +1624,7 @@ func (m *EnhancedModel) startConversation() tea.Cmd {
 			// Try to send the done message
 			// Use a select to avoid blocking if channel is full/closed
 			select {
-			case m.msgSendChan <- doneMsg:
+			case msgChan <- doneMsg:
 				// Message sent successfully
 			default:
 				// Channel full or closed, ignore
