@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated `providers.json` with latest models from Catwalk
+  - Anthropic: Added `claude-opus-4-5-20251101` ($5/$25 per 1M tokens)
+  - Gemini: Added `gemini-3-pro-preview`, `gemini-3-flash-preview`
+  - OpenAI: Added `gpt-5.2`, `gpt-5.1-codex` variants (18 models total)
+  - VertexAI: Added Gemini 3 previews and Claude models
+
+### Fixed
+- Fixed invalid model references in example configs
+  - `simple-conversation.yaml`: `claude-4-sonnet` → `claude-sonnet-4-5-20250929`
+  - `brainstorm.yaml`: `claude-3-opus` → `claude-opus-4-5-20251101`
+  - `troubleshooting.md`: `claude-3-haiku` → `claude-3-5-haiku-20241022`
+
 ## [0.7.0] - 2025-01-27
 
 ### Added
