@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // This tool fetches provider configs from Catwalk and generates providers.json
