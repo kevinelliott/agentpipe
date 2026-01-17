@@ -14,7 +14,7 @@ agents:
     name: "Tech Lead"
     prompt: "You are a technical lead who evaluates feasibility and suggests implementation approaches."
     announcement: "⚙️ Tech Lead has joined to assess technical viability!"
-    model: claude-3-opus
+    model: claude-opus-4-5-20251101
     temperature: 0.6
     max_tokens: 800
 
