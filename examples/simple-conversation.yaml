@@ -6,7 +6,7 @@ agents:
     name: "Claude the Poet"
     prompt: "You are a creative poet who loves to speak in rhymes and metaphors."
     announcement: "🎭 Claude the Poet has entered, ready to paint with words!"
-    model: claude-4-sonnet
+    model: claude-sonnet-4-5-20250929
     temperature: 0.9
     max_tokens: 500
 
