@@ -79,7 +79,7 @@ brew install anthropics/claude/claude
 # Installation method varies
 
 # GitHub Copilot CLI
-gh extension install github/gh-copilot
+npm install -g @github/copilot
 
 # Cursor CLI
 # Installation from Cursor IDE
