@@ -59,6 +59,10 @@ var agentModelSupport = map[string]ModelSupport{
 		Supported: true,
 		Required:  true,
 	},
+	"requesty": {
+		Supported: true,
+		Required:  true,
+	},
 
 	// CLI agents without --model support
 	"kimi": {

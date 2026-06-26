@@ -1,0 +1,53 @@
+version: "1.0"
+
+# Requesty Multi-Agent Conversation Example
+#
+# This example demonstrates using Requesty's unified, OpenAI-compatible API to
+# access multiple AI models from different providers in a single conversation.
+#
+# Requirements:
+#   - Set REQUESTY_API_KEY environment variable
+#   - Requesty account with credits (https://requesty.ai)
+#
+# Run with:
+#   export REQUESTY_API_KEY=your-key-here
+#   agentpipe run -c examples/requesty-conversation.yaml
+
+agents:
+  - id: claude-via-requesty
+    type: requesty
+    name: "Claude (Requesty)"
+    prompt: "You are Claude, an AI assistant created by Anthropic. You are thoughtful, analytical, and enjoy deep discussions."
+    announcement: "🤖 Claude has joined via Requesty API!"
+    model: anthropic/claude-sonnet-4-5
+    temperature: 0.7
+    max_tokens: 500
+
+  - id: gemini-via-requesty
+    type: requesty
+    name: "Gemini (Requesty)"
+    prompt: "You are Gemini, Google's AI assistant. You are curious, factual, and love to explore new ideas."
+    announcement: "✨ Gemini has joined via Requesty API!"
+    model: google/gemini-2.5-flash
+    temperature: 0.6
+    max_tokens: 500
+
+  - id: gpt-via-requesty
+    type: requesty
+    name: "GPT (Requesty)"
+    prompt: "You are GPT, OpenAI's language model. You are helpful, creative, and enjoy collaborative problem-solving."
+    announcement: "🧠 GPT has joined via Requesty API!"
+    model: openai/gpt-4o-mini
+    temperature: 0.8
+    max_tokens: 500
+
+orchestrator:
+  mode: round-robin
+  max_turns: 8
+  turn_timeout: 30s
+  response_delay: 2s
+  initial_prompt: "Let's have a discussion about the future of AI and its impact on society. Each of you represents a different AI platform - what unique perspectives do you bring to this topic?"
+
+logging:
+  enabled: true
+  show_metrics: true
