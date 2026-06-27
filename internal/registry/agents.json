@@ -200,19 +200,19 @@
       "package_manager": "npm",
       "package_name": "@google/gemini-cli",
       "install": {
-        "darwin": "npm install -g @google/generative-ai-cli",
-        "linux": "npm install -g @google/generative-ai-cli",
-        "windows": "npm install -g @google/generative-ai-cli"
+        "darwin": "npm install -g @google/gemini-cli",
+        "linux": "npm install -g @google/gemini-cli",
+        "windows": "npm install -g @google/gemini-cli"
       },
       "uninstall": {
-        "darwin": "npm uninstall -g @google/generative-ai-cli",
-        "linux": "npm uninstall -g @google/generative-ai-cli",
-        "windows": "npm uninstall -g @google/generative-ai-cli"
+        "darwin": "npm uninstall -g @google/gemini-cli",
+        "linux": "npm uninstall -g @google/gemini-cli",
+        "windows": "npm uninstall -g @google/gemini-cli"
       },
       "upgrade": {
-        "darwin": "npm update -g @google/generative-ai-cli",
-        "linux": "npm update -g @google/generative-ai-cli",
-        "windows": "npm update -g @google/generative-ai-cli"
+        "darwin": "npm update -g @google/gemini-cli",
+        "linux": "npm update -g @google/gemini-cli",
+        "windows": "npm update -g @google/gemini-cli"
       },
       "requires_auth": true
     },

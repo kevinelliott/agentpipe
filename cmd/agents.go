@@ -676,6 +676,18 @@ func isAgentInstalled(command string) bool {
 
 // executeInstallCommand executes an installation command
 func executeInstallCommand(installCmd string) error {
+	// Check if command uses pip and fallback to pip3 if pip is not available
+	if strings.HasPrefix(installCmd, "pip ") {
+		if _, err := exec.LookPath("pip"); err != nil {
+			// pip not found, try pip3
+			if _, err := exec.LookPath("pip3"); err == nil {
+				// pip3 is available, use it instead
+				installCmd = "pip3" + installCmd[3:]
+				fmt.Printf("   Note: 'pip' not found, using 'pip3' instead\n")
+			}
+		}
+	}
+
 	// Parse the command - handle both simple commands and piped commands
 	var cmd *exec.Cmd
 
