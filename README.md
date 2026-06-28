@@ -39,6 +39,7 @@ All agents now use a **standardized interaction pattern** with structured three-
 - ✅ **Kimi** (Moonshot AI) - Interactive AI agent with advanced reasoning (interactive-first CLI)
 - ✅ **OpenCode** (SST) - AI coding agent built for the terminal (non-interactive run mode)
 - ✅ **OpenRouter** - Unified API access to 400+ models from multiple providers (API-based, no CLI required) 🌐 **API-based**
+- ✅ **Requesty** - OpenAI-compatible gateway with access to 400+ models from multiple providers (API-based, no CLI required) 🌐 **API-based**
 - ✅ **Qoder** - Agentic coding platform with enhanced context engineering
 - ✅ **Qwen** (Alibaba) - Multilingual capabilities
 - ✅ **Ollama** - Local LLM support (planned)
@@ -317,6 +318,7 @@ AgentPipe supports three formats for specifying agents via the `--agents` / `-a`
 | `groq` | ✅ Optional | No | `llama3-70b`, `mixtral-8x7b` |
 | `crush` | ✅ Optional | No | `deepseek-r1`, `qwen-2.5` |
 | `openrouter` | ✅ **Required** | Yes | `anthropic/claude-sonnet-4-5`, `google/gemini-2.5-pro` |
+| `requesty` | ✅ **Required** | Yes | `openai/gpt-4o-mini`, `anthropic/claude-sonnet-4-5` |
 | `kimi` | ❌ Not supported | No | N/A |
 | `cursor` | ❌ Not supported | No | N/A |
 | `amp` | ❌ Not supported | No | N/A |

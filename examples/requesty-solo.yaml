@@ -1,0 +1,36 @@
+version: "1.0"
+
+# Requesty Solo Agent Example
+#
+# This example shows how to use a single Requesty agent for a conversation.
+# This is useful for testing or when you want to use a specific model via API
+# without installing its CLI tool.
+#
+# Requirements:
+#   - Set REQUESTY_API_KEY environment variable
+#   - Requesty account with credits (https://requesty.ai)
+#
+# Run with:
+#   export REQUESTY_API_KEY=your-key-here
+#   agentpipe run -c examples/requesty-solo.yaml
+
+agents:
+  - id: gpt-via-requesty
+    type: requesty
+    name: "GPT (Requesty)"
+    prompt: "You are a powerful reasoning assistant. When solving problems, break down your thinking step by step and show your reasoning process clearly."
+    announcement: "🧪 GPT has joined via Requesty API!"
+    model: openai/gpt-4o-mini
+    temperature: 0.5
+    max_tokens: 2000
+
+orchestrator:
+  mode: round-robin
+  max_turns: 3
+  turn_timeout: 60s
+  response_delay: 1s
+  initial_prompt: "Solve this logic puzzle: You have 12 balls that look identical. One ball is slightly heavier or lighter than the others. Using a balance scale only 3 times, how can you identify which ball is different and whether it's heavier or lighter?"
+
+logging:
+  enabled: true
+  show_metrics: true
