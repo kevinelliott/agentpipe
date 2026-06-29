@@ -74,25 +74,25 @@
     },
     {
       "name": "Copilot",
-      "command": "github-copilot-cli",
+      "command": "copilot",
       "description": "GitHub Copilot CLI",
       "docs": "https://github.com/github/copilot-cli",
       "package_manager": "npm",
-      "package_name": "@githubnext/github-copilot-cli",
+      "package_name": "@github/copilot",
       "install": {
-        "darwin": "npm install -g @githubnext/github-copilot-cli",
-        "linux": "npm install -g @githubnext/github-copilot-cli",
-        "windows": "npm install -g @githubnext/github-copilot-cli"
+        "darwin": "npm install -g @github/copilot",
+        "linux": "npm install -g @github/copilot",
+        "windows": "npm install -g @github/copilot"
       },
       "uninstall": {
-        "darwin": "npm uninstall -g @githubnext/github-copilot-cli",
-        "linux": "npm uninstall -g @githubnext/github-copilot-cli",
-        "windows": "npm uninstall -g @githubnext/github-copilot-cli"
+        "darwin": "npm uninstall -g @github/copilot",
+        "linux": "npm uninstall -g @github/copilot",
+        "windows": "npm uninstall -g @github/copilot"
       },
       "upgrade": {
-        "darwin": "npm update -g @githubnext/github-copilot-cli",
-        "linux": "npm update -g @githubnext/github-copilot-cli",
-        "windows": "npm update -g @githubnext/github-copilot-cli"
+        "darwin": "npm update -g @github/copilot",
+        "linux": "npm update -g @github/copilot",
+        "windows": "npm update -g @github/copilot"
       },
       "requires_auth": true
     },
