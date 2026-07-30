@@ -195,7 +195,7 @@ which claude
 which gemini
 
 # For GitHub Copilot
-gh copilot --help
+copilot --help
 
 # For Cursor
 which cursor-agent
@@ -207,7 +207,7 @@ which cursor-agent
 brew install anthropics/claude/claude
 
 # GitHub Copilot
-gh extension install github/gh-copilot
+npm install -g @github/copilot
 
 # Others: See agent-specific documentation
 ```

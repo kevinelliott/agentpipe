@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **GitHub Copilot CLI Detection**
+  - Updated `internal/registry/agents.json` to use the current `copilot` command and `@github/copilot` package name
+  - Fixed issue where `agentpipe doctor` failed to find GitHub Copilot installations
+  - Updated documentation in `docs/troubleshooting.md` and `docs/development.md` to match current installation methods
+
+
 ## [0.7.0] - 2025-01-27
 
 ### Added
